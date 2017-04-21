@@ -123,7 +123,7 @@ public class LocationBasedDemandProfile extends AbstractDemandProfile {
    * Don't reconfigure more often than this many requests. Both of these need to be satisfied.
    */
   private static final long NUMBER_OF_REQUESTS_BETWEEN_RECONFIGURATIONS = 1000;
-
+  
   private double interArrivalTime = 0.0;
   private long lastRequestTime = 0;
   private int numRequests = 0;
@@ -132,7 +132,7 @@ public class LocationBasedDemandProfile extends AbstractDemandProfile {
   private VotesMap votesMap = new VotesMap();
   private int lookupCount = 0;
   private int updateCount = 0;
-
+  
   /**
    * Create a LocationBasedDemandProfile instance.
    *
@@ -141,7 +141,7 @@ public class LocationBasedDemandProfile extends AbstractDemandProfile {
   public LocationBasedDemandProfile(String name) {
     super(name);
   }
-
+  
   /**
    * Create a LocationBasedDemandProfile instance by making a deep copy of another instance.
    *
@@ -157,7 +157,7 @@ public class LocationBasedDemandProfile extends AbstractDemandProfile {
     this.lookupCount = dp.lookupCount;
     this.updateCount = dp.updateCount;
   }
-
+  
   /**
    * Create a LocationBasedDemandProfile instance from a JSON packet.
    *
@@ -174,7 +174,8 @@ public class LocationBasedDemandProfile extends AbstractDemandProfile {
     this.updateCount = json.getInt(Keys.UPDATE_COUNT.toString());
     LOG.log(Level.FINE, "%%%%%%%%%%%%%%%%%%%%%%%%%>>> {0} VOTES MAP AFTER READ: {1}", new Object[]{this.name, this.votesMap});
   }
-
+  
+  
   /**
    *
    * @return the stats
@@ -207,7 +208,8 @@ public class LocationBasedDemandProfile extends AbstractDemandProfile {
   public static LocationBasedDemandProfile createDemandProfile(String name) {
     return new LocationBasedDemandProfile(name);
   }
-
+  
+  
   /**
    * arun: ignore create, delete, and select commands. We only want to
    * consider typical read/write commands. Note that select commands are not
@@ -226,7 +228,7 @@ public class LocationBasedDemandProfile extends AbstractDemandProfile {
     return command.getCommandType().isCreateDelete()
             || command.getCommandType().isSelect();
   }
-
+  
   /**
    *
    * @param request
@@ -320,7 +322,8 @@ public class LocationBasedDemandProfile extends AbstractDemandProfile {
    * @param dp
    */
   @Override
-  public void combine(AbstractDemandProfile dp) {
+  public void combine(AbstractDemandProfile dp) 
+  {
     LocationBasedDemandProfile update = (LocationBasedDemandProfile) dp;
     this.lastRequestTime = Math.max(this.lastRequestTime,
             update.lastRequestTime);

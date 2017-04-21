@@ -58,7 +58,7 @@ public class NullDemandProfile extends AbstractDemandProfile {
    * @param name
    */
   public NullDemandProfile(String name) {
-    super(name);
+	  super(name);
   }
 
   /**
