@@ -1,13 +1,16 @@
 package edu.umass.cs.gnsserver.gnsapp.demandprofiles;
 
 import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import edu.umass.cs.contextservice.utils.Utils;
 import edu.umass.cs.gigapaxos.interfaces.Request;
 import edu.umass.cs.gnscommon.packets.CommandPacket;
 import edu.umass.cs.gnsserver.gnsapp.VotesMap;
@@ -136,7 +139,7 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 	   */
 	  @Override
 	  public JSONObject getStats() {
-	    LOG.log(Level.FINE, "%%%%%%%%%%%%%%%%%%%%%%%%%>>> {0} VOTES MAP BEFORE GET STATS: {1}", new Object[]{this.name, this.votesMap});
+	    LOG.log(Level.FINE, "%%%%%%%%%%%%%%%%%%%%%%%%%>>> {0} VOTESSSSS MAP BEFORE GET STATS: {1}", new Object[]{this.name, this.votesMap});
 	    JSONObject json = new JSONObject();
 	    try {
 	      json.put(Keys.SERVICE_NAME.toString(), this.name);
@@ -256,7 +259,7 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 	  
 	  @Override
 	  public ArrayList<InetAddress> shouldReconfigure(ArrayList<InetAddress> curActives, 
-			  				InterfaceGetActiveIPs nodeConfig) 
+			  				InterfaceGetActiveIPs nodeConfig)
 	  {
 		  if (nodeConfig == null) 
 		  {
@@ -270,8 +273,19 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 		  }
 		  else
 		  {
-			  ArrayList<InetAddress> activeIPs = nodeConfig.getActiveIPs();
+			  ArrayList<ArrayList<String>> partitionlist = createSqrtNPartitionsOfNodes(nodeConfig);
+			  String guidToReconfigure = this.name;
+			  ArrayList<InetAddress> actives =  createActiveReplicasForGUID
+					  								(guidToReconfigure, partitionlist);
+			  this.reconfigurationHappened = true;
 			  
+			  LOG.log(Level.FINE, "%%%%%%%%%%%%%%%%%%%%%%%%%>>> shouldReconfigure: GUID {0}, "
+			  				+ "new actives {1} "
+					  		, new Object[]{this.name, actives});
+			  
+			  System.out.println("shouldReconfigure "+this.name+" "+actives);
+			  
+			  return actives;
 		  }
 	  }
 	  
@@ -319,7 +333,6 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 	    return votesMap;
 	  }
 	  
-	  
 	  /**
 	   * arun: ignore create, delete, and select commands. We only want to
 	   * consider typical read/write commands. Note that select commands are not
@@ -335,17 +348,129 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 		  {
 			  return true;
 		  }
+		  return false;
 		  // else
-		  CommandPacket command = (CommandPacket) request;
-		  return command.getCommandType().isCreateDelete()
-	            || command.getCommandType().isSelect();
+		  //CommandPacket command = (CommandPacket) request;
+		  //return command.getCommandType().isCreateDelete()
+	      //      || command.getCommandType().isSelect();
 	  }
 	  
-	  private ArrayList<ArrayList<InetAddress>> createSqrtNPartitionsOfNodes()
+	  
+	  private ArrayList<ArrayList<String>> createSqrtNPartitionsOfNodes(
+			  						InterfaceGetActiveIPs nodeConfig)
 	  {
+		  ArrayList<String> nodesString = new ArrayList<String>();
+		  
+		  //convert ip addresses into string for sorting.
+		  for(int i=0; i<nodeConfig.getActiveIPs().size(); i++)
+		  {
+			  nodesString.add(nodeConfig.getActiveIPs().get(i).getHostAddress());
+		  }
+		  
+		  Collections.sort(nodesString);
 		  
 		  
+		  int sqrtn = (int)Math.sqrt(nodesString.size());
+		  ArrayList<ArrayList<String>> partitionlist 
+		  								= new ArrayList<ArrayList<String>>();
 		  
-		  return null;
+		  for(int i=0; i<sqrtn; i++)
+		  {
+			  ArrayList<String> partition = new ArrayList<String>();
+			  partitionlist.add(partition);
+		  }
+		  
+		  
+		  for(int i=0; i<nodesString.size(); i++)
+		  { 
+			  int partNum = i%sqrtn;
+			  String inetAddrString = nodesString.get(i);
+			  
+			  partitionlist.get(partNum).add(inetAddrString);
+		  }
+		  
+		  for(int i=0; i<sqrtn; i++)
+		  {
+			  Collections.sort(partitionlist.get(i));
+		  }
+		  return partitionlist;
+	  }
+	  
+	  
+	  private ArrayList<InetAddress> createActiveReplicasForGUID
+	  									(String GUID, ArrayList<ArrayList<String>> partitionlist)
+	  {
+		  ArrayList<InetAddress> activeReplicas = new ArrayList<InetAddress>();
+		  for(int i=0; i<partitionlist.size(); i++)
+		  {
+			  ArrayList<String> partition = partitionlist.get(i);
+			  int index = Utils.consistentHashAString(GUID, partition.size());
+			  String currActiveIPStr = partition.get(index);
+			  
+			  try 
+			  {
+				  activeReplicas.add(InetAddress.getByName(currActiveIPStr));
+			  } catch (UnknownHostException e) 
+			  {
+				// It is a standard conversion from dot notation IP String to InetAdress,
+				// so there should never be exception here.
+				e.printStackTrace();
+			  }
+		  }
+		  return activeReplicas;
+	  }
+	  
+	  private static class SampleNodeConfig implements InterfaceGetActiveIPs
+	  {
+
+		  private final ArrayList<InetAddress> nodeIPList;
+		  
+		  public SampleNodeConfig(ArrayList<InetAddress> nodeIPList)
+		  {
+			  this.nodeIPList = nodeIPList;
+		  }
+		  
+		  @Override
+		  public ArrayList<InetAddress> getActiveIPs() 
+		  {
+			  return nodeIPList;
+		  }
+	  }
+	  
+	  public static void main(String[] args)
+	  {
+		  int numNodes = 16;
+		  String guid = Utils.getSHA1("myGUID10");
+		  
+		  System.out.println("GUID "+guid);
+		  ArrayList<InetAddress> nodeIPList = new ArrayList<InetAddress>();
+		  for(int i=0; i<numNodes; i++)
+		  {
+			  String ipAddress = "10.1.1."+(2+i);
+			  try 
+			  {
+				  nodeIPList.add(InetAddress.getByName(ipAddress));
+			} catch (UnknownHostException e) 
+			  {
+				e.printStackTrace();
+			  }
+		  }
+		  
+		  InterfaceGetActiveIPs samplenc = new SampleNodeConfig(nodeIPList);
+		  
+		  SqrtNReplicationDemandProfile dp = new SqrtNReplicationDemandProfile(guid);
+		  
+		  ArrayList<ArrayList<String>> partitionlist = dp.createSqrtNPartitionsOfNodes(samplenc);
+		  
+		  System.out.println("partitionlist "+partitionlist);
+		  
+		  ArrayList<InetAddress> actives = dp.shouldReconfigure(null, samplenc);
+		  assert(actives != null);
+		  
+		  System.out.println("actives "+actives);
+		  
+		  
+		  actives = dp.shouldReconfigure(null, samplenc);
+		  assert(actives == null);
 	  }
 }
