@@ -273,12 +273,15 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 	  public ArrayList<InetAddress> shouldReconfigure(ArrayList<InetAddress> curActives, 
 			  				InterfaceGetActiveIPs nodeConfig)
 	  {  
+		  System.out.println(this.name + " SqrtNReplicationDemandProfile "
+		  		+ "shouldReconfigure called "+((nodeConfig!=null)?nodeConfig:"nodeConfig null"));
+		  
 		  if (nodeConfig == null) 
 		  {
 			  return null;
 		  }
 		  
-		  System.out.println(this.name + " SqrtNReplicationDemandProfile shouldReconfigure called ");
+		  
 		  
 		  // we don't want the reconfiguration to happen twice or more
 		  if(this.reconfigurationHappened)
