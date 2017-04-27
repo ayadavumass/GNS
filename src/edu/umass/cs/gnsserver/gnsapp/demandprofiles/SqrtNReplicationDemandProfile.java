@@ -130,7 +130,9 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 	    this.votesMap = new VotesMap(json.getJSONObject(Keys.VOTES_MAP.toString()));
 	    this.lookupCount = json.getInt(Keys.LOOKUP_COUNT.toString());
 	    this.updateCount = json.getInt(Keys.UPDATE_COUNT.toString());
-	    LOG.log(Level.FINE, "%%%%%%%%%%%%%%%%%%%%%%%%%>>> {0} VOTES MAP AFTER READ: {1}", new Object[]{this.name, this.votesMap});
+	    LOG.log(Level.FINE, 
+	    	"%%%%%%%%%%%%%%%%%%%%%%%%%>>> {0} VOTES MAP AFTER READ: {1}", 
+	    	new Object[]{this.name, this.votesMap});
 	  }
 	  
 	  /**
@@ -139,9 +141,12 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 	   */
 	  @Override
 	  public JSONObject getStats() {
-	    LOG.log(Level.FINE, "%%%%%%%%%%%%%%%%%%%%%%%%%>>> {0} VOTESSSSS MAP BEFORE GET STATS: {1}", new Object[]{this.name, this.votesMap});
+	    LOG.log(Level.FINE, 
+	    		"%%%%%%%%%%%%%%%%%%%%%%%%%>>> {0} VOTESSSSS MAP BEFORE GET STATS: {1}", 
+	    		new Object[]{this.name, this.votesMap});
 	    JSONObject json = new JSONObject();
-	    try {
+	    try 
+	    {
 	      json.put(Keys.SERVICE_NAME.toString(), this.name);
 	      json.put(Keys.RATE.toString(), getRequestRate());
 	      json.put(Keys.NUM_REQUESTS.toString(), getNumRequests());
@@ -149,7 +154,8 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 	      json.put(Keys.VOTES_MAP.toString(), getVotesMap().toJSONObject());
 	      json.put(Keys.LOOKUP_COUNT.toString(), this.lookupCount);
 	      json.put(Keys.UPDATE_COUNT.toString(), this.updateCount);
-	    } catch (JSONException je) {
+	    } catch (JSONException je) 
+	    {
 	      je.printStackTrace();
 	    }
 	    LOG.log(Level.FINE, "%%%%%%%%%%%%%%%%%%%%%%%%%>>> {0} GET STATS: {1}", 
@@ -177,36 +183,41 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 	  @Override
 	  public void register(Request request, InetAddress sender, InterfaceGetActiveIPs nodeConfig) 
 	  {
+		  System.out.println(this.name + " SqrtNReplicationDemandProfile register called "
+				  				+request.toString());
+		  
 		  if (!request.getServiceName().equals(this.name)) 
 		  {
 			  return;
 		  }
+		  
+		  if (shouldIgnore(request)) 
+		  {
+			  return;
+		  }
+		  
+		  // This happens when called from a reconfigurator
+		  
+		  if (nodeConfig == null) {
+			  return;
+			  }
+		  this.numRequests++;
+		  this.numTotalRequests++;
+		  long iaTime = 0;
+		  if (lastRequestTime > 0) {
+			  iaTime = System.currentTimeMillis() - this.lastRequestTime;
+			  this.interArrivalTime = Util.movingAverage(iaTime, interArrivalTime);
+		  } else {
+			  lastRequestTime = System.currentTimeMillis(); // initialization
+		  }
 
-	    if (shouldIgnore(request)) {
-	      return;
-	    }
-
-	    // This happens when called from a reconfigurator
-	    if (nodeConfig == null) {
-	      return;
-	    }
-	    this.numRequests++;
-	    this.numTotalRequests++;
-	    long iaTime = 0;
-	    if (lastRequestTime > 0) {
-	      iaTime = System.currentTimeMillis() - this.lastRequestTime;
-	      this.interArrivalTime = Util.movingAverage(iaTime, interArrivalTime);
-	    } else {
-	      lastRequestTime = System.currentTimeMillis(); // initialization
-	    }
-
-	    if (request instanceof ReplicableRequest
+		  if (request instanceof ReplicableRequest
 	            && ((ReplicableRequest) request).needsCoordination()) {
-	      updateCount++;
-	    } else {
-	      lookupCount++;
-	    }
-	    LOG.log(Level.FINE, "%%%%%%%%%%%%%%%%%%%%%%%%%>>> AFTER REGISTER:{0}", this.toString());
+			  updateCount++;
+		  } else {
+			  lookupCount++;
+		  }
+		  LOG.log(Level.FINE, "%%%%%%%%%%%%%%%%%%%%%%%%%>>> AFTER REGISTER:{0}", this.toString());
 	  }
 	  
 	  /**
@@ -221,6 +232,7 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 		  this.updateCount = 0;
 		  this.lookupCount = 0;
 	  }
+	  
 	  
 	  public SqrtNReplicationDemandProfile clone() 
 	  {
@@ -260,15 +272,19 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 	  @Override
 	  public ArrayList<InetAddress> shouldReconfigure(ArrayList<InetAddress> curActives, 
 			  				InterfaceGetActiveIPs nodeConfig)
-	  {
+	  {  
 		  if (nodeConfig == null) 
 		  {
 			  return null;
 		  }
 		  
+		  System.out.println(this.name + " SqrtNReplicationDemandProfile shouldReconfigure called ");
+		  
 		  // we don't want the reconfiguration to happen twice or more
 		  if(this.reconfigurationHappened)
 		  {
+			  System.out.println(this.name + " SqrtNReplicationDemandProfile shouldReconfigure "
+			  		+ "	called reconfiguration already happened");
 			  return null;
 		  }
 		  else
@@ -359,6 +375,8 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 	  private ArrayList<ArrayList<String>> createSqrtNPartitionsOfNodes(
 			  						InterfaceGetActiveIPs nodeConfig)
 	  {
+		  System.out.println(this.name + " DemandProfile shouldReconfigure called ");
+		  
 		  ArrayList<String> nodesString = new ArrayList<String>();
 		  
 		  //convert ip addresses into string for sorting.
