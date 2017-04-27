@@ -184,7 +184,10 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 	  public void register(Request request, InetAddress sender, InterfaceGetActiveIPs nodeConfig) 
 	  {
 		  System.out.println(this.name + " SqrtNReplicationDemandProfile register called "
-				  				+request.toString());
+				  + request.toString() +" nodeconfig "
+				  + ((nodeConfig!=null)?nodeConfig:"nodeConfig null"));
+		  
+		  assert(nodeConfig != null);
 		  
 		  if (!request.getServiceName().equals(this.name)) 
 		  {
@@ -276,12 +279,7 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 		  System.out.println(this.name + " SqrtNReplicationDemandProfile "
 		  		+ "shouldReconfigure called "+((nodeConfig!=null)?nodeConfig:"nodeConfig null"));
 		  
-		  if (nodeConfig == null) 
-		  {
-			  return null;
-		  }
-		  
-		  
+		  assert(nodeConfig != null);
 		  
 		  // we don't want the reconfiguration to happen twice or more
 		  if(this.reconfigurationHappened)

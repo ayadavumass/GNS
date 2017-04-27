@@ -41,6 +41,6 @@
 	<classpathentry kind="lib" path="lib/android.jar"/>
 	<classpathentry kind="lib" path="lib/geoip2-2.5.0.jar"/>
 	<classpathentry kind="lib" path="lib/maxmind-db-1.1.0.jar"/>
-	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.8"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
