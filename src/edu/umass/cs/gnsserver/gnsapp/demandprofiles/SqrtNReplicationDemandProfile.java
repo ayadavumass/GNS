@@ -48,7 +48,8 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 	 * Most of these fields are not used in this demand profile, but we keep them for 
 	 * priting stats.
 	 */
-	private enum Keys {
+	private enum Keys 
+	{
 		/**
 		 * SERVICE_NAME
 		 */
@@ -123,16 +124,16 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 	   */
 	  public SqrtNReplicationDemandProfile(JSONObject json) throws JSONException 
 	  {
-	    super(json.getString(Keys.SERVICE_NAME.toString()));
-	    this.interArrivalTime = 1.0 / json.getDouble(Keys.RATE.toString());
-	    this.numRequests = json.getInt(Keys.NUM_REQUESTS.toString());
-	    this.numTotalRequests = json.getInt(Keys.NUM_TOTAL_REQUESTS.toString());
-	    this.votesMap = new VotesMap(json.getJSONObject(Keys.VOTES_MAP.toString()));
-	    this.lookupCount = json.getInt(Keys.LOOKUP_COUNT.toString());
-	    this.updateCount = json.getInt(Keys.UPDATE_COUNT.toString());
-	    LOG.log(Level.FINE, 
-	    	"%%%%%%%%%%%%%%%%%%%%%%%%%>>> {0} VOTES MAP AFTER READ: {1}", 
-	    	new Object[]{this.name, this.votesMap});
+		  super(json.getString(Keys.SERVICE_NAME.toString()));
+		  this.interArrivalTime = 1.0 / json.getDouble(Keys.RATE.toString());
+		  this.numRequests = json.getInt(Keys.NUM_REQUESTS.toString());
+		  this.numTotalRequests = json.getInt(Keys.NUM_TOTAL_REQUESTS.toString());
+		  this.votesMap = new VotesMap(json.getJSONObject(Keys.VOTES_MAP.toString()));
+		  this.lookupCount = json.getInt(Keys.LOOKUP_COUNT.toString());
+		  this.updateCount = json.getInt(Keys.UPDATE_COUNT.toString());
+		  LOG.log(Level.FINE, 
+				  "%%%%%%%%%%%%%%%%%%%%%%%%%>>> {0} VOTES MAP AFTER READ: {1}", 
+				  new Object[]{this.name, this.votesMap});
 	  }
 	  
 	  /**
@@ -223,6 +224,7 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 		  LOG.log(Level.FINE, "%%%%%%%%%%%%%%%%%%%%%%%%%>>> AFTER REGISTER:{0}", this.toString());
 	  }
 	  
+	  
 	  /**
 	   * Resets the request counters.
 	   */
@@ -235,7 +237,6 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 		  this.updateCount = 0;
 		  this.lookupCount = 0;
 	  }
-	  
 	  
 	  public SqrtNReplicationDemandProfile clone() 
 	  {
@@ -262,7 +263,6 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 		  LOG.log(Level.FINE, "%%%%%%%%%%%%%%%%%%%%%%%%%>>> AFTER COMBINE:{0}", this.toString());
 	  }
 	  
-	  
 	  @Override
 	  public void justReconfigured() 
 	  {
@@ -271,13 +271,13 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 				  this.lastReconfiguredProfile.toString());  
 	  }
 	  
-	  
 	  @Override
 	  public ArrayList<InetAddress> shouldReconfigure(ArrayList<InetAddress> curActives, 
 			  				InterfaceGetActiveIPs nodeConfig)
-	  {  
+	  {
 		  System.out.println(this.name + " SqrtNReplicationDemandProfile "
-		  		+ "shouldReconfigure called "+((nodeConfig!=null)?nodeConfig:"nodeConfig null"));
+		  		+ "shouldReconfigure called "
+				+ ((nodeConfig!=null)?nodeConfig.getActiveIPs():"nodeConfig null"));
 		  
 		  assert(nodeConfig != null);
 		  
@@ -412,6 +412,7 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 		  {
 			  Collections.sort(partitionlist.get(i));
 		  }
+		  System.out.print("Node partitions "+partitionlist);
 		  return partitionlist;
 	  }
 	  
