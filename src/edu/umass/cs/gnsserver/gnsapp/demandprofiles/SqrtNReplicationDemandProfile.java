@@ -412,7 +412,7 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 		  {
 			  Collections.sort(partitionlist.get(i));
 		  }
-		  System.out.print("Node partitions "+partitionlist);
+		  System.out.println("Node partitions "+partitionlist);
 		  return partitionlist;
 	  }
 	  

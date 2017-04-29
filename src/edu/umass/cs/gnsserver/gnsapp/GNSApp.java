@@ -719,6 +719,7 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
               && originalRequest instanceof BasicPacketWithClientAddress) {
         ((BasicPacketWithClientAddress) originalRequest)
                 .setResponse((ClientRequest) response);
+        
         incrResponseCount((ClientRequest) response);
       }
       GNSConfig

@@ -821,7 +821,6 @@ public class AccountAccess {
           String verifyCode, ClientRequestHandlerInterface handler)
           throws IOException {
     try {
-
       ResponseCode returnCode;
       // First try to createField the HRN record to make sure this name
       // isn't already registered
@@ -829,7 +828,7 @@ public class AccountAccess {
       jsonHRN.put(HRN_GUID, guid);
       returnCode = handler.getInternalClient().createOrExists(
               new CreateServiceName(name, jsonHRN.toString()));
-
+      
       String boundGUID = null;
       if (!returnCode.isExceptionOrError()
               || (guid.equals(boundGUID = HRNMatchingGUIDExists(header, handler, returnCode, name,
