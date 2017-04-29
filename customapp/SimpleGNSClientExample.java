@@ -60,9 +60,10 @@ public class SimpleGNSClientExample
 					//client.execute(GNSCommand.update(guid, (new JSONObject()).put(j+"", j+"val")));
 					//System.out.println("Performing update guid "+guid.getGuid()+"j "+j);
 				}
+				//Thread.sleep(1000);
 			}
-			
-			/*for(int i=0; i<numGuids; i++)
+
+			for(int i=0; i<numGuids; i++)
 			{
 				System.out.println("// account GUID creation\n"+ "GuidUtils.lookupOrCreateAccountGuid(client, ACCOUNT_ALIAS,"+ " \"password\", true)");
 				
@@ -72,7 +73,7 @@ public class SimpleGNSClientExample
 				
 				GuidEntry guid = GuidUtils.getGUIDKeys(alias);
 				
-				System.out.println("GUID num i "+i+" guid "+guid.getGuid()+" created");
+				System.out.println("GUID num i "+i+" guid "+guid.getGuid()+" updating");
 				
 				for(int j=0; j<1; j++)
 				{
@@ -84,7 +85,8 @@ public class SimpleGNSClientExample
 					client.execute(GNSCommand.update(guid, json));
 					System.out.println("Performing update guid "+guid.getGuid()+"j "+j);
 				}
-			}*/
+				//Thread.sleep(1000);
+			}
 		}
 		catch (Exception | Error e) 
 		{
