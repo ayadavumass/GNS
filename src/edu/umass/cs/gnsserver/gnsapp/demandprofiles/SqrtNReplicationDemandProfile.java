@@ -97,6 +97,7 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 	  public SqrtNReplicationDemandProfile(String name) 
 	  {
 		  super(name);
+		  System.out.println("SqrtNReplicationDemandProfile(String name) called "+name);
 	  }
 	  
 	  /**
@@ -114,6 +115,7 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 	    this.votesMap = new VotesMap(dp.votesMap);
 	    this.lookupCount = dp.lookupCount;
 	    this.updateCount = dp.updateCount;
+	    System.out.println("SqrtNReplicationDemandProfile(SqrtNReplicationDemandProfile dp) called "+name);
 	  }
 	  
 	  /**
@@ -134,6 +136,7 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 		  LOG.log(Level.FINE, 
 				  "%%%%%%%%%%%%%%%%%%%%%%%%%>>> {0} VOTES MAP AFTER READ: {1}", 
 				  new Object[]{this.name, this.votesMap});
+		  System.out.println("SqrtNReplicationDemandProfile(JSONObject json) called "+name);
 	  }
 	  
 	  /**
@@ -142,6 +145,7 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 	   */
 	  @Override
 	  public JSONObject getStats() {
+		  System.out.println("getStats called "+this.name+" "+this.reconfigurationHappened);
 	    LOG.log(Level.FINE, 
 	    		"%%%%%%%%%%%%%%%%%%%%%%%%%>>> {0} VOTESSSSS MAP BEFORE GET STATS: {1}", 
 	    		new Object[]{this.name, this.votesMap});
@@ -172,6 +176,7 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 	   */
 	  public static SqrtNReplicationDemandProfile createDemandProfile(String name) 
 	  {
+		  System.out.println("createDemandProfile called "+name);
 		  return new SqrtNReplicationDemandProfile(name);
 	  }
 	  
@@ -230,6 +235,7 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 	   */
 	  public void reset() 
 	  {
+		  System.out.println("reset called "+this.name+" "+this.reconfigurationHappened);
 		  this.interArrivalTime = 0.0;
 		  this.lastRequestTime = 0;
 		  this.numRequests = 0;
@@ -240,6 +246,7 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 	  
 	  public SqrtNReplicationDemandProfile clone() 
 	  {
+		  System.out.println("clone() called "+this.name+" "+this.reconfigurationHappened);
 		  return new SqrtNReplicationDemandProfile(this);
 	  }
 	  
@@ -250,6 +257,7 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 	   */
 	  public void combine(AbstractDemandProfile dp) 
 	  {
+		  System.out.println("Combine called "+this.name+" "+this.reconfigurationHappened);
 		  SqrtNReplicationDemandProfile update = (SqrtNReplicationDemandProfile) dp;
 		  this.lastRequestTime = Math.max(this.lastRequestTime,
 		            update.lastRequestTime);
@@ -266,6 +274,7 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 	  @Override
 	  public void justReconfigured() 
 	  {
+		  System.out.println("justReconfigured called "+this.name+" "+this.reconfigurationHappened);
 		  this.lastReconfiguredProfile = this.clone();
 		  LOG.log(Level.FINE, "%%%%%%%%%%%%%%%%%%%%%%%%%>>> AFTER CLONE:{0}",
 				  this.lastReconfiguredProfile.toString());  
@@ -310,6 +319,7 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 	  @Override
 	  public boolean shouldReport() 
 	  {
+		  System.out.println("shouldReport called "+this.name+" "+this.reconfigurationHappened);
 		  return !reconfigurationHappened;
 	  }
 	  
@@ -371,7 +381,6 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 		  //return command.getCommandType().isCreateDelete()
 	      //      || command.getCommandType().isSelect();
 	  }
-	  
 	  
 	  private ArrayList<ArrayList<String>> createSqrtNPartitionsOfNodes(
 			  						InterfaceGetActiveIPs nodeConfig)
