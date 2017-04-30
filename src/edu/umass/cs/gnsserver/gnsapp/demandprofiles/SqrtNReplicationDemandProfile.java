@@ -287,7 +287,8 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 	  {
 		  LOG.log(Level.FINE, this.name + " SqrtNReplicationDemandProfile "
 		  		+ "shouldReconfigure called "
-				+ ((nodeConfig!=null)?nodeConfig.getActiveIPs():"nodeConfig null"));
+				+ ((nodeConfig!=null)?nodeConfig.getActiveIPs():"nodeConfig null")
+				+ ((curActives!=null)?("currActive "+curActives):"curActives null") );
 		  
 		  assert(nodeConfig != null);
 		  
@@ -295,7 +296,7 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 		  if(this.reconfigurationHappened)
 		  {
 			  LOG.log(Level.FINE, this.name + " SqrtNReplicationDemandProfile shouldReconfigure "
-			  		+ "	called reconfiguration already happened");
+			  		+ "	called reconfiguration already happened curActives ");
 			  return null;
 		  }
 		  else
