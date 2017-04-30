@@ -97,7 +97,7 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 	  public SqrtNReplicationDemandProfile(String name) 
 	  {
 		  super(name);
-		  System.out.println("SqrtNReplicationDemandProfile(String name) called "+name);
+		  LOG.log(Level.FINE, "SqrtNReplicationDemandProfile(String name) called "+name);
 	  }
 	  
 	  /**
@@ -115,7 +115,7 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 	    this.votesMap = new VotesMap(dp.votesMap);
 	    this.lookupCount = dp.lookupCount;
 	    this.updateCount = dp.updateCount;
-	    System.out.println("SqrtNReplicationDemandProfile(SqrtNReplicationDemandProfile dp) called "+name);
+	    LOG.log(Level.FINE, "SqrtNReplicationDemandProfile(SqrtNReplicationDemandProfile dp) called "+name);
 	  }
 	  
 	  /**
@@ -136,7 +136,7 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 		  LOG.log(Level.FINE, 
 				  "%%%%%%%%%%%%%%%%%%%%%%%%%>>> {0} VOTES MAP AFTER READ: {1}", 
 				  new Object[]{this.name, this.votesMap});
-		  System.out.println("SqrtNReplicationDemandProfile(JSONObject json) called "+name);
+		  LOG.log(Level.FINE,"SqrtNReplicationDemandProfile(JSONObject json) called "+name);
 	  }
 	  
 	  /**
@@ -145,27 +145,28 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 	   */
 	  @Override
 	  public JSONObject getStats() {
-		  System.out.println("getStats called "+this.name+" "+this.reconfigurationHappened);
-	    LOG.log(Level.FINE, 
+		  LOG.log(Level.FINE,"getStats called "+this.name+" "+this.reconfigurationHappened);
+		  LOG.log(Level.FINE, 
 	    		"%%%%%%%%%%%%%%%%%%%%%%%%%>>> {0} VOTESSSSS MAP BEFORE GET STATS: {1}", 
 	    		new Object[]{this.name, this.votesMap});
-	    JSONObject json = new JSONObject();
-	    try 
-	    {
-	      json.put(Keys.SERVICE_NAME.toString(), this.name);
-	      json.put(Keys.RATE.toString(), getRequestRate());
-	      json.put(Keys.NUM_REQUESTS.toString(), getNumRequests());
-	      json.put(Keys.NUM_TOTAL_REQUESTS.toString(), getNumTotalRequests());
-	      json.put(Keys.VOTES_MAP.toString(), getVotesMap().toJSONObject());
-	      json.put(Keys.LOOKUP_COUNT.toString(), this.lookupCount);
-	      json.put(Keys.UPDATE_COUNT.toString(), this.updateCount);
-	    } catch (JSONException je) 
-	    {
-	      je.printStackTrace();
-	    }
-	    LOG.log(Level.FINE, "%%%%%%%%%%%%%%%%%%%%%%%%%>>> {0} GET STATS: {1}", 
+		  
+		  JSONObject json = new JSONObject();
+		  try 
+		  {
+			  json.put(Keys.SERVICE_NAME.toString(), this.name);
+			  json.put(Keys.RATE.toString(), getRequestRate());
+			  json.put(Keys.NUM_REQUESTS.toString(), getNumRequests());
+			  json.put(Keys.NUM_TOTAL_REQUESTS.toString(), getNumTotalRequests());
+			  json.put(Keys.VOTES_MAP.toString(), getVotesMap().toJSONObject());
+			  json.put(Keys.LOOKUP_COUNT.toString(), this.lookupCount);
+			  json.put(Keys.UPDATE_COUNT.toString(), this.updateCount);
+		  } catch (JSONException je) 
+		  {
+			  je.printStackTrace();
+		  }
+		  LOG.log(Level.FINE, "%%%%%%%%%%%%%%%%%%%%%%%%%>>> {0} GET STATS: {1}", 
 	    											new Object[]{this.name, json});
-	    return json;
+		  return json;
 	  }
 	  
 	  /**
@@ -176,7 +177,7 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 	   */
 	  public static SqrtNReplicationDemandProfile createDemandProfile(String name) 
 	  {
-		  System.out.println("createDemandProfile called "+name);
+		  LOG.log(Level.FINE, "createDemandProfile called "+name);
 		  return new SqrtNReplicationDemandProfile(name);
 	  }
 	  
@@ -189,7 +190,7 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 	  @Override
 	  public void register(Request request, InetAddress sender, InterfaceGetActiveIPs nodeConfig) 
 	  {
-		  System.out.println(this.name + " SqrtNReplicationDemandProfile register called "
+		  LOG.log(Level.FINE, this.name + " SqrtNReplicationDemandProfile register called "
 				  + request.toString() +" nodeconfig "
 				  + ((nodeConfig!=null)?nodeConfig:"nodeConfig null"));
 		  
@@ -235,7 +236,7 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 	   */
 	  public void reset() 
 	  {
-		  System.out.println("reset called "+this.name+" "+this.reconfigurationHappened);
+		  LOG.log(Level.FINE, "reset called "+this.name+" "+this.reconfigurationHappened);
 		  this.interArrivalTime = 0.0;
 		  this.lastRequestTime = 0;
 		  this.numRequests = 0;
@@ -246,7 +247,7 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 	  
 	  public SqrtNReplicationDemandProfile clone() 
 	  {
-		  System.out.println("clone() called "+this.name+" "+this.reconfigurationHappened);
+		  LOG.log(Level.FINE, "clone() called "+this.name+" "+this.reconfigurationHappened);
 		  return new SqrtNReplicationDemandProfile(this);
 	  }
 	  
@@ -257,7 +258,7 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 	   */
 	  public void combine(AbstractDemandProfile dp) 
 	  {
-		  System.out.println("Combine called "+this.name+" "+this.reconfigurationHappened);
+		  LOG.log(Level.FINE, "Combine called "+this.name+" "+this.reconfigurationHappened);
 		  SqrtNReplicationDemandProfile update = (SqrtNReplicationDemandProfile) dp;
 		  this.lastRequestTime = Math.max(this.lastRequestTime,
 		            update.lastRequestTime);
@@ -274,7 +275,7 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 	  @Override
 	  public void justReconfigured() 
 	  {
-		  System.out.println("justReconfigured called "+this.name+" "+this.reconfigurationHappened);
+		  LOG.log(Level.FINE, "justReconfigured called "+this.name+" "+this.reconfigurationHappened);
 		  this.lastReconfiguredProfile = this.clone();
 		  LOG.log(Level.FINE, "%%%%%%%%%%%%%%%%%%%%%%%%%>>> AFTER CLONE:{0}",
 				  this.lastReconfiguredProfile.toString());  
@@ -284,7 +285,7 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 	  public ArrayList<InetAddress> shouldReconfigure(ArrayList<InetAddress> curActives, 
 			  				InterfaceGetActiveIPs nodeConfig)
 	  {
-		  System.out.println(this.name + " SqrtNReplicationDemandProfile "
+		  LOG.log(Level.FINE, this.name + " SqrtNReplicationDemandProfile "
 		  		+ "shouldReconfigure called "
 				+ ((nodeConfig!=null)?nodeConfig.getActiveIPs():"nodeConfig null"));
 		  
@@ -293,7 +294,7 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 		  // we don't want the reconfiguration to happen twice or more
 		  if(this.reconfigurationHappened)
 		  {
-			  System.out.println(this.name + " SqrtNReplicationDemandProfile shouldReconfigure "
+			  LOG.log(Level.FINE, this.name + " SqrtNReplicationDemandProfile shouldReconfigure "
 			  		+ "	called reconfiguration already happened");
 			  return null;
 		  }
@@ -309,7 +310,7 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 			  				+ "new actives {1} "
 					  		, new Object[]{this.name, actives});
 			  
-			  System.out.println("shouldReconfigure "+this.name+" "+actives);
+			  LOG.log(Level.FINE, "shouldReconfigure "+this.name+" "+actives);
 			  
 			  return actives;
 		  }
@@ -319,7 +320,7 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 	  @Override
 	  public boolean shouldReport() 
 	  {
-		  System.out.println("shouldReport called "+this.name+" "+this.reconfigurationHappened);
+		  LOG.log(Level.FINE, "shouldReport called "+this.name+" "+this.reconfigurationHappened);
 		  return !reconfigurationHappened;
 	  }
 	  
@@ -385,7 +386,7 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 	  private ArrayList<ArrayList<String>> createSqrtNPartitionsOfNodes(
 			  						InterfaceGetActiveIPs nodeConfig)
 	  {
-		  System.out.println(this.name + " DemandProfile shouldReconfigure called ");
+		  LOG.log(Level.FINE, this.name + " createSqrtNPartitionsOfNodes called ");
 		  
 		  ArrayList<String> nodesString = new ArrayList<String>();
 		  
@@ -421,7 +422,7 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 		  {
 			  Collections.sort(partitionlist.get(i));
 		  }
-		  System.out.println("Node partitions "+partitionlist);
+		  LOG.log(Level.FINE, "Node partitions "+partitionlist);
 		  return partitionlist;
 	  }
 	  
