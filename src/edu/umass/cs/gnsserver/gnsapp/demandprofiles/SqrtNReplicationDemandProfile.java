@@ -37,16 +37,15 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 	private static final Logger LOG = Logger.getLogger(SqrtNReplicationDemandProfile.class.getName());
 	
 	/**
-	 * reconfigurationHappened keeps track if the reconfiguration for a service name, GUID in GNS,
-	 * corresponding to this demand profile has happened once or not.
+	 * reconfigurationHappened keeps track if the reconfiguration for a service name, 
+	 * GUID in GNS, corresponding to this demand profile has happened once or not.
 	 */
 	private boolean reconfigurationHappened = false;
-	
 	
 	/**
 	 * The keys for the demand profile packet.
 	 * Most of these fields are not used in this demand profile, but we keep them for 
-	 * priting stats.
+	 * printing stats.
 	 */
 	private enum Keys 
 	{
@@ -144,14 +143,15 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 	   * @return the stats
 	   */
 	  @Override
-	  public JSONObject getStats() {
+	  public JSONObject getStats() 
+	  {
 		  LOG.log(Level.FINE,"getStats called "+this.name+" "+this.reconfigurationHappened);
 		  LOG.log(Level.FINE, 
 	    		"%%%%%%%%%%%%%%%%%%%%%%%%%>>> {0} VOTESSSSS MAP BEFORE GET STATS: {1}", 
 	    		new Object[]{this.name, this.votesMap});
 		  
 		  JSONObject json = new JSONObject();
-		  try 
+		  try
 		  {
 			  json.put(Keys.SERVICE_NAME.toString(), this.name);
 			  json.put(Keys.RATE.toString(), getRequestRate());
@@ -160,7 +160,8 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 			  json.put(Keys.VOTES_MAP.toString(), getVotesMap().toJSONObject());
 			  json.put(Keys.LOOKUP_COUNT.toString(), this.lookupCount);
 			  json.put(Keys.UPDATE_COUNT.toString(), this.updateCount);
-		  } catch (JSONException je) 
+		  } 
+		  catch (JSONException je) 
 		  {
 			  je.printStackTrace();
 		  }

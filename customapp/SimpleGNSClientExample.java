@@ -39,7 +39,8 @@ public class SimpleGNSClientExample
 		
 		client = new GNSClient();
 		System.out.println("[Client connected to GNS]\n");
-		
+		client = client.setForcedTimeout(10000);
+		client = client.setNumRetriesUponTimeout(5);
 		try
 		{
 			for(int i=0; i<numGuids; i++)
@@ -75,14 +76,15 @@ public class SimpleGNSClientExample
 				
 				System.out.println("GUID num i "+i+" guid "+guid.getGuid()+" updating");
 				
-				for(int j=0; j<1; j++)
+				for(int j=0; j<100; j++)
 				{
 					// Change a field
 					JSONObject json = new JSONObject();
 					json.put(j+"", j+"val");
-
-
+					
 					client.execute(GNSCommand.update(guid, json));
+					
+					
 					System.out.println("Performing update guid "+guid.getGuid()+"j "+j);
 				}
 				//Thread.sleep(1000);
