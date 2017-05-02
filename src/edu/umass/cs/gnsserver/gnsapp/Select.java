@@ -78,7 +78,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * This class handles select operations which have a similar semantics to an SQL SELECT.
+ * This class handles select operations which have a similar semantics to a SQL SELECT.
  * The base architecture of the select methods is that we broadcast a query
  * to all the servers and collate the responses.
  * The most general purpose select method is implemented in SelectQuery. It takes a
@@ -176,7 +176,6 @@ public class Select {
    * @throws FailedDBOperationException
    * @throws InternalRequestException
    */
-  @SuppressWarnings("unchecked")
   public static SelectResponsePacket handleSelectRequestFromClient(InternalRequestHeader header,
           SelectRequestPacket packet,
           GNSApplicationInterface<String> app) throws JSONException, UnknownHostException,
@@ -214,6 +213,10 @@ public class Select {
 
     // If it's not a group lookup or is but enough time has passed we do the usual thing
     // and send the request out to all the servers. We'll receive a response sent on the flipside.
+    
+    //TODO: we replace the lone below with partition information from NodeConfig
+    // 
+    
     Set<InetSocketAddress> serverAddresses = new HashSet<>(PaxosConfig.getActives().values());
     //Set<String> serverIds = app.getGNSNodeConfig().getActiveReplicas();
 
@@ -267,8 +270,8 @@ public class Select {
     }
     return null;
   }
-
-  @SuppressWarnings("unchecked")
+  
+  
   private static SelectResponsePacket getMySelectedRecords(
           SelectRequestPacket request,
           GNSApplicationInterface<String> app) {
@@ -306,7 +309,6 @@ public class Select {
    * @param app
    * @throws JSONException
    */
-  @SuppressWarnings("unchecked")
   private static void handleSelectRequestFromNS(SelectRequestPacket request,
           GNSApplicationInterface<String> app) throws JSONException {
     LOGGER.log(Level.FINE,
@@ -317,7 +319,7 @@ public class Select {
       // grab the records
       JSONArray jsonRecords = getJSONRecordsForSelect(request, app);
       jsonRecords = aclCheckFilterForRecordsArray(request, jsonRecords, request.getReader(), app);
-      @SuppressWarnings("unchecked")
+      
       SelectResponsePacket response = SelectResponsePacket.makeSuccessPacketForFullRecords(request.getId(),
               request.getClientAddress(),
               request.getCcpQueryId(), request.getNsQueryId(), app.getNodeAddress(), jsonRecords);
@@ -726,5 +728,4 @@ public class Select {
     String testQuery4 = "$where : \"this.nr_valuesMap.secret == 'i_like_cookies'\"";
     System.out.println(queryContainsEvil(testQuery4));
   }
-
 }

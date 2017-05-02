@@ -161,7 +161,6 @@ public class LNSPacketDemultiplexer<NodeIDType> extends AbstractJSONPacketDemult
    */
   public void handleCommandPacket(JSONObject json, NIOHeader header) throws JSONException,
           IOException {
-
     CommandPacket packet = new CommandPacket(json);
     LNSRequestInfo requestInfo = new LNSRequestInfo(packet.getRequestID(),
             packet, header.sndr);

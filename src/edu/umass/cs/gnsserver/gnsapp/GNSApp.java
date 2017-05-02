@@ -257,7 +257,6 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
    * @param doNotReplyToClient
    * @return true if the command is successfully executed
    */
-  @SuppressWarnings("unchecked")
   // we explicitly check type
   @Override
   public boolean execute(Request request, boolean doNotReplyToClient) {
@@ -458,6 +457,7 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
     constructed = true;
   }
 
+  
   // For InterfaceApplication
   /**
    *
@@ -798,6 +798,12 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
   public ContextServiceGNSInterface getContextServiceGNSClient() {
     return contextServiceGNSClient;
   }
+  
+  @Override
+  public SSLMessenger<String, JSONObject> getSSLMessenger() 
+  {
+  	return this.messenger;
+  }
 
   private void startDNS() throws SecurityException, SocketException,
           UnknownHostException {
@@ -836,5 +842,5 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
               + "If you want DNS run the server using sudo.");
     }
   }
-
+  
 }
