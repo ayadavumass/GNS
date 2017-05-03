@@ -35,7 +35,6 @@ import org.json.JSONObject;
  *
  * @author westy
  */
-@SuppressWarnings("deprecation")
 public class SelectRequestPacket extends BasicPacketWithNSReturnAddress
         implements ClientRequest {
 

@@ -248,7 +248,13 @@ public class GNSConfig {
      * Turn off active code handling. Default is true.
      * Temporary - The use of this will go away at some point.
      */
-    DISABLE_ACTIVE_CODE(true);
+    DISABLE_ACTIVE_CODE(true),
+    /**
+     * Specifies the select policy type.
+     * An abstract select policy and the default select policy is in 
+     * edu.umass.cs.gnsserver.gnsapp.cns.selectpolicy package.
+     */
+    SELECT_POLICY_TYPE("edu.umass.cs.gnsserver.gnsapp.cns.selectpolicy.ReplicateAllSelectPolicy");
 
     final Object defaultValue;
     final boolean unsafeTestingOnly;

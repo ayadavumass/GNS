@@ -24,8 +24,8 @@ import edu.umass.cs.gigapaxos.interfaces.Request;
 import edu.umass.cs.gnscommon.packets.CommandPacket;
 import edu.umass.cs.gnsserver.activecode.ActiveCodeHandler;
 import edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.ClientRequestHandlerInterface;
+import edu.umass.cs.gnsserver.gnsapp.cns.selectpolicy.AbstractSelectPolicy;
 import edu.umass.cs.gnsserver.gnsapp.recordmap.BasicRecordMap;
-import edu.umass.cs.nio.interfaces.SSLMessenger;
 
 import java.io.IOException;
 
@@ -107,14 +107,9 @@ public interface GNSApplicationInterface<NodeIDType> {
    */
   ActiveCodeHandler getActiveCodeHandler();
   
-  
   /**
-   * Returns the SSL messenger. The messenger contain NodeConfig, 
-   * which is of type ReconfigurableNodeCoinfig, that is used to get the current set of active 
-   * replicas. If the ndoeconfig is of the type 
-   * edu.umass.cs.reconfiguration.reconfigurationutils.ConsistentReconfigurableNodeConfigWithSlicing
-   * then we can also get the partition information, which can be used to process select requests.
+   * Returns the select policy.
    * @return
    */
-  public SSLMessenger<String, JSONObject> getSSLMessenger();
+  public AbstractSelectPolicy getSelectPolicy();
 }

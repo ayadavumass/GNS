@@ -4,6 +4,7 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.SignatureException;
 import java.security.spec.InvalidKeySpecException;
+import java.util.Random;
 
 import org.json.JSONObject;
 
@@ -12,6 +13,7 @@ import edu.umass.cs.gnsclient.client.GNSCommand;
 import edu.umass.cs.gnsclient.client.util.GuidEntry;
 import edu.umass.cs.gnsclient.client.util.GuidUtils;
 import edu.umass.cs.gnscommon.exceptions.client.ClientException;
+import edu.umass.cs.gnscommon.packets.CommandPacket;
 
 public class SimpleGNSClientExample 
 {
@@ -64,6 +66,7 @@ public class SimpleGNSClientExample
 				//Thread.sleep(1000);
 			}
 
+			Random rand = new Random();
 			for(int i=0; i<numGuids; i++)
 			{
 				System.out.println("// account GUID creation\n"+ "GuidUtils.lookupOrCreateAccountGuid(client, ACCOUNT_ALIAS,"+ " \"password\", true)");
@@ -76,11 +79,11 @@ public class SimpleGNSClientExample
 				
 				System.out.println("GUID num i "+i+" guid "+guid.getGuid()+" updating");
 				
-				for(int j=0; j<100; j++)
+				for(int j=0; j<10; j++)
 				{
 					// Change a field
 					JSONObject json = new JSONObject();
-					json.put(j+"", j+"val");
+					json.put("a"+j, rand.nextInt(100));
 					
 					client.execute(GNSCommand.update(guid, json));
 					
@@ -89,6 +92,13 @@ public class SimpleGNSClientExample
 				}
 				//Thread.sleep(1000);
 			}
+			
+			// query guids now
+			String query = "$and:[(\"~a0\":($gt:0, $lt:100)),(\"~a1\":($gt:0, $lt:100))]";
+			System.out.println("Sending select query");
+			CommandPacket response = client.execute(GNSCommand.selectQuery(query));
+			System.out.print("result size "+response.getResultList().size());
+			
 		}
 		catch (Exception | Error e) 
 		{

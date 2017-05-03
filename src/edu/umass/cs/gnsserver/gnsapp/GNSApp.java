@@ -51,6 +51,7 @@ import edu.umass.cs.gnsserver.nodeconfig.GNSNodeConfig;
 import edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.ClientRequestHandler;
 import edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commandSupport.Admintercessor;
 import edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commandSupport.CommandHandler;
+import edu.umass.cs.gnsserver.gnsapp.cns.selectpolicy.AbstractSelectPolicy;
 import edu.umass.cs.gnsserver.gnsapp.packet.BasicPacketWithClientAddress;
 import edu.umass.cs.gnsserver.gnamed.DnsTranslator;
 import edu.umass.cs.gnsserver.gnamed.UdpDnsServer;
@@ -122,6 +123,15 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
     public void callbackGC(Object key, Object value) {
     }
   }, DEFAULT_REQUEST_TIMEOUT);
+  
+  /**
+   * A policy to decide the nodes at which the GNS should process a select request. 
+   * FIXME: For correctness of select request results, the select policy depends on the type 
+   * of demand profile used for reconfiguration. Right now, there is no check in the system
+   * to tell a user if the specified select policy and the demand profile are incompatible, i.e., 
+   * a select request will return wrong results. 
+   */
+  private AbstractSelectPolicy selectPolicy;
 
   /* It's silly to enqueue requests when all GNS calls are blocking anyway. We
    * now use a simpler and more sensible sendToClient method that tracks the
@@ -134,7 +144,7 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
    * Active code handler
    */
   private ActiveCodeHandler activeCodeHandler;
-
+  
   /**
    * context service interface
    */
@@ -281,7 +291,7 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
                 + " should not be getting requests that do not implement "
                 + RequestIdentifier.class;
       }
-
+      
       switch (packetType) {
         case SELECT_REQUEST:
           Select.handleSelectRequest((SelectRequestPacket) request, this);
@@ -364,7 +374,14 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
       this.requestHandler.getInternalClient().close();
     }
   }
-
+  
+  @Override
+  public AbstractSelectPolicy getSelectPolicy() 
+  {
+	  return this.selectPolicy;
+  }
+  
+  
   /**
    * Actually creates the application. This strange way of constructing the application
    * is because of legacy code that used the createAppCoordinator interface.
@@ -453,10 +470,48 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
       contextServiceGNSClient = new ContextServiceGNSClient(host, port);
       GNSConfig.getLogger().fine("ContextServiceGNSClient initialization completed");
     }
-
+    String selectPolicyClassName = Config.getGlobalString(GNSConfig.GNSC.SELECT_POLICY_TYPE);
+    
+    Class<?> selectClass = null;
+    
+    try
+    {
+    	selectClass = Class.forName(selectPolicyClassName);
+	} 
+    catch (ClassNotFoundException e) 
+    {
+		GNSConfig.getLogger().log(Level.WARNING, 
+				"Error in creating the select policy class at classpath "+
+				selectPolicyClassName +". The error is "+e.getMessage()+" .\n "
+				+ "Falling back to the default select policy "+ 
+				GNSConfig.GNSC.SELECT_POLICY_TYPE.getDefaultValue());
+		
+		try 
+		{
+			selectClass = Class.forName(GNSConfig.GNSC.SELECT_POLICY_TYPE.getDefaultValue().toString());
+		} catch (ClassNotFoundException e1) 
+		{
+			// this exception should not be there as it is a default class.
+			e1.printStackTrace();
+		}
+	}
+    
+    if(selectClass != null)
+    {
+    	this.selectPolicy = AbstractSelectPolicy.createSelectPolicy(selectClass);
+    	assert(this.selectPolicy != null);
+    	
+    	if(this.selectPolicy == null)
+    	{
+    		//FIXME: need to get it checked if this is the correct expcetion 
+    		// handling here.
+    		throw new RuntimeException("Unable to create object for the class "
+    												+selectClass.getCanonicalName());
+    	}
+    }
     constructed = true;
   }
-
+  
   
   // For InterfaceApplication
   /**
@@ -798,12 +853,6 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
   public ContextServiceGNSInterface getContextServiceGNSClient() {
     return contextServiceGNSClient;
   }
-  
-  @Override
-  public SSLMessenger<String, JSONObject> getSSLMessenger() 
-  {
-  	return this.messenger;
-  }
 
   private void startDNS() throws SecurityException, SocketException,
           UnknownHostException {
@@ -842,5 +891,4 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
               + "If you want DNS run the server using sudo.");
     }
   }
-  
 }

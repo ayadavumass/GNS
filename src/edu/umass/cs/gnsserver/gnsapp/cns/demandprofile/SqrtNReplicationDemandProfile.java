@@ -1,9 +1,13 @@
-package edu.umass.cs.gnsserver.gnsapp.demandprofiles;
+package edu.umass.cs.gnsserver.gnsapp.cns.demandprofile;
 
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -13,7 +17,10 @@ import org.json.JSONObject;
 import edu.umass.cs.contextservice.utils.Utils;
 import edu.umass.cs.gigapaxos.interfaces.Request;
 import edu.umass.cs.gnscommon.packets.CommandPacket;
+import edu.umass.cs.gnsserver.gnsapp.cns.common.NodePartitioning;
 import edu.umass.cs.reconfiguration.reconfigurationutils.AbstractDemandProfile;
+import edu.umass.cs.reconfiguration.reconfigurationutils.ConsistentReconfigurableNodeConfig;
+import edu.umass.cs.reconfiguration.reconfigurationutils.DefaultNodeConfig;
 import edu.umass.cs.reconfiguration.reconfigurationutils.InterfaceGetActiveIPs;
 
 
@@ -164,6 +171,17 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 				  this.lastReconfiguredProfile.toString());  
 	  }
 	  
+	  /**
+	   * This function only performs reconfiguration if nodeConfig
+	   * is an instance of ConsistentReconfigurableNodeConfig.
+	   * For reconfiguration, we need the full socket address of
+	   * current active replicas, which is available through 
+	   * ConsistentReconfigurableNodeConfig. 
+	   * We need full socket addresses and not just the InetAddresses because 
+	   * we use a deterministic algorithm to partition active replicas, which is 
+	   * needed in the SelectPolicy to determine where to send a select request. 
+	   * The use of full socket addresses also makes it easy to test things locally.
+	   */
 	  @Override
 	  public ArrayList<InetAddress> shouldReconfigure(ArrayList<InetAddress> curActives, 
 			  				InterfaceGetActiveIPs nodeConfig)
@@ -174,29 +192,35 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 				+ ((curActives!=null)?("currActive "+curActives):"curActives null") );
 		  
 		  assert(nodeConfig != null);
-		  return null;
-		  /*if(this.reconfigurationHappened)
+		  
+		  if(nodeConfig instanceof ConsistentReconfigurableNodeConfig)
 		  {
-			  LOG.log(Level.FINE, this.name + " SqrtNReplicationDemandProfile shouldReconfigure "
-			  		+ "	called reconfiguration already happened curActives ");
-			  return null;
-		  }
-		  else
-		  {
-			  ArrayList<ArrayList<String>> partitionlist = createSqrtNPartitionsOfNodes(nodeConfig);
+			  Set<InetSocketAddress> activeSockets 
+			  		= ((ConsistentReconfigurableNodeConfig<?>)nodeConfig).getActiveReplicaSocketAddresses();
+			  
+			  int sqrtn = (int)Math.sqrt(activeSockets.size());
+			  
+			  ArrayList<ArrayList<InetSocketAddress>> partitionlist 
+		  				= NodePartitioning.createPartitions(activeSockets, sqrtn);
+			  
 			  String guidToReconfigure = this.name;
 			  ArrayList<InetAddress> actives =  createActiveReplicasForGUID
 					  								(guidToReconfigure, partitionlist);
-			  this.reconfigurationHappened = true;
 			  
 			  LOG.log(Level.FINE, "%%%%%%%%%%%%%%%%%%%%%%%%%>>> shouldReconfigure: GUID {0}, "
 			  				+ "new actives {1} "
 					  		, new Object[]{this.name, actives});
 			  
-			  LOG.log(Level.FINE, "shouldReconfigure "+this.name+" "+actives);
-			  
-			  return actives;
-		  }*/
+			  return actives; 
+		  }
+		  else
+		  {
+			  LOG.log(Level.SEVERE, "%%%%%%%%%%%%%%%%%%%%%%%%%>>> Cannot perform reconfiguration in"
+			  		+ "SqrtNReplicationDemandProfile  shouldReconfigure metthod. The nodeConfig is"
+			  		+ "not an instance of ConsistentReconfigurableNodeConfig");
+			  // no reconfiguration.
+			  return null;
+		  }
 	  }
 	  
 	  
@@ -226,63 +250,34 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 		  return false;
 	  }
 	  
-	  private ArrayList<ArrayList<String>> createSqrtNPartitionsOfNodes(
-			  						InterfaceGetActiveIPs nodeConfig)
-	  {
-		  LOG.log(Level.FINE, this.name + " createSqrtNPartitionsOfNodes called ");
-		  
-		  ArrayList<String> nodesString = new ArrayList<String>();
-		  
-		  //convert ip addresses into string for sorting.
-		  for(int i=0; i<nodeConfig.getActiveIPs().size(); i++)
-		  {
-			  nodesString.add(nodeConfig.getActiveIPs().get(i).getHostAddress());
-		  }
-		  
-		  Collections.sort(nodesString);
-		  
-		  
-		  int sqrtn = (int)Math.sqrt(nodesString.size());
-		  ArrayList<ArrayList<String>> partitionlist 
-		  								= new ArrayList<ArrayList<String>>();
-		  
-		  for(int i=0; i<sqrtn; i++)
-		  {
-			  ArrayList<String> partition = new ArrayList<String>();
-			  partitionlist.add(partition);
-		  }
-		  
-		  
-		  for(int i=0; i<nodesString.size(); i++)
-		  { 
-			  int partNum = i%sqrtn;
-			  String inetAddrString = nodesString.get(i);
-			  
-			  partitionlist.get(partNum).add(inetAddrString);
-		  }
-		  
-		  for(int i=0; i<sqrtn; i++)
-		  {
-			  Collections.sort(partitionlist.get(i));
-		  }
-		  LOG.log(Level.FINE, "Node partitions "+partitionlist);
-		  return partitionlist;
-	  }
 	  
-	  
-	  private ArrayList<InetAddress> createActiveReplicasForGUID
-	  									(String GUID, ArrayList<ArrayList<String>> partitionlist)
+	  private ArrayList<InetAddress> createActiveReplicasForGUID(String GUID, 
+	  								ArrayList<ArrayList<InetSocketAddress>> partitionlist)
 	  {
 		  ArrayList<InetAddress> activeReplicas = new ArrayList<InetAddress>();
 		  for(int i=0; i<partitionlist.size(); i++)
 		  {
-			  ArrayList<String> partition = partitionlist.get(i);
-			  int index = Utils.consistentHashAString(GUID, partition.size());
-			  String currActiveIPStr = partition.get(index);
+			  ArrayList<InetSocketAddress> partition = partitionlist.get(i);
+			  ArrayList<String> pString = new  ArrayList<String>();
+			  // converting to string for sorting
+			  for(int j=0; j<partition.size(); j++)
+			  {
+				  String sockStr = partition.get(j).getAddress().getHostAddress()
+						  								+":"+partition.get(j).getPort();
+				  pString.add(sockStr);
+			  }
+			  // sorting so that for a GUID we always return the same active replica
+			  // if the node config has not changed. 
+			  Collections.sort(pString);
+			  
+			  //FIXME: need to remove the old CNS util method
+			  int index = Utils.consistentHashAString(GUID, pString.size());
+			  String currActiveIPPortStr = pString.get(index);
 			  
 			  try 
 			  {
-				  activeReplicas.add(InetAddress.getByName(currActiveIPStr));
+				  activeReplicas.add(InetAddress.getByName
+						  	(currActiveIPPortStr.split(":")[0]));
 			  } catch (UnknownHostException e) 
 			  {
 				// It is a standard conversion from dot notation IP String to InetAdress,
@@ -293,21 +288,6 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 		  return activeReplicas;
 	  }
 	  
-	  private static class SampleNodeConfig implements InterfaceGetActiveIPs
-	  {
-		  private final ArrayList<InetAddress> nodeIPList;
-		  
-		  public SampleNodeConfig(ArrayList<InetAddress> nodeIPList)
-		  {
-			  this.nodeIPList = nodeIPList;
-		  }
-		  
-		  @Override
-		  public ArrayList<InetAddress> getActiveIPs() 
-		  {
-			  return nodeIPList;
-		  }
-	  }
 	  
 	  public static void main(String[] args)
 	  {
@@ -315,37 +295,48 @@ public class SqrtNReplicationDemandProfile extends AbstractDemandProfile
 		  String guid = Utils.getSHA1("myGUID10");
 		  
 		  System.out.println("GUID "+guid);
-		  ArrayList<InetAddress> nodeIPList = new ArrayList<InetAddress>();
+		  Map<String, InetSocketAddress> actives = new HashMap<String, InetSocketAddress>();
+		  Map<String, InetSocketAddress> reconfigurators = new HashMap<String, InetSocketAddress>();
 		  
 		  for(int i=0; i<numNodes; i++)
 		  {
-			  String ipAddress = "10.1.1."+(2+i);
+			  String activeIP = "10.1.1."+(2+i);
+			  int activeport = 24403;
 			  
-			  try
-			  {
-				  nodeIPList.add(InetAddress.getByName(ipAddress));
-			  }
-			  catch (UnknownHostException e)
-			  {
-				  e.printStackTrace();
-			  }
+			  String reconIP = "10.1.2."+(2+i);
+			  int reconport = 2178;
+			  actives.put("active."+i, new InetSocketAddress(activeIP, activeport));
+			  reconfigurators.put("reconfigurator."+i, new InetSocketAddress(reconIP, reconport));
 		  }
 		  
-		  InterfaceGetActiveIPs samplenc = new SampleNodeConfig(nodeIPList);
+		  ConsistentReconfigurableNodeConfig<String> nodeConfig 
+		  			= new ConsistentReconfigurableNodeConfig<String>(
+				  new DefaultNodeConfig<String>(actives, reconfigurators));
+		  
 		  
 		  SqrtNReplicationDemandProfile dp = new SqrtNReplicationDemandProfile(guid);
 		  
-		  ArrayList<ArrayList<String>> partitionlist = dp.createSqrtNPartitionsOfNodes(samplenc);
+		  Set<InetSocketAddress> activeSockets 
+	  		= ((ConsistentReconfigurableNodeConfig<?>)nodeConfig).getActiveReplicaSocketAddresses();
+	  
+		  int sqrtn = (int)Math.sqrt(activeSockets.size());
+	  
+		  ArrayList<ArrayList<InetSocketAddress>> partitionlist 
+				= NodePartitioning.createPartitions(activeSockets, sqrtn);
 		  
-		  System.out.println("partitionlist "+partitionlist);
 		  
-		  ArrayList<InetAddress> actives = dp.shouldReconfigure(null, samplenc);
-		  assert(actives != null);
+		  System.out.println("Partitionlist "+partitionlist);
 		  
-		  System.out.println("actives "+actives);
+	  
+		  ArrayList<InetAddress> actives1 = dp.shouldReconfigure(null, nodeConfig);
+		  assert(actives1 != null);
 		  
+		  // just swapping one element
 		  
-		  actives = dp.shouldReconfigure(null, samplenc);
-		  assert(actives == null);
+		  System.out.println("actives1 "+actives1);
+		  
+		  ArrayList<InetAddress> actives2 = dp.shouldReconfigure(null, nodeConfig);
+		  assert(actives2 != null);
+		  System.out.println("actives2 "+actives2);
 	  }
 }

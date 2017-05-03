@@ -1,4 +1,4 @@
-package edu.umass.cs.gnsserver.gnsapp.demandprofiles;
+package edu.umass.cs.gnsserver.gnsapp.cns.demandprofile;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -383,6 +383,7 @@ public class OldSqrtNReplicationDemandProfile extends AbstractDemandProfile
 		  //return command.getCommandType().isCreateDelete()
 	      //      || command.getCommandType().isSelect();
 	  }
+	  
 	  
 	  private ArrayList<ArrayList<String>> createSqrtNPartitionsOfNodes(
 			  						InterfaceGetActiveIPs nodeConfig)

@@ -24,7 +24,6 @@ package edu.umass.cs.gnsserver.gnsapp;
  * University of Massachusetts
  * All Rights Reserved
  */
-import edu.umass.cs.gigapaxos.PaxosConfig;
 import edu.umass.cs.gnscommon.ResponseCode;
 import edu.umass.cs.gnscommon.exceptions.client.ClientException;
 import edu.umass.cs.gnsserver.database.AbstractRecordCursor;
@@ -200,7 +199,8 @@ public class Select {
           return SelectResponsePacket.makeSuccessPacketForGuidsOnly(packet.getId(), null, -1, null,
                   new JSONArray(result.toStringSet()));
         }
-      } else {
+      } else 
+      {
         LOGGER.fine("GROUP_LOOKUP Request: No Last Update Info ");
       }
     }
@@ -214,10 +214,10 @@ public class Select {
     // If it's not a group lookup or is but enough time has passed we do the usual thing
     // and send the request out to all the servers. We'll receive a response sent on the flipside.
     
-    //TODO: we replace the lone below with partition information from NodeConfig
-    // 
     
-    Set<InetSocketAddress> serverAddresses = new HashSet<>(PaxosConfig.getActives().values());
+    //Set<InetSocketAddress> serverAddresses = new HashSet<>(PaxosConfig.getActives().values());
+    
+    Set<InetSocketAddress> serverAddresses = app.getSelectPolicy().getNodesForSelectRequest(packet);
     //Set<String> serverIds = app.getGNSNodeConfig().getActiveReplicas();
 
     // store the info for later
@@ -235,7 +235,6 @@ public class Select {
     packet.setNsQueryId(queryId); // Note: this also tells handleSelectRequest that it should go to NS now
     JSONObject outgoingJSON = packet.toJSONObject();
     try {
-
       LOGGER.log(Level.FINER, "addresses: {0} node address: {1}",
               new Object[]{serverAddresses, app.getNodeAddress()});
       // Forward to all but self because...
@@ -643,7 +642,7 @@ public class Select {
       return false;
     }
   }
-
+  
   // Traverses the json looking for a key that contains the string
   private static boolean jsonObjectKeyContains(String key, JSONObject jsonObject) {
     LOGGER.log(Level.FINEST, "{0} {1}", new Object[]{key, jsonObject.toString()});
@@ -669,7 +668,7 @@ public class Select {
     }
     return false;
   }
-
+  
   // Traverses the json looking for a key that contains the string
   private static boolean jsonArrayKeyContains(String key, JSONArray jsonArray) {
     LOGGER.log(Level.FINEST, "{0} {1}", new Object[]{key, jsonArray.toString()});
