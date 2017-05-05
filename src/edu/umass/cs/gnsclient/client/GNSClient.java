@@ -731,7 +731,8 @@ public class GNSClient {
 				});
 		// Lambdas were causing issues in Andriod - 9/16
 	}
-
+	
+	
 	/**
 	 * Used only for testing.
 	 *
