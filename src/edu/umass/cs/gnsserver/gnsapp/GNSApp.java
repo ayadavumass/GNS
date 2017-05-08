@@ -52,6 +52,7 @@ import edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.ClientRequestHandler
 import edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commandSupport.Admintercessor;
 import edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commandSupport.CommandHandler;
 import edu.umass.cs.gnsserver.gnsapp.cns.selectpolicy.AbstractSelectPolicy;
+import edu.umass.cs.gnsserver.gnsapp.nonblockingselect.AbstractSelect;
 import edu.umass.cs.gnsserver.gnsapp.packet.BasicPacketWithClientAddress;
 import edu.umass.cs.gnsserver.gnamed.DnsTranslator;
 import edu.umass.cs.gnsserver.gnamed.UdpDnsServer;
@@ -132,13 +133,31 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
    * a select request will return wrong results. 
    */
   private AbstractSelectPolicy selectPolicy;
+  
+  
+  /**
+   * This object is responsible for select processing. 
+   * The object is created based on the reflection using the 
+   * classpath specified in the gns config files.
+   * 
+   */
+  private AbstractSelect selectProcessor;
+
+  /**
+   * This flag is controlled by GNSC.GNSC.ENABLE_CNS_SELECT
+   * By default it is false for now.
+   * But if it is true then a non-blocking cns select implementation
+   * is used. If it is false then blocking gnsApp.Select is used. 
+   */
+  private boolean enableCNSSelect;
+  
 
   /* It's silly to enqueue requests when all GNS calls are blocking anyway. We
    * now use a simpler and more sensible sendToClient method that tracks the
    * original CommandPacket explicitly throughout the execution chain.
    */
   private static boolean enqueueCommand() {
-    return false;
+	  return false;
   }
   /**
    * Active code handler
@@ -270,41 +289,71 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
   // we explicitly check type
   @Override
   public boolean execute(Request request, boolean doNotReplyToClient) {
-    boolean executed = false;
+	  boolean executed = false;
     if (executeNoop(request)) {
-      return true;
+    	return true;
     }
-    try {
+    try
+    {
       Packet.PacketType packetType = request.getRequestType() instanceof Packet.PacketType ? (Packet.PacketType) request
               .getRequestType() : null;
       GNSConfig.getLogger().log(Level.FINE, "{0} starting execute({1})",
               new Object[]{this, request.getSummary()});
       Request prev = null;
       // arun: enqueue request, dequeue before returning
-      if (request instanceof RequestIdentifier) {
+      if (request instanceof RequestIdentifier) 
+      {
         if (enqueueCommand()) {
           prev = this.outstanding.putIfAbsent(
                   ((RequestIdentifier) request).getRequestID(), request);
         }
-      } else {
+      } 
+      else 
+      {
         assert (false) : this
                 + " should not be getting requests that do not implement "
                 + RequestIdentifier.class;
       }
       
-      switch (packetType) {
+      switch (packetType)
+      {
         case SELECT_REQUEST:
-          Select.handleSelectRequest((SelectRequestPacket) request, this);
-          break;
+        {
+        	System.out.println("handleSelectRequest at "+this.nodeID+" "+request);
+        	Select.handleSelectRequest((SelectRequestPacket) request, this);
+        	break;
+        }
         case SELECT_RESPONSE:
-          Select.handleSelectResponse((SelectResponsePacket) request, this);
-          break;
+        {
+        	if(this.enableCNSSelect)
+        	{
+        		this.selectProcessor.handleSelectResponseFromNS((SelectResponsePacket) request);
+        	}
+        	else
+        	{
+        		Select.handleSelectResponse((SelectResponsePacket) request, this);
+        	}
+        	break;
+        }
         case COMMAND:
-          CommandHandler.handleCommandPacket((CommandPacket) request, doNotReplyToClient, this);
-          break;
+        {
+        	if(this.enableCNSSelect && ((CommandPacket) request).getCommandType().isSelect())
+        	{
+        		// in select command , doNotReplyToClient will be false,
+        		// as this NS is the originating NS for the select request.
+        		assert(!doNotReplyToClient);
+        		this.selectProcessor.handleSelectRequestFromClient((CommandPacket) request);
+        	}
+        	else
+        	{
+        		CommandHandler.handleCommandPacket((CommandPacket) request, doNotReplyToClient, this);
+        	}
+        	
+        	break;
+        }
         case ADMIN_COMMAND:
-          CommandHandler.handleCommandPacket((AdminCommandPacket) request, doNotReplyToClient, this);
-          break;
+        	CommandHandler.handleCommandPacket((AdminCommandPacket) request, doNotReplyToClient, this);
+        	break;
         default:
           assert (false) : (this
                   + " should not be getting packets of type "
@@ -313,7 +362,7 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
           return false;
       }
       executed = true;
-
+      
       // arun: always clean up all created state upon exiting
       if (request instanceof RequestIdentifier && prev == null) {
         GNSConfig.getLogger().log(Level.FINE,
@@ -328,7 +377,7 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
                           : null});
         this.outstanding.remove(((RequestIdentifier) request).getRequestID());
       }
-
+      
     } catch (JSONException | IOException | ClientException | InternalRequestException e) {
       e.printStackTrace();
     } catch (FailedDBOperationException e) {
@@ -380,7 +429,6 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
   {
 	  return this.selectPolicy;
   }
-  
   
   /**
    * Actually creates the application. This strange way of constructing the application
@@ -457,7 +505,9 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
             ? new ActiveCodeHandler(nodeID) : null;
 
     // context service init
-    if (Config.getGlobalBoolean(GNSConfig.GNSC.ENABLE_CNS)) {
+    // TODO: as old cns is now not used so this code will be removed.
+    if (Config.getGlobalBoolean(GNSConfig.GNSC.ENABLE_CNS)) 
+    {
       String nodeAddressString = Config.getGlobalString(GNSConfig.GNSC.CNS_NODE_ADDRESS);
 
       String[] parsed = nodeAddressString.split(":");
@@ -470,45 +520,11 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
       contextServiceGNSClient = new ContextServiceGNSClient(host, port);
       GNSConfig.getLogger().fine("ContextServiceGNSClient initialization completed");
     }
-    String selectPolicyClassName = Config.getGlobalString(GNSConfig.GNSC.SELECT_POLICY_TYPE);
     
-    Class<?> selectClass = null;
+    this.initializeSelectPolicy();
     
-    try
-    {
-    	selectClass = Class.forName(selectPolicyClassName);
-	} 
-    catch (ClassNotFoundException e) 
-    {
-		GNSConfig.getLogger().log(Level.WARNING, 
-				"Error in creating the select policy class at classpath "+
-				selectPolicyClassName +". The error is "+e.getMessage()+" .\n "
-				+ "Falling back to the default select policy "+ 
-				GNSConfig.GNSC.SELECT_POLICY_TYPE.getDefaultValue());
-		
-		try 
-		{
-			selectClass = Class.forName(GNSConfig.GNSC.SELECT_POLICY_TYPE.getDefaultValue().toString());
-		} catch (ClassNotFoundException e1) 
-		{
-			// this exception should not be there as it is a default class.
-			e1.printStackTrace();
-		}
-	}
+    this.initializeSelectProcessor();
     
-    if(selectClass != null)
-    {
-    	this.selectPolicy = AbstractSelectPolicy.createSelectPolicy(selectClass);
-    	assert(this.selectPolicy != null);
-    	
-    	if(this.selectPolicy == null)
-    	{
-    		//FIXME: need to get it checked if this is the correct expcetion 
-    		// handling here.
-    		throw new RuntimeException("Unable to create object for the class "
-    												+selectClass.getCanonicalName());
-    	}
-    }
     constructed = true;
   }
   
@@ -552,7 +568,7 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
           throws RequestParseException {
     return GNSAppUtil.getRequestStatic(msgBytes, header, nodeConfig);
   }
-
+  
   /**
    *
    * @return a set of packet types
@@ -561,7 +577,7 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
   public Set<IntegerPacketType> getRequestTypes() {
     return new HashSet<>(Arrays.asList(PACKET_TYPES));
   }
-
+  
   /**
    *
    * @return a set of packet types
@@ -574,7 +590,7 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
     }
     return maTypes;
   }
-
+  
   /**
    *
    * @param request
@@ -590,7 +606,7 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
   static {
     curValueRequestFields.add(NameRecord.VALUES_MAP);
   }
-
+  
   /**
    *
    * @param name
@@ -620,7 +636,7 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
     }
     return null;
   }
-
+  
   /**
    * Updates the state for the given named record.
    *
@@ -809,8 +825,10 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
       assert (originalRequest != null && originalRequest instanceof BasicPacketWithClientAddress) : ((ClientRequest) response)
               .getSummary();
 
+      
       ((BasicPacketWithClientAddress) originalRequest)
               .setResponse((ClientRequest) response);
+      
       incrResponseCount((ClientRequest) response);
 
       GNSConfig
@@ -826,6 +844,7 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
       return;
     } // else
   }
+  
 
   @Override
   public String toString() {
@@ -890,5 +909,81 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
               "Not running DNS Service because it needs root permission! "
               + "If you want DNS run the server using sudo.");
     }
+  }
+  
+  
+  private void initializeSelectPolicy()
+  {
+	  String selectPolicyClassName = Config.getGlobalString(GNSConfig.GNSC.SELECT_POLICY_TYPE);
+	  
+	  Class<?> selectClass = null;
+	  
+	  try
+	  {
+		  selectClass = Class.forName(selectPolicyClassName);
+	  }
+	  catch (ClassNotFoundException e) 
+	  {
+		  GNSConfig.getLogger().log(Level.WARNING, 
+				  "Error in creating the select policy class at classpath "+
+				   selectPolicyClassName +". The error is "+e.getMessage()+" .\n "
+				   + "Falling back to the default select policy "+ 
+				   GNSConfig.GNSC.SELECT_POLICY_TYPE.getDefaultValue());
+		  
+		  try
+		  {
+			  selectClass = Class.forName(GNSConfig.GNSC.SELECT_POLICY_TYPE.getDefaultValue().toString());
+		  } catch (ClassNotFoundException e1) 
+		  {
+			  // this exception should not be there as it is a default class.
+			  e1.printStackTrace();
+		  }
+	  }
+	  if(selectClass != null)
+	  {
+		  this.selectPolicy = AbstractSelectPolicy.createSelectPolicy(selectClass);
+		  assert(this.selectPolicy != null);
+		  
+		  if(this.selectPolicy == null)
+		  {
+			  //FIXME: need to get it checked if this is the correct exception 
+			  // handling here.
+			  throw new RuntimeException("Unable to create object for the class "
+	    												+selectClass.getCanonicalName());
+		  }
+	  }
+  }
+  
+  
+  private void initializeSelectProcessor()
+  {
+	  this.enableCNSSelect = Config.getGlobalBoolean(GNSConfig.GNSC.ENABLE_CNS_SELECT);
+	  
+	  if(enableCNSSelect)
+	  {
+		  String selectClassName = Config.getGlobalString(GNSConfig.GNSC.SELECT_CLASS);
+		  Class<?> selectClass = null;
+		  try
+		  {
+			  selectClass = Class.forName(selectClassName);
+	      }
+		  catch (ClassNotFoundException e) 
+		  {
+			  throw new RuntimeException("Unable to find class "
+						+selectClassName);
+	      }
+		  
+		  if(selectClass != null)
+	  	  {
+	  		  this.selectProcessor = AbstractSelect.createSelectObject(selectClass, this);
+	  		  assert(this.selectProcessor != null);
+	  		  
+	  		  if(this.selectProcessor == null)
+	  		  {
+	  			  throw new RuntimeException("Unable to create object for the class "
+	  	    												+selectClass.getCanonicalName());
+	  		  }
+	  	  }
+	  }
   }
 }

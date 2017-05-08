@@ -80,8 +80,9 @@ public class NSSelectInfo {
    *
    * @return the queryId
    */
-  public int getId() {
-    return queryId;
+  public int getId() 
+  {
+	  return queryId;
   }
 
   /**
@@ -89,16 +90,18 @@ public class NSSelectInfo {
    *
    * @param address
    */
-  public void removeServerAddress(InetSocketAddress address) {
-    serversToBeProcessed.remove(address);
+  public void removeServerAddress(InetSocketAddress address) 
+  {
+	  serversToBeProcessed.remove(address);
   }
 
   /**
    *
    * @return the set of servers
    */
-  public Set<InetSocketAddress> serversYetToRespond() {
-    return serversToBeProcessed;
+  public Set<InetSocketAddress> serversYetToRespond() 
+  {
+	  return serversToBeProcessed;
   }
 
   /**
@@ -106,8 +109,9 @@ public class NSSelectInfo {
    *
    * @return true if all the names servers have responded
    */
-  public boolean allServersResponded() {
-    return serversToBeProcessed.isEmpty();
+  public boolean allServersResponded() 
+  {
+	  return serversToBeProcessed.isEmpty();
   }
 
   /**
@@ -118,11 +122,14 @@ public class NSSelectInfo {
    * @return true if the response was not seen yet, false otherwise
    */
   public boolean addResponseIfNotSeenYet(String name, JSONObject json) {
-    if (!responses.containsKey(name)) {
-      responses.put(name, json);
-      return true;
-    } else {
-      return false;
+    if (!responses.containsKey(name)) 
+    {
+    	responses.put(name, json);
+    	return true;
+    } 
+    else 
+    {
+    	return false;
     }
   }
 
@@ -131,8 +138,9 @@ public class NSSelectInfo {
    *
    * @return a set of JSONObjects
    */
-  public Set<JSONObject> getResponsesAsSet() {
-    return new HashSet<>(responses.values());
+  public Set<JSONObject> getResponsesAsSet() 
+  {
+	  return new HashSet<>(responses.values());
   }
 
   /**
@@ -196,8 +204,8 @@ public class NSSelectInfo {
    *
    * @return an int
    */
-  public int getMinRefreshInterval() {
-    return minRefreshInterval;
+  public int getMinRefreshInterval() 
+  {
+	  return minRefreshInterval;
   }
-
 }

@@ -134,8 +134,7 @@ public class LocalNameServer implements RequestHandlerInterface, Shutdownable {
 
     this.nodeConfig = nodeConfig;
     this.crNodeConfig = new LNSConsistentReconfigurableNodeConfig(nodeConfig);
-    AsyncLNSClient asyncClient;
-    this.demultiplexer = new LNSPacketDemultiplexer<>(this, asyncClient = new AsyncLNSClient(
+    this.demultiplexer = new LNSPacketDemultiplexer<>(this, new AsyncLNSClient(
             ReconfigurationConfig.getReconfiguratorAddresses()));
     // FIXME: Eventually need separate servers for ssl and clear
     //LNSPacketDemultiplexer<String> sslDemultiplexer = new LNSPacketDemultiplexer<>(this, asyncClient);

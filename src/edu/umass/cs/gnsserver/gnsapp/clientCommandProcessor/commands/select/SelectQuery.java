@@ -44,8 +44,8 @@ import org.json.JSONObject;
  *
  * @author westy
  */
-public class SelectQuery extends AbstractCommand {
-
+public class SelectQuery extends AbstractCommand 
+{
   /**
    *
    * @param module
@@ -64,7 +64,10 @@ public class SelectQuery extends AbstractCommand {
   }
 
   @Override
-  public CommandResponse execute(InternalRequestHeader header, CommandPacket commandPacket, ClientRequestHandlerInterface handler) throws JSONException, InternalRequestException {
+  public CommandResponse execute(InternalRequestHeader header, 
+		  		CommandPacket commandPacket, ClientRequestHandlerInterface handler) 
+		  										throws JSONException, InternalRequestException 
+  {
     JSONObject json = commandPacket.getCommand();
     String reader = json.optString(GNSProtocol.GUID.toString(), null);
     String query = json.getString(GNSProtocol.QUERY.toString());
@@ -77,15 +80,17 @@ public class SelectQuery extends AbstractCommand {
     // is the fields array is length one and has GNSProtocol.ENTIRE_RECORD string as the first element
     // otherwise it is a list of fields
     ArrayList<String> fields;
-    if (!json.has(GNSProtocol.FIELDS.toString())) {
+    if (!json.has(GNSProtocol.FIELDS.toString())) 
+    {
       fields = null;
-    } else if (GNSProtocol.ENTIRE_RECORD.toString().equals(json.optString(GNSProtocol.FIELDS.toString()))) {
+    } else if (GNSProtocol.ENTIRE_RECORD.toString().equals(json.optString(GNSProtocol.FIELDS.toString()))) 
+    {
       fields = new ArrayList<>(Arrays.asList(GNSProtocol.ENTIRE_RECORD.toString()));
-    } else {
+    } else 
+    {
       fields = JSONUtils.JSONArrayToArrayListString(json.getJSONArray(GNSProtocol.FIELDS.toString()));
     }
     return FieldAccess.selectQuery(header, commandPacket, reader, query, fields,
             signature, message, handler);
   }
-
 }

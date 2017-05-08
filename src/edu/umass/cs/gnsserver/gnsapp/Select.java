@@ -158,10 +158,10 @@ public class Select {
       throw new UnsupportedOperationException("SelectRequestPacket from client should not be coming here.");
     }
   }
-
+  
   //FIXME: We need to determine this timeout systematically, not an ad hoc constant.
   private static final long SELECT_REQUEST_TIMEOUT = Config.getGlobalInt(GNSConfig.GNSC.SELECT_REQUEST_TIMEOUT);
-
+  
   /**
    * Handle a select request from a client.
    * This node is the broadcaster and selector.
@@ -178,8 +178,9 @@ public class Select {
   public static SelectResponsePacket handleSelectRequestFromClient(InternalRequestHeader header,
           SelectRequestPacket packet,
           GNSApplicationInterface<String> app) throws JSONException, UnknownHostException,
-          FailedDBOperationException, InternalRequestException {
-    // special case handling of the GROUP_LOOK operation
+          FailedDBOperationException, InternalRequestException
+  {
+	  // special case handling of the GROUP_LOOK operation
     // If sufficient time hasn't passed we just send the current value back
     if (packet.getGroupBehavior().equals(SelectGroupBehavior.GROUP_LOOKUP)) {
       // grab the timing parameters that we squirreled away from the SETUP
@@ -210,7 +211,7 @@ public class Select {
     LOGGER.fine(packet.getSelectOperation().toString()
             + " Request: Forwarding request for "
             + packet.getGuid() != null ? packet.getGuid() : "non-guid select");
-
+    
     // If it's not a group lookup or is but enough time has passed we do the usual thing
     // and send the request out to all the servers. We'll receive a response sent on the flipside.
     
@@ -219,7 +220,7 @@ public class Select {
     
     Set<InetSocketAddress> serverAddresses = app.getSelectPolicy().getNodesForSelectRequest(packet);
     //Set<String> serverIds = app.getGNSNodeConfig().getActiveReplicas();
-
+    
     // store the info for later
     int queryId = addQueryInfo(serverAddresses, packet.getSelectOperation(), packet.getGroupBehavior(),
             packet.getQuery(), packet.getProjection(), packet.getMinRefreshInterval(), packet.getGuid());
@@ -234,7 +235,8 @@ public class Select {
     //packet.setNameServerID(app.getNodeID());
     packet.setNsQueryId(queryId); // Note: this also tells handleSelectRequest that it should go to NS now
     JSONObject outgoingJSON = packet.toJSONObject();
-    try {
+    try 
+    {
       LOGGER.log(Level.FINER, "addresses: {0} node address: {1}",
               new Object[]{serverAddresses, app.getNodeAddress()});
       // Forward to all but self because...
@@ -264,7 +266,8 @@ public class Select {
         return QUERY_RESULT.remove(queryId);
       }
 
-    } catch (IOException | ClientException e) {
+    } 
+    catch (IOException | ClientException e) {
       LOGGER.log(Level.SEVERE, "Exception while sending select request: {0}", e);
     }
     return null;
@@ -339,7 +342,7 @@ public class Select {
       }
     }
   }
-
+  
   private static JSONArray aclCheckFilterForRecordsArray(SelectRequestPacket packet, JSONArray records,
           String reader, GNSApplicationInterface<String> app) {
     JSONArray result = new JSONArray();
@@ -388,7 +391,7 @@ public class Select {
     }
     return result;
   }
-
+  
   /**
    * Handles a select response.
    * This code runs in the collecting NS.
@@ -401,8 +404,9 @@ public class Select {
    * @throws InternalRequestException
    */
   public static void handleSelectResponse(SelectResponsePacket packet,
-          GNSApplicationInterface<String> replica) throws JSONException, ClientException, IOException, InternalRequestException {
-    LOGGER.log(Level.FINE,
+          GNSApplicationInterface<String> replica) throws JSONException, ClientException, IOException, InternalRequestException
+  {
+	LOGGER.log(Level.FINE,
             "NS {0} recvd from NS {1}",
             new Object[]{replica.getNodeID(),
               packet.getNSAddress()});
@@ -440,7 +444,7 @@ public class Select {
               new Object[]{replica.getNodeID(), info.serversYetToRespond()});
     }
   }
-
+  
   // If all the servers have sent us a response we're done.
   private static void handledAllServersResponded(InternalRequestHeader header,
           SelectResponsePacket packet, NSSelectInfo info,
@@ -500,10 +504,10 @@ public class Select {
       NSGroupAccess.updateLastUpdate(header, guid, new Date(), replica.getRequestHandler());
     }
   }
-
+  
   // Converts a record from the database into something we can return to 
   // the user. Adds the "_GUID" and removes internal fields.
-  private static List<JSONObject> filterAndMassageRecords(Set<JSONObject> records) {
+  public static List<JSONObject> filterAndMassageRecords(Set<JSONObject> records) {
     List<JSONObject> result = new ArrayList<>();
     for (JSONObject record : records) {
       try {
@@ -525,10 +529,10 @@ public class Select {
     }
     return result;
   }
-
+  
   // Pulls the guids out of the record to return to the user for "old-style" 
   // select calls.
-  private static Set<String> extractGuidsFromRecords(Set<JSONObject> records) {
+  public static Set<String> extractGuidsFromRecords(Set<JSONObject> records) {
     Set<String> result = new HashSet<>();
     for (JSONObject json : records) {
       try {
@@ -538,7 +542,7 @@ public class Select {
     }
     return result;
   }
-
+  
   private static int addQueryInfo(Set<InetSocketAddress> serverAddresses, SelectOperation selectOperation,
           SelectGroupBehavior groupBehavior, String query, List<String> projection,
           int minRefreshInterval, String guid) {
@@ -597,7 +601,7 @@ public class Select {
   }
 
   // Takes the JSON records that are returned from an NS and stuffs the into the NSSelectInfo record
-  private static void processJSONRecords(JSONArray jsonArray, NSSelectInfo info,
+  public static void processJSONRecords(JSONArray jsonArray, NSSelectInfo info,
           GNSApplicationInterface<String> ar) throws JSONException {
     int length = jsonArray.length();
     LOGGER.log(Level.FINE,
@@ -616,7 +620,7 @@ public class Select {
       }
     }
   }
-
+  
   private static boolean isGuidRecord(JSONObject json) {
     JSONObject valuesMap = json.optJSONObject(NameRecord.VALUES_MAP.getName());
     if (valuesMap != null) {

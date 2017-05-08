@@ -56,7 +56,7 @@ import java.util.logging.Level;
 public class CommandHandler {
 
   // handles command processing
-  private static final CommandModule commandModule = new CommandModule();
+  public static final CommandModule commandModule = new CommandModule();
 
   private static long commandCount = 0;
 
@@ -77,13 +77,12 @@ public class CommandHandler {
             commandModule.lookupCommand(PacketUtils.getCommand(packet)),
             app.getRequestHandler(), doNotReplyToClient, app);
   }
-
+  
   private static final long LONG_DELAY_THRESHOLD = 1;
-
+  
   private static void runCommand(CommandPacket commandPacket,
           AbstractCommand command, ClientRequestHandlerInterface handler,
           boolean doNotReplyToClient, GNSApplicationInterface<String> app) {
-    JSONObject jsonFormattedCommand = PacketUtils.getCommand(commandPacket);
     try {
       long receiptTime = System.currentTimeMillis(); // instrumentation
       final Long executeCommandStart = System.currentTimeMillis(); // instrumentation
@@ -146,11 +145,10 @@ public class CommandHandler {
     if (Config.getGlobalBoolean(GNSConfig.GNSC.ENABLE_CNS)) {
       if (!doNotReplyToClient) {
 
-        if (command.getClass().getSuperclass() == AbstractUpdate.class) {
-          GNSConfig
-                  .getLogger()
-                  .log(Level.FINE,
-                          "{0} sending trigger to context service for {1}:{2}",
+        if (command.getClass().getSuperclass() == AbstractUpdate.class) 
+        {
+        	JSONObject jsonFormattedCommand = PacketUtils.getCommand(commandPacket);
+        	GNSConfig.getLogger().log(Level.FINE, "{0} sending trigger to context service for {1}:{2}",
                           new Object[]{handler.getApp(), command,
                             jsonFormattedCommand});
 
@@ -159,16 +157,16 @@ public class CommandHandler {
         }
       }
     }
-
+    
   }
-
-  private static CommandPacket addMessageWithoutSignatureToCommand(
+  
+  public static CommandPacket addMessageWithoutSignatureToCommand(
           CommandPacket commandPacket) throws JSONException {
     JSONObject command = PacketUtils.getCommand(commandPacket);
     CommandUtils.addMessageWithoutSignatureToJSON(command);
     return commandPacket;
   }
-
+  
   /**
    * Execute the commandPacket.
    *
@@ -181,8 +179,8 @@ public class CommandHandler {
           CommandPacket commandPacket, ClientRequestHandlerInterface handler) {
     try {
       if (commandHandler != null) {
-        return commandHandler.execute(getInternalHeaderAfterEnforcingChecks(commandPacket,
-                handler), commandPacket, handler);
+        return commandHandler.execute(getInternalHeaderAfterEnforcingChecks(commandPacket),
+        		commandPacket, handler);
       } else {
         return new CommandResponse(ResponseCode.OPERATION_NOT_SUPPORTED,
                 GNSProtocol.BAD_RESPONSE.toString() + " "
@@ -194,17 +192,20 @@ public class CommandHandler {
       return new CommandResponse(ResponseCode.JSON_PARSE_ERROR,
               GNSProtocol.BAD_RESPONSE.toString() + " " + GNSProtocol.JSON_PARSE_ERROR.toString() + " " + e
               + " while executing command.");
-    } catch (NoSuchAlgorithmException | InvalidKeySpecException | ParseException | SignatureException | InvalidKeyException | UnsupportedEncodingException e) {
+    }
+    catch (NoSuchAlgorithmException | InvalidKeySpecException | ParseException | SignatureException | InvalidKeyException | UnsupportedEncodingException e) 
+    {
       return new CommandResponse(ResponseCode.QUERY_PROCESSING_ERROR,
               GNSProtocol.BAD_RESPONSE.toString() + " " + GNSProtocol.QUERY_PROCESSING_ERROR.toString() + " " + e);
-    } catch (InternalRequestException e) {
+    } catch (InternalRequestException e) 
+    {
       return new CommandResponse(e.getCode(), GNSProtocol.BAD_RESPONSE.toString() + " "
               + ResponseCode.INTERNAL_REQUEST_EXCEPTION + " " + e);
     }
   }
 
-  private static InternalRequestHeader getInternalHeaderAfterEnforcingChecks(
-          CommandPacket commandPacket, ClientRequestHandlerInterface handler)
+  public static InternalRequestHeader getInternalHeaderAfterEnforcingChecks(
+          CommandPacket commandPacket)
           throws InternalRequestException {
     InternalRequestHeader header = PacketUtils
             .getInternalRequestHeader(commandPacket);

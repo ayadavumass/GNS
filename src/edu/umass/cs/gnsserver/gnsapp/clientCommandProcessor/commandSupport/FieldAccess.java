@@ -590,7 +590,7 @@ public class FieldAccess {
     if (!signatureCheckForSelect(reader, signature, message, app)) {
       return null;
     }
-
+    
     SelectResponsePacket responsePacket = Select.handleSelectRequestFromClient(header, packet, app);
     if (responsePacket != null
             && // Fixme: probably should just have handleSelectRequestFromClient throw a clientException
@@ -605,7 +605,7 @@ public class FieldAccess {
     }
   }
 
-  private static boolean signatureCheckForSelect(String reader, String signature,
+  public static boolean signatureCheckForSelect(String reader, String signature,
           String message, GNSApplicationInterface<String> app) {
     try {
       if (signature == null || reader == null) {

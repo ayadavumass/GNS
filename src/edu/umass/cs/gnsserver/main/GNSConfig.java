@@ -254,7 +254,22 @@ public class GNSConfig {
      * An abstract select policy and the default select policy is in 
      * edu.umass.cs.gnsserver.gnsapp.cns.selectpolicy package.
      */
-    SELECT_POLICY_TYPE("edu.umass.cs.gnsserver.gnsapp.cns.selectpolicy.ReplicateAllSelectPolicy");
+    SELECT_POLICY_TYPE("edu.umass.cs.gnsserver.gnsapp.cns.selectpolicy.ReplicateAllSelectPolicy"),
+    
+    /**
+     * If the flag is true then a custom select implementation is used
+     * If it is false the blocking gnsApp.Select is used.
+     */
+    ENABLE_CNS_SELECT(false),
+    
+    /**
+     * Specifies the classpath for the select processing class. 
+     * For the specified class to be used ENABLE_CNS_SELECT should be set to true.
+     * TODO: Once we completely move to the custom CNS based non-blocking select class then 
+     * the above two flags can be removed.
+     */
+    SELECT_CLASS("");
+	  
 
     final Object defaultValue;
     final boolean unsafeTestingOnly;
