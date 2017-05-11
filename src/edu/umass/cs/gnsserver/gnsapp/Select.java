@@ -250,6 +250,8 @@ public class Select
       // we handle our self by locally getting self-select records
       handleSelectResponse(getMySelectedRecords(packet, app), app);
       // Wait for responses, otherwise you are violating Replicable.execute(.)'s semantics.
+      System.out.println("Node Id "+app.getNodeID() +" Number of pending selects "+QUERIES_IN_PROGRESS.size()
+    		  +" Going to wait");
       synchronized (QUERIES_IN_PROGRESS) {
         while (QUERIES_IN_PROGRESS.containsKey(queryId)) {
           try {
@@ -259,6 +261,9 @@ public class Select
           }
         }
       }
+      
+      System.out.println("Node Id "+app.getNodeID() +" Number of pending selects "+QUERIES_IN_PROGRESS.size()
+	  +" One select finished");
       if (QUERY_RESULT.containsKey(queryId)) {
         return QUERY_RESULT.remove(queryId);
       }
