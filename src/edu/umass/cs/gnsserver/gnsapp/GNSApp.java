@@ -721,7 +721,7 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
   public String getFinalState(String name, int epoch) {
     throw new RuntimeException("This method should not have been called");
   }
-
+  
   /**
    *
    * @param name
@@ -732,7 +732,7 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
   public void putInitialState(String name, int epoch, String state) {
     throw new RuntimeException("This method should not have been called");
   }
-
+  
   /**
    *
    * @param name
@@ -743,7 +743,7 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
   public boolean deleteFinalState(String name, int epoch) {
     throw new RuntimeException("This method should not have been called");
   }
-
+  
   /**
    *
    * @param name
@@ -753,7 +753,7 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
   public Integer getEpoch(String name) {
     throw new RuntimeException("This method should not have been called");
   }
-
+  
   //
   // GnsApplicationInterface implementation
   //
@@ -766,12 +766,12 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
   public InetSocketAddress getNodeAddress() {
     return nodeAddress;
   }
-
+  
   @Override
   public BasicRecordMap getDB() {
     return nameRecordDB;
   }
-
+  
   /**
    *
    */
@@ -813,7 +813,7 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
       return;
     } // else
   }
-
+  
   /**
    * @param originalRequest
    * @param response
@@ -821,24 +821,22 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
    * @throws IOException
    */
   public void sendToClient(CommandPacket originalRequest, Request response, JSONObject responseJSON)
-          throws IOException {
-
+          throws IOException 
+  {
     if (DELEGATE_CLIENT_MESSAGING) {
       if (enqueueCommand()) {
         this.outstanding.remove(((RequestIdentifier) response)
                 .getRequestID());
       }
-
+      
       assert (originalRequest != null && originalRequest instanceof BasicPacketWithClientAddress) : ((ClientRequest) response)
               .getSummary();
-      
-      System.out.println("sendToClient originalRequest "+originalRequest);
       
       ((BasicPacketWithClientAddress) originalRequest)
               .setResponse((ClientRequest) response);
       
       incrResponseCount((ClientRequest) response);
-
+      
       GNSConfig
               .getLogger()
               .log(Level.FINE,
@@ -853,12 +851,12 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
     } // else
   }
   
-
+  
   @Override
   public String toString() {
     return this.getClass().getSimpleName() + ":" + this.nodeID;
   }
-
+  
   @Override
   public void sendToAddress(InetSocketAddress address, JSONObject msg) throws IOException {
     messenger.sendToAddress(address, msg);
