@@ -788,6 +788,7 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
               .getSummary();
       if (originalRequest != null
               && originalRequest instanceof BasicPacketWithClientAddress) {
+    	  System.out.println("sendToClient originalRequest "+originalRequest);
         ((BasicPacketWithClientAddress) originalRequest)
                 .setResponse((ClientRequest) response);
         
