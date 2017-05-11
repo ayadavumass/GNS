@@ -319,6 +319,8 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
       {
         case SELECT_REQUEST:
         {
+        	System.out.println("Node id "+this.nodeID+" Select request recvd at nameserver");
+        	
         	Select.handleSelectRequest((SelectRequestPacket) request, this);
         	break;
         }
@@ -330,6 +332,7 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
         	}
         	else
         	{
+        		System.out.println("Node id "+this.nodeID+" Select response recvd at nameserver");
         		Select.handleSelectResponse((SelectResponsePacket) request, this);
         	}
         	break;
@@ -345,9 +348,13 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
         	}
         	else
         	{
+        		if( ((CommandPacket) request).getCommandType().isSelect() )
+        		{
+        			System.out.println("Node id "+this.nodeID+" Select request from client recvd "
+        					+ ((CommandPacket) request));
+        		}
         		CommandHandler.handleCommandPacket((CommandPacket) request, doNotReplyToClient, this);
         	}
-        	
         	break;
         }
         case ADMIN_COMMAND:

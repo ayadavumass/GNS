@@ -724,6 +724,7 @@ public class GNSClient {
 	 */
 	public RequestFuture<CommandPacket> execute(CommandPacket commandPacket,
 			Callback<CommandPacket, CommandPacket> callback) throws IOException {
+		
 		return this.sendAsync(commandPacket,
 				new Callback<Request, CommandPacket>() {
 					@Override
