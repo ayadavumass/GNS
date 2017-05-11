@@ -825,7 +825,8 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
 
       assert (originalRequest != null && originalRequest instanceof BasicPacketWithClientAddress) : ((ClientRequest) response)
               .getSummary();
-
+      
+      System.out.println("sendToClient originalRequest "+originalRequest);
       
       ((BasicPacketWithClientAddress) originalRequest)
               .setResponse((ClientRequest) response);
