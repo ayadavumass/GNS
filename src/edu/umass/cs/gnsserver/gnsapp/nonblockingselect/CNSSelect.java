@@ -12,6 +12,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import edu.umass.cs.gigapaxos.interfaces.Request;
 import edu.umass.cs.gnscommon.GNSProtocol;
 import edu.umass.cs.gnscommon.ResponseCode;
 import edu.umass.cs.gnscommon.packets.CommandPacket;
@@ -58,7 +59,7 @@ public class CNSSelect extends AbstractSelect
 	{
 		System.out.println("CNSSelect: handleSelectRequestFromClient "+request);
 		
-		try 
+		try
 		{
 			// from now on we only use this as command packet, and not the request
 			CommandPacket wosignCmd = CommandHandler.addMessageWithoutSignatureToCommand(request);
@@ -287,9 +288,7 @@ public class CNSSelect extends AbstractSelect
 	    						pendingSelect.getOriginalRequest()).getClientAddress();
 	    System.out.println("\n\n clientAddress "+clientAddress+"\n\n");
 	    
-	    clientAddress = ((ReplicableClientRequest)pendingSelect.getOriginalRequest()).getClientAddress();
 	    
-	    	
 	    
 	    gnsApp.sendToAddress(clientAddress, returnPacket.toJSONObject());
 	}

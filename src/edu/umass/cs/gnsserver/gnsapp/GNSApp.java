@@ -319,7 +319,6 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
       {
         case SELECT_REQUEST:
         {
-        	System.out.println("handleSelectRequest at "+this.nodeID+" "+request);
         	Select.handleSelectRequest((SelectRequestPacket) request, this);
         	break;
         }
@@ -754,7 +753,7 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
   public String getNodeID() {
     return nodeID;
   }
-
+  
   @Override
   public InetSocketAddress getNodeAddress() {
     return nodeAddress;

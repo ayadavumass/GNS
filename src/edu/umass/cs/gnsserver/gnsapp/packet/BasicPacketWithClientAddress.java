@@ -48,7 +48,7 @@ public abstract class BasicPacketWithClientAddress extends BasicPacket {
     // will be filled in when it is next read by receiver after getting sent
     this.clientAddress = null;
   }
-
+  
   /**
    * Creates a BasicPacket from a JSONObject.
    * 
@@ -92,5 +92,4 @@ public BasicPacketWithClientAddress setResponse(ClientRequest response) {
   public InetSocketAddress getClientAddress() {
     return clientAddress;
   }
-
 }

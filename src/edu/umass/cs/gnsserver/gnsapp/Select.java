@@ -32,7 +32,6 @@ import edu.umass.cs.gnscommon.exceptions.server.InternalRequestException;
 import edu.umass.cs.gnscommon.packets.PacketUtils;
 
 import edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commandSupport.AccountAccess;
-import edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commandSupport.GroupAccess;
 import edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commandSupport.InternalField;
 import edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commandSupport.MetaDataTypeName;
 import edu.umass.cs.gnsserver.gnsapp.clientSupport.NSAuthentication;
@@ -48,7 +47,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.logging.Level;
 
-import edu.umass.cs.gnsserver.gnsapp.clientSupport.NSGroupAccess;
 import edu.umass.cs.gnsserver.gnsapp.packet.SelectGroupBehavior;
 import edu.umass.cs.gnsserver.gnsapp.packet.SelectOperation;
 import edu.umass.cs.gnsserver.gnsapp.packet.SelectRequestPacket;
@@ -56,7 +54,6 @@ import edu.umass.cs.gnsserver.gnsapp.packet.SelectResponsePacket;
 import edu.umass.cs.gnsserver.gnsapp.recordmap.NameRecord;
 import edu.umass.cs.gnsserver.interfaces.InternalRequestHeader;
 import edu.umass.cs.gnsserver.main.GNSConfig;
-import edu.umass.cs.gnsserver.utils.ResultValue;
 import edu.umass.cs.reconfiguration.ReconfigurationConfig;
 import edu.umass.cs.utils.Config;
 
@@ -68,7 +65,6 @@ import java.security.SignatureException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -130,7 +126,8 @@ import java.util.regex.Pattern;
  *
  * @author westy
  */
-public class Select {
+public class Select 
+{
 
   private static final Logger LOGGER = Logger.getLogger(Select.class.getName());
 
@@ -182,7 +179,7 @@ public class Select {
   {
 	  // special case handling of the GROUP_LOOK operation
     // If sufficient time hasn't passed we just send the current value back
-    if (packet.getGroupBehavior().equals(SelectGroupBehavior.GROUP_LOOKUP)) {
+    /*if (packet.getGroupBehavior().equals(SelectGroupBehavior.GROUP_LOOKUP)) {
       // grab the timing parameters that we squirreled away from the SETUP
       Date lastUpdate = NSGroupAccess.getLastUpdate(header, packet.getGuid(), app.getRequestHandler());
       int minRefreshInterval = NSGroupAccess.getMinRefresh(header, packet.getGuid(), app.getRequestHandler());
@@ -204,7 +201,7 @@ public class Select {
       {
         LOGGER.fine("GROUP_LOOKUP Request: No Last Update Info ");
       }
-    }
+    }*/
     // the code below executes for regular selects and also for GROUP SETUP and GROUP LOOKUP but for lookup
     // only if enough time has elapsed since last lookup (see above)
     // OR in the anamolous situation where the update info could not be found
@@ -224,11 +221,11 @@ public class Select {
     // store the info for later
     int queryId = addQueryInfo(serverAddresses, packet.getSelectOperation(), packet.getGroupBehavior(),
             packet.getQuery(), packet.getProjection(), packet.getMinRefreshInterval(), packet.getGuid());
-    if (packet.getGroupBehavior().equals(SelectGroupBehavior.GROUP_LOOKUP)) {
+    /*if (packet.getGroupBehavior().equals(SelectGroupBehavior.GROUP_LOOKUP)) {
       // the query string is supplied with a lookup so we stuff in it there. It was saved from the SETUP operation.
       packet.setQuery(NSGroupAccess.getQueryString(header, packet.getGuid(), app.getRequestHandler()));
       packet.setProjection(NSGroupAccess.getProjection(header, packet.getGuid(), app.getRequestHandler()));
-    }
+    }*/
     InetSocketAddress returnAddress = new InetSocketAddress(app.getNodeAddress().getAddress(),
             ReconfigurationConfig.getClientFacingPort(app.getNodeAddress().getPort()));
     packet.setNSReturnAddress(returnAddress);
@@ -278,10 +275,11 @@ public class Select {
           SelectRequestPacket request,
           GNSApplicationInterface<String> app) {
     SelectResponsePacket response;
-    try {
+    try 
+    {
       // grab the records
       JSONArray jsonRecords = getJSONRecordsForSelect(request, app);
-      jsonRecords = aclCheckFilterForRecordsArray(request, jsonRecords, request.getReader(), app);
+      //jsonRecords = aclCheckFilterForRecordsArray(request, jsonRecords, request.getReader(), app);
       response = SelectResponsePacket.makeSuccessPacketForFullRecords(
               request.getId(), request.getClientAddress(),
               request.getCcpQueryId(), request.getNsQueryId(),
@@ -291,7 +289,8 @@ public class Select {
               "NS {0} sending back {1} record(s) in response to self-select request {2}",
               new Object[]{app.getNodeID(), jsonRecords.length(),
                 request.getSummary()});
-    } catch (FailedDBOperationException e) {
+    } 
+    catch (FailedDBOperationException e) {
       LOGGER.log(Level.SEVERE, "Exception while handling self-select request: {0}",
               e.getMessage());
       //e.printStackTrace();
@@ -320,7 +319,7 @@ public class Select {
     try {
       // grab the records
       JSONArray jsonRecords = getJSONRecordsForSelect(request, app);
-      jsonRecords = aclCheckFilterForRecordsArray(request, jsonRecords, request.getReader(), app);
+      //jsonRecords = aclCheckFilterForRecordsArray(request, jsonRecords, request.getReader(), app);
       
       SelectResponsePacket response = SelectResponsePacket.makeSuccessPacketForFullRecords(request.getId(),
               request.getClientAddress(),
@@ -463,16 +462,18 @@ public class Select {
 
     SelectResponsePacket response;
     // If projection is null we return guids (old-style).
-    if (info.getProjection() == null) {
-      response = SelectResponsePacket.makeSuccessPacketForGuidsOnly(packet.getId(),
+    if (info.getProjection() == null) 
+    {
+    	response = SelectResponsePacket.makeSuccessPacketForGuidsOnly(packet.getId(),
               null, -1, null, new JSONArray(guids));
-      // Otherwise we return a list of records.
-    } else {
-      List<JSONObject> records = filterAndMassageRecords(allRecords);
-      LOGGER.log(Level.FINE,
+    	// Otherwise we return a list of records.
+    } else 
+    {
+    	List<JSONObject> records = filterAndMassageRecords(allRecords);
+    	LOGGER.log(Level.FINE,
               "NS{0} record:{1}",
               new Object[]{replica.getNodeID(), records});
-      response = SelectResponsePacket.makeSuccessPacketForFullRecords(packet.getId(),
+    	response = SelectResponsePacket.makeSuccessPacketForFullRecords(packet.getId(),
               null, -1, -1, null, new JSONArray(records));
     }
 
@@ -484,8 +485,9 @@ public class Select {
         QUERIES_IN_PROGRESS.notify();
       }
     }
+    
     // Now we update any group guid stuff
-    if (info.getGroupBehavior().equals(SelectGroupBehavior.GROUP_SETUP)) {
+    /*if (info.getGroupBehavior().equals(SelectGroupBehavior.GROUP_SETUP)) {
       LOGGER.log(Level.FINE,
               "NS{0} storing query string and other info", replica.getNodeID());
       // for setup we need to squirrel away the query for later lookups
@@ -502,7 +504,8 @@ public class Select {
       //NSGroupAccess.updateMembers(header, guid, guids, replica.getRequestHandler());
       //NSGroupAccess.updateRecords(guid, processResponsesIntoJSONArray(info.getResponsesAsMap()), replica); 
       NSGroupAccess.updateLastUpdate(header, guid, new Date(), replica.getRequestHandler());
-    }
+    }*/
+    
   }
   
   // Converts a record from the database into something we can return to 

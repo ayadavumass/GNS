@@ -504,6 +504,8 @@ public class GNSClient {
 				boolean checkConnectivity) throws IOException {
 			super(reconfigurators, sslMode, clientPortOffset, checkConnectivity);
 			this.enableJSONPackets();
+			
+			AsyncClient.setMaxOutstandingAppRequests(100000);
 		}
 
 		/**
@@ -597,6 +599,8 @@ public class GNSClient {
 				throws RequestParseException {
 			return GNSAppUtil.getRequestStatic(bytes, header, unstringer);
 		}
+		
+		
 	} // End of AsyncClient
 
 	/**

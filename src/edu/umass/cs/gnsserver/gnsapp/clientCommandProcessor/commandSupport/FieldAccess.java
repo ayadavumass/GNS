@@ -749,8 +749,9 @@ public class FieldAccess {
               + " Bad query operators in " + query);
     }
     JSONArray result;
-    try {
-      SelectRequestPacket packet = SelectRequestPacket.MakeQueryRequest(-1, reader, query, projection);
+    try 
+    {
+    	SelectRequestPacket packet = SelectRequestPacket.MakeQueryRequest(-1, reader, query, projection);
       result = executeSelectHelper(header, commandPacket, packet, reader, signature, message, handler.getApp());
       if (result != null) {
         return new CommandResponse(ResponseCode.NO_ERROR, result.toString());

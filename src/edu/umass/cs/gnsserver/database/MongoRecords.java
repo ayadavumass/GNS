@@ -159,7 +159,9 @@ public class MongoRecords implements NoSQLRecords {
   public void createIndex(String collectionName, String field, String index) {
     MongoCollectionSpec spec = mongoCollectionSpecs.getCollectionSpec(collectionName);
     // Prepend this because of the way we store the records.
-    DBObject index2d = BasicDBObjectBuilder.start(NameRecord.VALUES_MAP.getName() + "." + field, index).get();
+    // only integer values of index are allowed like 1, -1 etc. 
+    DBObject index2d = BasicDBObjectBuilder.start(NameRecord.VALUES_MAP.getName() + "." + field, 
+    						Integer.parseInt(index)).get();
     db.getCollection(spec.getName()).createIndex(index2d);
   }
 
@@ -633,8 +635,9 @@ public class MongoRecords implements NoSQLRecords {
     db.requestEnsureConnection();
     DBCollection collection = db.getCollection(collectionName);
     DBCursor cursor = null;
-    try {
-      if (projection == null
+    try 
+    {
+    	if (projection == null
               // this handles the special case of the user wanting all fields 
               // in the projection
               || (!projection.isEmpty()
