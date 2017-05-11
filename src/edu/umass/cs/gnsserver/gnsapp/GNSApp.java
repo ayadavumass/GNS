@@ -438,6 +438,7 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
    */
   private void GnsAppConstructor(JSONMessenger<String> messenger) throws IOException {
     this.nodeID = messenger.getMyID();
+    System.out.println("\n\n GnsAppConstructor nodeid "+nodeID);
     this.nodeConfig = messenger.getNodeConfig();
     this.nodeAddress = new InetSocketAddress(nodeConfig.getNodeAddress(nodeID),
             nodeConfig.getNodePort(nodeID));
