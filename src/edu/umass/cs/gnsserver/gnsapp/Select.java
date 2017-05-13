@@ -199,7 +199,7 @@ public class Select
         }
       } else 
       {
-        LOGGER.fine("GROUP_LOOKUP Request: No Last Update Info ");
+      		LOGGER.fine("GROUP_LOOKUP Request: No Last Update Info ");
       }
     }*/
     // the code below executes for regular selects and also for GROUP SETUP and GROUP LOOKUP but for lookup
@@ -238,17 +238,17 @@ public class Select
               new Object[]{serverAddresses, app.getNodeAddress()});
       // Forward to all but self because...
       for (InetSocketAddress address : serverAddresses) {
-        if (!address.equals(app.getNodeAddress())) {
+        //if (!address.equals(app.getNodeAddress())) {
           InetSocketAddress offsetAddress = new InetSocketAddress(address.getAddress(),
                   ReconfigurationConfig.getClientFacingPort(address.getPort()));
           LOGGER.log(Level.INFO, "NS {0} sending select {1} to {2} ({3})",
                   new Object[]{app.getNodeID(), outgoingJSON, offsetAddress, address});
           app.sendToAddress(offsetAddress, outgoingJSON);
-        }
+        //}
       }
 
       // we handle our self by locally getting self-select records
-      handleSelectResponse(getMySelectedRecords(packet, app), app);
+      //handleSelectResponse(getMySelectedRecords(packet, app), app);
       // Wait for responses, otherwise you are violating Replicable.execute(.)'s semantics.
       System.out.println("Node Id "+app.getNodeID() +" Number of pending selects "+QUERIES_IN_PROGRESS.size()
     		  +" Going to wait");
@@ -269,7 +269,7 @@ public class Select
       }
 
     } 
-    catch (IOException | ClientException e) {
+    catch (IOException e) {
       LOGGER.log(Level.SEVERE, "Exception while sending select request: {0}", e);
     }
     return null;
@@ -280,7 +280,7 @@ public class Select
           SelectRequestPacket request,
           GNSApplicationInterface<String> app) {
     SelectResponsePacket response;
-    try 
+    try
     {
       // grab the records
       JSONArray jsonRecords = getJSONRecordsForSelect(request, app);
