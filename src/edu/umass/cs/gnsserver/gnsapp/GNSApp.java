@@ -854,19 +854,19 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
   
   @Override
   public String toString() {
-    return this.getClass().getSimpleName() + ":" + this.nodeID;
+	  return this.getClass().getSimpleName() + ":" + this.nodeID;
   }
   
   @Override
   public void sendToAddress(InetSocketAddress address, JSONObject msg) throws IOException {
-    messenger.sendToAddress(address, msg);
+	  messenger.sendToAddress(address, msg);
   }
-
+  
   @Override
   public ActiveCodeHandler getActiveCodeHandler() {
     return activeCodeHandler;
   }
-
+  
   @Override
   public ClientRequestHandlerInterface getRequestHandler() {
     return requestHandler;

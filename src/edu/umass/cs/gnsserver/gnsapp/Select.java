@@ -294,7 +294,7 @@ public class Select
               "NS {0} sending back {1} record(s) in response to self-select request {2}",
               new Object[]{app.getNodeID(), jsonRecords.length(),
                 request.getSummary()});
-    } 
+    }
     catch (FailedDBOperationException e) {
       LOGGER.log(Level.SEVERE, "Exception while handling self-select request: {0}",
               e.getMessage());
