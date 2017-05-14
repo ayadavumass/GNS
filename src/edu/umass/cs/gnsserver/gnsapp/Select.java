@@ -509,7 +509,7 @@ public class Select
 //           new Object[]{replica.getNodeID(), guids});
 
    SelectResponsePacket response = SelectResponsePacket.makeSuccessPacketForGuidsOnly(packet.getId(),
-           null, -1, null, new JSONArray(guidArray));
+           null, -1, null, guidArray);
    
    // If projection is null we return guids (old-style).
    /*if (info.getProjection() == null) 
