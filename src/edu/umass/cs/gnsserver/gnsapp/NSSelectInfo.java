@@ -24,10 +24,14 @@ import edu.umass.cs.gnsserver.gnsapp.packet.SelectOperation;
 
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
+
+import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -103,7 +107,7 @@ public class NSSelectInfo {
   {
 	  return serversToBeProcessed;
   }
-
+  
   /**
    * Returns true if all the names servers have responded.
    *
@@ -113,7 +117,7 @@ public class NSSelectInfo {
   {
 	  return serversToBeProcessed.isEmpty();
   }
-
+  
   /**
    * Adds the result of a query for a particular guid if the guid has not been seen yet.
    *
@@ -132,7 +136,7 @@ public class NSSelectInfo {
     	return false;
     }
   }
-
+  
   /**
    * Returns that responses that have been see for this query.
    *
@@ -142,16 +146,39 @@ public class NSSelectInfo {
   {
 	  return new HashSet<>(responses.values());
   }
-
+  
+  public JSONArray getResponseGUIDsSet()
+  {
+	  // FIXME: needs to be modified to put other projection 
+	  // attributes. 
+	  JSONArray guidsArray = new JSONArray();
+	  Iterator<String> keyIter = responses.keySet().iterator();
+	  while(keyIter.hasNext())
+	  {
+		  JSONObject json = new JSONObject();
+		  try 
+		  {
+			  json.put("_GUID", keyIter.next());
+		  } 
+		  catch (JSONException e) 
+		  {
+			  e.printStackTrace();
+		  }
+		  guidsArray.put(json);
+	  }
+	  return guidsArray;
+  }
+  
   /**
    * Returns that responses that have been see for this query.
    *
    * @return a set of JSONObjects
    */
-  public List<JSONObject> getResponsesAsList() {
-    return new ArrayList<>(responses.values());
+  public List<JSONObject> getResponsesAsList() 
+  {
+	  return new ArrayList<>(responses.values());
   }
-
+  
   /**
    * Return the operation.
    *

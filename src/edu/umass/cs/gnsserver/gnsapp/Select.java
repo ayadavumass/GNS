@@ -128,15 +128,16 @@ import java.util.regex.Pattern;
  */
 public class Select 
 {
-
-  private static final Logger LOGGER = Logger.getLogger(Select.class.getName());
-
-  private static final Random RANDOM_ID = new Random();
-  private static final ConcurrentMap<Integer, NSSelectInfo> QUERIES_IN_PROGRESS
+	private static final Logger LOGGER = Logger.getLogger(Select.class.getName());
+	
+	private static final Random RANDOM_ID = new Random();
+	
+	private static final ConcurrentMap<Integer, NSSelectInfo> QUERIES_IN_PROGRESS
           = new ConcurrentHashMap<>(10, 0.75f, 3);
-  private static final ConcurrentMap<Integer, SelectResponsePacket> QUERY_RESULT
+	
+	private static final ConcurrentMap<Integer, SelectResponsePacket> QUERY_RESULT
           = new ConcurrentHashMap<>(10, 0.75f, 3);
-
+	
   /**
    * Handles a select request that was received from a client.
    *
@@ -404,10 +405,11 @@ public class Select
    * @throws InternalRequestException
    */
   public static void handleSelectResponse(SelectResponsePacket packet,
-          GNSApplicationInterface<String> replica) throws JSONException, ClientException, IOException, InternalRequestException
+          GNSApplicationInterface<String> replica) throws JSONException, ClientException, 
+  														IOException, InternalRequestException
   {
-	LOGGER.log(Level.FINE,
-            "NS {0} recvd from NS {1}",
+	  LOGGER.log(Level.FINE,
+			  "NS {0} recvd from NS {1}",
             new Object[]{replica.getNodeID(),
               packet.getNSAddress()});
     NSSelectInfo info = QUERIES_IN_PROGRESS.get(packet.getNsQueryId());
@@ -421,7 +423,8 @@ public class Select
     if (SelectResponsePacket.ResponseCode.NOERROR.equals(packet.getResponseCode())) {
       // stuff all the unique records into the info structure
       processJSONRecords(packet.getRecords(), info, replica);
-    } else {
+    } else 
+    {
       // error response
       LOGGER.log(Level.FINE,
               "NS {0} processing error response: {1}",
@@ -446,7 +449,7 @@ public class Select
   }
   
   // If all the servers have sent us a response we're done.
-  private static void handledAllServersResponded(InternalRequestHeader header,
+  /*private static void handledAllServersResponded(InternalRequestHeader header,
           SelectResponsePacket packet, NSSelectInfo info,
           GNSApplicationInterface<String> replica) throws JSONException,
           ClientException, IOException, InternalRequestException {
@@ -486,28 +489,53 @@ public class Select
         QUERIES_IN_PROGRESS.notify();
       }
     }
-    
-    // Now we update any group guid stuff
-    /*if (info.getGroupBehavior().equals(SelectGroupBehavior.GROUP_SETUP)) {
-      LOGGER.log(Level.FINE,
-              "NS{0} storing query string and other info", replica.getNodeID());
-      // for setup we need to squirrel away the query for later lookups
-      NSGroupAccess.updateQueryString(header, info.getGuid(),
-              info.getQuery(), info.getProjection(), replica.getRequestHandler());
-      NSGroupAccess.updateMinRefresh(header, info.getGuid(), info.getMinRefreshInterval(), replica.getRequestHandler());
-    }
-    if (info.getGroupBehavior().equals(SelectGroupBehavior.GROUP_SETUP)
-            || info.getGroupBehavior().equals(SelectGroupBehavior.GROUP_LOOKUP)) {
-      String guid = info.getGuid();
-      LOGGER.log(Level.FINE, "NS{0} updating group members", replica.getNodeID());
-      GroupAccess.addToGroup(header, guid, new ResultValue(guids), null, null, null, null,
-              replica.getRequestHandler());
-      //NSGroupAccess.updateMembers(header, guid, guids, replica.getRequestHandler());
-      //NSGroupAccess.updateRecords(guid, processResponsesIntoJSONArray(info.getResponsesAsMap()), replica); 
-      NSGroupAccess.updateLastUpdate(header, guid, new Date(), replica.getRequestHandler());
-    }*/
-    
-  }
+  }*/
+  
+  //If all the servers have sent us a response we're done.
+  private static void handledAllServersResponded(InternalRequestHeader header,
+         SelectResponsePacket packet, NSSelectInfo info,
+         GNSApplicationInterface<String> replica) throws JSONException,
+         ClientException, IOException, InternalRequestException {
+	  // must be done before the notify below
+	  // we're done processing this select query
+	  QUERIES_IN_PROGRESS.remove(packet.getNsQueryId());
+	  JSONArray guidArray = info.getResponseGUIDsSet();
+   
+//   Set<JSONObject> allRecords = info.getResponsesAsSet();
+//   // Todo - clean up this use of guids further below in the group code
+//   Set<String> guids = extractGuidsFromRecords(allRecords);
+//   LOGGER.log(Level.FINE,
+//           "NS{0} guids:{1}",
+//           new Object[]{replica.getNodeID(), guids});
+
+   SelectResponsePacket response = SelectResponsePacket.makeSuccessPacketForGuidsOnly(packet.getId(),
+           null, -1, null, new JSONArray(guidArray));
+   
+   // If projection is null we return guids (old-style).
+   /*if (info.getProjection() == null) 
+   {
+   	response = SelectResponsePacket.makeSuccessPacketForGuidsOnly(packet.getId(),
+             null, -1, null, new JSONArray(guidSet));
+   	// Otherwise we return a list of records.
+   } else 
+   {
+   	List<JSONObject> records = filterAndMassageRecords(allRecords);
+   	LOGGER.log(Level.FINE,
+             "NS{0} record:{1}",
+             new Object[]{replica.getNodeID(), records});
+   	response = SelectResponsePacket.makeSuccessPacketForFullRecords(packet.getId(),
+             null, -1, -1, null, new JSONArray(records));
+   }*/
+
+   // Put the result where the coordinator can see it.
+   QUERY_RESULT.put(packet.getNsQueryId(), response);
+   // and let the coordinator know the value is there
+   if (GNSApp.DELEGATE_CLIENT_MESSAGING) {
+     synchronized (QUERIES_IN_PROGRESS) {
+       QUERIES_IN_PROGRESS.notify();
+     }
+   } 
+ }
   
   // Converts a record from the database into something we can return to 
   // the user. Adds the "_GUID" and removes internal fields.
