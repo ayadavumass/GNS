@@ -310,7 +310,7 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
       } 
       else 
       {
-        assert (false) : this
+    	  assert (false) : this
                 + " should not be getting requests that do not implement "
                 + RequestIdentifier.class;
       }
@@ -318,9 +318,7 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
       switch (packetType)
       {
         case SELECT_REQUEST:
-        {
-        	System.out.println("Node id "+this.nodeID+" Select request recvd at nameserver");
-        	
+        {	
         	Select.handleSelectRequest((SelectRequestPacket) request, this);
         	break;
         }
@@ -332,7 +330,6 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
         	}
         	else
         	{
-        		System.out.println("Node id "+this.nodeID+" Select response recvd at nameserver");
         		Select.handleSelectResponse((SelectResponsePacket) request, this);
         	}
         	break;
@@ -348,11 +345,6 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
         	}
         	else
         	{
-        		if( ((CommandPacket) request).getCommandType().isSelect() )
-        		{
-        			System.out.println("Node id "+this.nodeID+" Select request from client recvd "
-        					+ ((CommandPacket) request));
-        		}
         		CommandHandler.handleCommandPacket((CommandPacket) request, doNotReplyToClient, this);
         	}
         	break;
@@ -445,7 +437,6 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
    */
   private void GnsAppConstructor(JSONMessenger<String> messenger) throws IOException {
     this.nodeID = messenger.getMyID();
-    System.out.println("\n\n GnsAppConstructor nodeid "+nodeID);
     this.nodeConfig = messenger.getNodeConfig();
     this.nodeAddress = new InetSocketAddress(nodeConfig.getNodeAddress(nodeID),
             nodeConfig.getNodePort(nodeID));
