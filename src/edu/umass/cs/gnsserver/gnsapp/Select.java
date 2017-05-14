@@ -500,6 +500,8 @@ public class Select
 	  // we're done processing this select query
 	  QUERIES_IN_PROGRESS.remove(packet.getNsQueryId());
 	  JSONArray guidArray = info.getResponseGUIDsSet();
+	  
+	 // System.out.println("Result size length "+guidArray.length() +" "+guidArray);
    
 //   Set<JSONObject> allRecords = info.getResponsesAsSet();
 //   // Todo - clean up this use of guids further below in the group code
@@ -507,15 +509,18 @@ public class Select
 //   LOGGER.log(Level.FINE,
 //           "NS{0} guids:{1}",
 //           new Object[]{replica.getNodeID(), guids});
+	  
+   //SelectResponsePacket response;
+  SelectResponsePacket response = SelectResponsePacket.makeSuccessPacketForFullRecords(packet.getId(),
+          null, -1, -1, null, guidArray);
 
-   SelectResponsePacket response = SelectResponsePacket.makeSuccessPacketForGuidsOnly(packet.getId(),
-           null, -1, null, guidArray);
-   
+  //System.out.println("GNS Internal resp null proj"+response);
    // If projection is null we return guids (old-style).
    /*if (info.getProjection() == null) 
    {
    	response = SelectResponsePacket.makeSuccessPacketForGuidsOnly(packet.getId(),
-             null, -1, null, new JSONArray(guidSet));
+             null, -1, null, new JSONArray(guids));
+   	System.out.println("GNS Internal resp null proj"+response);
    	// Otherwise we return a list of records.
    } else 
    {
@@ -525,6 +530,7 @@ public class Select
              new Object[]{replica.getNodeID(), records});
    	response = SelectResponsePacket.makeSuccessPacketForFullRecords(packet.getId(),
              null, -1, -1, null, new JSONArray(records));
+   	System.out.println("GNS Internal resp "+response);
    }*/
 
    // Put the result where the coordinator can see it.
