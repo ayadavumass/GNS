@@ -55,7 +55,9 @@ import edu.umass.cs.gnsserver.gnsapp.recordmap.NameRecord;
 import edu.umass.cs.gnsserver.interfaces.InternalRequestHeader;
 import edu.umass.cs.gnsserver.main.GNSConfig;
 import edu.umass.cs.reconfiguration.ReconfigurationConfig;
+import edu.umass.cs.reconfiguration.ReconfigurationConfig.RC;
 import edu.umass.cs.utils.Config;
+import edu.umass.cs.utils.DelayProfiler;
 
 import java.io.UnsupportedEncodingException;
 import java.net.InetSocketAddress;
@@ -264,8 +266,7 @@ public class Select
       if (QUERY_RESULT.containsKey(queryId)) {
         return QUERY_RESULT.remove(queryId);
       }
-
-    } 
+    }
     catch (IOException e) {
       LOGGER.log(Level.SEVERE, "Exception while sending select request: {0}", e);
     }
@@ -634,6 +635,10 @@ public class Select
       JSONObject record = cursor.nextJSONObject();
       LOGGER.log(Level.FINE, "NS{0} record returned: {1}", new Object[]{ar.getNodeID(), record});
       jsonRecords.put(record);
+    }
+    if(Config.getGlobalBoolean(RC.ENABLE_INSTRUMENTATION))
+    {
+    	DelayProfiler.updateDelayNano("MongoQueryCompletion", System.nanoTime());
     }
     return jsonRecords;
   }

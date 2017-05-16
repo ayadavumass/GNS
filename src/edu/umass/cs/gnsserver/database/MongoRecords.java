@@ -42,6 +42,7 @@ import edu.umass.cs.gnsserver.gnsapp.recordmap.NameRecord;
 import edu.umass.cs.gnsserver.main.GNSConfig;
 import edu.umass.cs.gnsserver.utils.JSONUtils;
 import edu.umass.cs.gnsserver.utils.ValuesMap;
+import edu.umass.cs.reconfiguration.ReconfigurationConfig.RC;
 import edu.umass.cs.utils.Config;
 import edu.umass.cs.utils.DelayProfiler;
 import edu.umass.cs.utils.Util;
@@ -631,7 +632,12 @@ public class MongoRecords implements NoSQLRecords {
   }
 
   private MongoRecordCursor selectRecordsQuery(String collectionName, ColumnField valuesMapField,
-          String query, List<String> projection, boolean explain) throws FailedDBOperationException {
+          String query, List<String> projection, boolean explain) throws FailedDBOperationException 
+  {
+	  if(Config.getGlobalBoolean(RC.ENABLE_INSTRUMENTATION))
+	  {
+		  DelayProfiler.updateDelayNano("MongoQueryArrival", System.nanoTime());
+	  }
     db.requestEnsureConnection();
     DBCollection collection = db.getCollection(collectionName);
     DBCursor cursor = null;
