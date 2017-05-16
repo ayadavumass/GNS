@@ -140,7 +140,11 @@ public class Select
 	private static final ConcurrentMap<Integer, SelectResponsePacket> QUERY_RESULT
           = new ConcurrentHashMap<>(10, 0.75f, 3);
 	
-	public static long lastTime = -1;
+	public static long lastTime    = -1;
+	public static long incomingMongoReq = 0;
+	public static long outgoingMongoReq = 0;
+	public static final Object MONGO_CAP_LOCK = new Object();
+	
   /**
    * Handles a select request that was received from a client.
    *
@@ -195,41 +199,10 @@ public class Select
 				  	+ " MongoQueryCompletion Thpt="
 				  	+ DelayProfiler.getThroughput("MongoQueryCompletion") );
 	  }
-	  // special case handling of the GROUP_LOOK operation
-    // If sufficient time hasn't passed we just send the current value back
-    /*if (packet.getGroupBehavior().equals(SelectGroupBehavior.GROUP_LOOKUP)) {
-      // grab the timing parameters that we squirreled away from the SETUP
-      Date lastUpdate = NSGroupAccess.getLastUpdate(header, packet.getGuid(), app.getRequestHandler());
-      int minRefreshInterval = NSGroupAccess.getMinRefresh(header, packet.getGuid(), app.getRequestHandler());
-      if (lastUpdate != null) {
-        LOGGER.log(Level.FINE,
-                "GROUP_LOOKUP Request: {0} - {1} <= {2}",
-                new Object[]{new Date().getTime(), lastUpdate.getTime(), minRefreshInterval});
-
-        // if not enough time has passed we just return the current value of the group
-        if (new Date().getTime() - lastUpdate.getTime() <= minRefreshInterval) {
-          LOGGER.log(Level.FINE,
-                  "GROUP_LOOKUP Request: Time has not elapsed. Returning current group value for {0}",
-                  packet.getGuid());
-          ResultValue result = NSGroupAccess.lookupMembers(header, packet.getGuid(), true, app.getRequestHandler());
-          return SelectResponsePacket.makeSuccessPacketForGuidsOnly(packet.getId(), null, -1, null,
-                  new JSONArray(result.toStringSet()));
-        }
-      } else 
-      {
-      		LOGGER.fine("GROUP_LOOKUP Request: No Last Update Info ");
-      }
-    }*/
-    // the code below executes for regular selects and also for GROUP SETUP and GROUP LOOKUP but for lookup
-    // only if enough time has elapsed since last lookup (see above)
-    // OR in the anamolous situation where the update info could not be found
+	  
     LOGGER.fine(packet.getSelectOperation().toString()
             + " Request: Forwarding request for "
-            + packet.getGuid() != null ? packet.getGuid() : "non-guid select");
-    
-    // If it's not a group lookup or is but enough time has passed we do the usual thing
-    // and send the request out to all the servers. We'll receive a response sent on the flipside.
-    
+            + packet.getGuid() != null ? packet.getGuid() : "non-guid select");   
     
     //Set<InetSocketAddress> serverAddresses = new HashSet<>(PaxosConfig.getActives().values());
     
@@ -239,11 +212,8 @@ public class Select
     // store the info for later
     int queryId = addQueryInfo(serverAddresses, packet.getSelectOperation(), packet.getGroupBehavior(),
             packet.getQuery(), packet.getProjection(), packet.getMinRefreshInterval(), packet.getGuid());
-    /*if (packet.getGroupBehavior().equals(SelectGroupBehavior.GROUP_LOOKUP)) {
-      // the query string is supplied with a lookup so we stuff in it there. It was saved from the SETUP operation.
-      packet.setQuery(NSGroupAccess.getQueryString(header, packet.getGuid(), app.getRequestHandler()));
-      packet.setProjection(NSGroupAccess.getProjection(header, packet.getGuid(), app.getRequestHandler()));
-    }*/
+    
+    
     InetSocketAddress returnAddress = new InetSocketAddress(app.getNodeAddress().getAddress(),
             ReconfigurationConfig.getClientFacingPort(app.getNodeAddress().getPort()));
     packet.setNSReturnAddress(returnAddress);
@@ -334,19 +304,54 @@ public class Select
             "NS {0} {1} received query {2}",
             new Object[]{Select.class.getSimpleName(),
               app.getNodeID(), request.getSummary()});
-    try {
-      // grab the records
-      JSONArray jsonRecords = getJSONRecordsForSelect(request, app);
-      //jsonRecords = aclCheckFilterForRecordsArray(request, jsonRecords, request.getReader(), app);
-      
-      SelectResponsePacket response = SelectResponsePacket.makeSuccessPacketForFullRecords(request.getId(),
+    try 
+    {
+    	long s = System.nanoTime();
+    	if(Config.getGlobalBoolean(RC.ENABLE_INSTRUMENTATION))
+    	{
+	    	synchronized(MONGO_CAP_LOCK)
+	    	{
+	    		incomingMongoReq++;
+	    	}
+    	}
+    	// grab the records
+    	JSONArray jsonRecords = getJSONRecordsForSelect(request, app);
+    	if(Config.getGlobalBoolean(RC.ENABLE_INSTRUMENTATION))
+    	{
+    		DelayProfiler.updateDelayNano("getJSONRecordsForSelect", s);
+    		synchronized(MONGO_CAP_LOCK)
+    		{
+    			outgoingMongoReq++;
+    			if(lastTime == -1)
+    			{
+    				lastTime = System.currentTimeMillis();
+    			}
+    			
+    			long curr = System.currentTimeMillis() - lastTime;
+    			if(curr > 5000)
+    			{
+    				curr = curr/1000;
+    				System.out.println("MongoIncomingRate "+(incomingMongoReq/curr) +" reqs/s"
+    					  	+" MongoOutgoingRate "+(outgoingMongoReq/curr) +" reqs/s");
+    				incomingMongoReq = 0;
+    				outgoingMongoReq = 0;
+    				lastTime = System.currentTimeMillis();
+    			}
+    		}
+    	}
+    	
+    	//jsonRecords = aclCheckFilterForRecordsArray(request, jsonRecords, request.getReader(), app);
+    	
+    	SelectResponsePacket response = SelectResponsePacket.makeSuccessPacketForFullRecords(request.getId(),
               request.getClientAddress(),
               request.getCcpQueryId(), request.getNsQueryId(), app.getNodeAddress(), jsonRecords);
-      LOGGER.log(Level.FINE,
+    	
+    	LOGGER.log(Level.FINE,
               "NS {0} sending back {1} record(s) in response to {2}",
               new Object[]{app.getNodeID(), jsonRecords.length(), request.getSummary()});
-      // and send them back to the originating NS
-      app.sendToAddress(request.getNSReturnAddress(), response.toJSONObject());
+
+    	// and send them back to the originating NS
+    	app.sendToAddress(request.getNSReturnAddress(), response.toJSONObject());
     } catch (FailedDBOperationException | JSONException | IOException e) {
       LOGGER.log(Level.SEVERE, "Exception while handling select request: {0}", e);
       SelectResponsePacket failResponse = SelectResponsePacket.makeFailPacket(request.getId(),
@@ -650,10 +655,6 @@ public class Select
       JSONObject record = cursor.nextJSONObject();
       LOGGER.log(Level.FINE, "NS{0} record returned: {1}", new Object[]{ar.getNodeID(), record});
       jsonRecords.put(record);
-    }
-    if(Config.getGlobalBoolean(RC.ENABLE_INSTRUMENTATION))
-    {
-    	DelayProfiler.updateInterArrivalTime("MongoQueryCompletion", 1);
     }
     return jsonRecords;
   }

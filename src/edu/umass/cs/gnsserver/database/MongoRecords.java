@@ -634,10 +634,6 @@ public class MongoRecords implements NoSQLRecords {
   private MongoRecordCursor selectRecordsQuery(String collectionName, ColumnField valuesMapField,
           String query, List<String> projection, boolean explain) throws FailedDBOperationException 
   {
-	  if(Config.getGlobalBoolean(RC.ENABLE_INSTRUMENTATION))
-	  {
-		  DelayProfiler.updateInterArrivalTime("MongoQueryArrival", 1);
-	  }
     db.requestEnsureConnection();
     DBCollection collection = db.getCollection(collectionName);
     DBCursor cursor = null;
