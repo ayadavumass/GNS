@@ -210,17 +210,17 @@ public class Select
               new Object[]{serverAddresses, app.getNodeAddress()});
       // Forward to all but self because...
       for (InetSocketAddress address : serverAddresses) {
-        //if (!address.equals(app.getNodeAddress())) {
+        if (!address.equals(app.getNodeAddress())) {
           InetSocketAddress offsetAddress = new InetSocketAddress(address.getAddress(),
                   ReconfigurationConfig.getClientFacingPort(address.getPort()));
           LOGGER.log(Level.INFO, "NS {0} sending select {1} to {2} ({3})",
                   new Object[]{app.getNodeID(), outgoingJSON, offsetAddress, address});
           app.sendToAddress(offsetAddress, outgoingJSON);
-        //}
+        }
       }
 
       // we handle our self by locally getting self-select records
-      //handleSelectResponse(getMySelectedRecords(packet, app), app);
+      handleSelectResponse(getMySelectedRecords(packet, app), app);
       // Wait for responses, otherwise you are violating Replicable.execute(.)'s semantics.
       synchronized (QUERIES_IN_PROGRESS) {
         while (QUERIES_IN_PROGRESS.containsKey(queryId)) {
@@ -236,7 +236,7 @@ public class Select
         return QUERY_RESULT.remove(queryId);
       }
     }
-    catch (IOException e) {
+    catch (IOException | ClientException e) {
       LOGGER.log(Level.SEVERE, "Exception while sending select request: {0}", e);
     }
     return null;
@@ -245,7 +245,8 @@ public class Select
   
   private static SelectResponsePacket getMySelectedRecords(
           SelectRequestPacket request,
-          GNSApplicationInterface<String> app) {
+          GNSApplicationInterface<String> app) 
+  {
     SelectResponsePacket response;
     try
     {
@@ -290,39 +291,8 @@ public class Select
               app.getNodeID(), request.getSummary()});
     try 
     {
-    	long s = System.nanoTime();
-    	if(Config.getGlobalBoolean(RC.ENABLE_INSTRUMENTATION))
-    	{
-	    	synchronized(MONGO_CAP_LOCK)
-	    	{
-	    		incomingMongoReq++;
-	    	}
-    	}
     	// grab the records
     	JSONArray jsonRecords = getJSONRecordsForSelect(request, app);
-    	if(Config.getGlobalBoolean(RC.ENABLE_INSTRUMENTATION))
-    	{
-    		DelayProfiler.updateDelayNano("getJSONRecordsForSelect", s);
-    		synchronized(MONGO_CAP_LOCK)
-    		{
-    			outgoingMongoReq++;
-    			if(lastTime == -1)
-    			{
-    				lastTime = System.currentTimeMillis();
-    			}
-    			
-    			long curr = System.currentTimeMillis() - lastTime;
-    			if(curr > 5000)
-    			{
-    				curr = curr/1000;
-    				System.out.println("MongoIncomingRate "+(incomingMongoReq/curr) +" reqs/s"
-    					  	+" MongoOutgoingRate "+(outgoingMongoReq/curr) +" reqs/s");
-    				incomingMongoReq = 0;
-    				outgoingMongoReq = 0;
-    				lastTime = System.currentTimeMillis();
-    			}
-    		}
-    	}
     	
     	//jsonRecords = aclCheckFilterForRecordsArray(request, jsonRecords, request.getReader(), app);
     	
@@ -603,7 +573,17 @@ public class Select
   }
 
   private static JSONArray getJSONRecordsForSelect(SelectRequestPacket request,
-          GNSApplicationInterface<String> ar) throws FailedDBOperationException {
+          GNSApplicationInterface<String> ar) throws FailedDBOperationException 
+  {
+	  long s = System.nanoTime();
+  	if(Config.getGlobalBoolean(RC.ENABLE_INSTRUMENTATION))
+  	{
+	    	synchronized(MONGO_CAP_LOCK)
+	    	{
+	    		incomingMongoReq++;
+	    	}
+  	}
+  	
     JSONArray jsonRecords = new JSONArray();
     // actually only need name and values map... fix this
     AbstractRecordCursor cursor = null;
@@ -641,6 +621,33 @@ public class Select
       LOGGER.log(Level.FINE, "NS{0} record returned: {1}", new Object[]{ar.getNodeID(), record});
       jsonRecords.put(record);
     }
+	
+    // FIXME: remove this code into a general throughput profiler. 
+    if(Config.getGlobalBoolean(RC.ENABLE_INSTRUMENTATION))
+	{
+		DelayProfiler.updateDelayNano("getJSONRecordsForSelect", s);
+		synchronized(MONGO_CAP_LOCK)
+		{
+			outgoingMongoReq++;
+			if(lastTime == -1)
+			{
+				lastTime = System.currentTimeMillis();
+			}
+			
+			long curr = System.currentTimeMillis() - lastTime;
+			if(curr > 5000)
+			{
+				curr = curr/1000;
+				System.out.println("MongoIncomingRate "+(incomingMongoReq/curr) +" reqs/s"
+					  	+" MongoOutgoingRate "+(outgoingMongoReq/curr) +" reqs/s");
+				incomingMongoReq = 0;
+				outgoingMongoReq = 0;
+				lastTime = System.currentTimeMillis();
+			}
+		}
+	}
+
+	
     return jsonRecords;
   }
 
