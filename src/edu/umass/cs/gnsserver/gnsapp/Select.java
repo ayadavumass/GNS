@@ -140,7 +140,7 @@ public class Select
 	private static final ConcurrentMap<Integer, SelectResponsePacket> QUERY_RESULT
           = new ConcurrentHashMap<>(10, 0.75f, 3);
 	
-	public static long lastTime    = -1;
+	public static long lastTime    		= -1;
 	public static long incomingMongoReq = 0;
 	public static long outgoingMongoReq = 0;
 	public static final Object MONGO_CAP_LOCK = new Object();
@@ -184,33 +184,18 @@ public class Select
           SelectRequestPacket packet,
           GNSApplicationInterface<String> app) throws JSONException, UnknownHostException,
           FailedDBOperationException, InternalRequestException
-  {
-	  if(lastTime == -1)
-	  {
-		  lastTime = System.currentTimeMillis();
-	  }
-	  if(Config.getGlobalBoolean(RC.ENABLE_INSTRUMENTATION) 
-			  	&& ((System.currentTimeMillis()-lastTime) > 5000) )
-	  {
-		  lastTime = System.currentTimeMillis();
-		  System.out.println(DelayProfiler.getStats());
-		  System.out.println("MongoQueryArrival Thpt="
-				  	+ DelayProfiler.getThroughput("MongoQueryArrival")
-				  	+ " MongoQueryCompletion Thpt="
-				  	+ DelayProfiler.getThroughput("MongoQueryCompletion") );
-	  }
-	  
-    LOGGER.fine(packet.getSelectOperation().toString()
+  {  
+	  LOGGER.fine(packet.getSelectOperation().toString()
             + " Request: Forwarding request for "
             + packet.getGuid() != null ? packet.getGuid() : "non-guid select");   
+	  
+	  //Set<InetSocketAddress> serverAddresses = new HashSet<>(PaxosConfig.getActives().values());
+	  
+	  Set<InetSocketAddress> serverAddresses = app.getSelectPolicy().getNodesForSelectRequest(packet);
+	  //Set<String> serverIds = app.getGNSNodeConfig().getActiveReplicas();
     
-    //Set<InetSocketAddress> serverAddresses = new HashSet<>(PaxosConfig.getActives().values());
-    
-    Set<InetSocketAddress> serverAddresses = app.getSelectPolicy().getNodesForSelectRequest(packet);
-    //Set<String> serverIds = app.getGNSNodeConfig().getActiveReplicas();
-    
-    // store the info for later
-    int queryId = addQueryInfo(serverAddresses, packet.getSelectOperation(), packet.getGroupBehavior(),
+	  // store the info for later
+	  int queryId = addQueryInfo(serverAddresses, packet.getSelectOperation(), packet.getGroupBehavior(),
             packet.getQuery(), packet.getProjection(), packet.getMinRefreshInterval(), packet.getGuid());
     
     
