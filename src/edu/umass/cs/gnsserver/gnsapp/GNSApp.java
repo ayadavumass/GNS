@@ -518,7 +518,6 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
       contextServiceGNSClient = new ContextServiceGNSClient(host, port);
       GNSConfig.getLogger().fine("ContextServiceGNSClient initialization completed");
     }
-    
     this.initializeSelectPolicy();
     
     this.initializeSelectProcessor();

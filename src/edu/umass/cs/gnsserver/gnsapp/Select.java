@@ -140,6 +140,7 @@ public class Select
 	private static final ConcurrentMap<Integer, SelectResponsePacket> QUERY_RESULT
           = new ConcurrentHashMap<>(10, 0.75f, 3);
 	
+	public static long lastTime = -1;
   /**
    * Handles a select request that was received from a client.
    *
@@ -180,6 +181,20 @@ public class Select
           GNSApplicationInterface<String> app) throws JSONException, UnknownHostException,
           FailedDBOperationException, InternalRequestException
   {
+	  if(lastTime == -1)
+	  {
+		  lastTime = System.currentTimeMillis();
+	  }
+	  if(Config.getGlobalBoolean(RC.ENABLE_INSTRUMENTATION) 
+			  	&& ((System.currentTimeMillis()-lastTime) > 5000) )
+	  {
+		  lastTime = System.currentTimeMillis();
+		  System.out.println(DelayProfiler.getStats());
+		  System.out.println("MongoQueryArrival Thpt="
+				  	+ DelayProfiler.getThroughput("MongoQueryArrival")
+				  	+ " MongoQueryCompletion Thpt="
+				  	+ DelayProfiler.getThroughput("MongoQueryCompletion") );
+	  }
 	  // special case handling of the GROUP_LOOK operation
     // If sufficient time hasn't passed we just send the current value back
     /*if (packet.getGroupBehavior().equals(SelectGroupBehavior.GROUP_LOOKUP)) {
@@ -638,7 +653,7 @@ public class Select
     }
     if(Config.getGlobalBoolean(RC.ENABLE_INSTRUMENTATION))
     {
-    	DelayProfiler.updateDelayNano("MongoQueryCompletion", System.nanoTime());
+    	DelayProfiler.updateInterArrivalTime("MongoQueryCompletion", 1);
     }
     return jsonRecords;
   }

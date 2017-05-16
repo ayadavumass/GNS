@@ -636,7 +636,7 @@ public class MongoRecords implements NoSQLRecords {
   {
 	  if(Config.getGlobalBoolean(RC.ENABLE_INSTRUMENTATION))
 	  {
-		  DelayProfiler.updateDelayNano("MongoQueryArrival", System.nanoTime());
+		  DelayProfiler.updateInterArrivalTime("MongoQueryArrival", 1);
 	  }
     db.requestEnsureConnection();
     DBCollection collection = db.getCollection(collectionName);

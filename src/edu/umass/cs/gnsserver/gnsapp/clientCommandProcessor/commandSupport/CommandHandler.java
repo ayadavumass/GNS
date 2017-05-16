@@ -265,7 +265,6 @@ public class CommandHandler {
     if (commandCount++ % 100 == 0
             && Config.getGlobalBoolean(RC.ENABLE_INSTRUMENTATION)) {
       if (System.currentTimeMillis() - lastStatsTime > 5000) {
-    	  System.out.println("DelayProfiler.getStats() "+DelayProfiler.getStats());
         ClientCommandProcessorConfig.getLogger().log(Level.INFO,
                 "{0} {1}",
                 new Object[]{app, DelayProfiler.getStats()});
