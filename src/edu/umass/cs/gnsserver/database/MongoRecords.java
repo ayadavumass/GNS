@@ -687,13 +687,16 @@ public class MongoRecords implements NoSQLRecords {
     return result.toString();
   }
 
-  private DBObject generateProjection(List<String> fields) {
-    // produces { field1: true, field2: true ... }
+  private DBObject generateProjection(List<String> fields) 
+  {
+	  // produces { field1: true, field2: true ... }
     DBObject result = new BasicDBObject();
     // Always return the guid
     result.put(NameRecord.NAME.getName(), "true");
     // Put this in so the upstream receiver knows that it is a GUID record
-    result.put(NameRecord.VALUES_MAP.getName() + "." + AccountAccess.GUID_INFO, "true");
+    // aditya: removing guid_info field, as this field contains publick key field, which is large. 
+    // and reduces the select performance. 
+    //result.put(NameRecord.VALUES_MAP.getName() + "." + AccountAccess.GUID_INFO, "true");
     // Add all the fields in the projection
     for (String field : fields) {
       result.put(NameRecord.VALUES_MAP.getName() + "." + field, "true");

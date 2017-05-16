@@ -31,7 +31,6 @@ import edu.umass.cs.gnscommon.exceptions.server.FailedDBOperationException;
 import edu.umass.cs.gnscommon.exceptions.server.InternalRequestException;
 import edu.umass.cs.gnscommon.packets.PacketUtils;
 
-import edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commandSupport.AccountAccess;
 import edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commandSupport.InternalField;
 import edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commandSupport.MetaDataTypeName;
 import edu.umass.cs.gnsserver.gnsapp.clientSupport.NSAuthentication;
@@ -388,7 +387,8 @@ public class Select
   }
   
   // Uses a regular expression to extract the fields from a select query.
-  private static List<String> getFieldsFromQuery(String query) {
+  private static List<String> getFieldsFromQuery(String query) 
+  {
     List<String> result = new ArrayList<>();
     // Create a Pattern object
     Matcher m = Pattern.compile("~\\w+(\\.\\w+)*").matcher(query);
@@ -538,7 +538,7 @@ public class Select
              null, -1, -1, null, new JSONArray(records));
    	System.out.println("GNS Internal resp "+response);
    }*/
-
+  
    // Put the result where the coordinator can see it.
    QUERY_RESULT.put(packet.getNsQueryId(), response);
    // and let the coordinator know the value is there
@@ -646,33 +646,44 @@ public class Select
 
   // Takes the JSON records that are returned from an NS and stuffs the into the NSSelectInfo record
   public static void processJSONRecords(JSONArray jsonArray, NSSelectInfo info,
-          GNSApplicationInterface<String> ar) throws JSONException {
-    int length = jsonArray.length();
-    LOGGER.log(Level.FINE,
+          GNSApplicationInterface<String> ar) throws JSONException 
+  {
+	  int length = jsonArray.length();
+	  LOGGER.log(Level.FINE,
             "NS{0} processing {1} records", new Object[]{ar.getNodeID(), length});
-    for (int i = 0; i < length; i++) {
-      JSONObject record = jsonArray.getJSONObject(i);
-      if (isGuidRecord(record)) { // Filter out any non-guids
-        String name = record.getString(NameRecord.NAME.getName());
-        if (info.addResponseIfNotSeenYet(name, record)) {
-          LOGGER.log(Level.FINE, "NS{0} added record {1}", new Object[]{ar.getNodeID(), record});
-        } else {
-          LOGGER.log(Level.FINE, "NS{0} already saw record {1}", new Object[]{ar.getNodeID(), record});
-        }
-      } else {
-        LOGGER.log(Level.FINE, "NS{0} not a guid record {1}", new Object[]{ar.getNodeID(), record});
-      }
-    }
+	  
+	  for (int i = 0; i < length; i++) 
+	  {
+		  JSONObject record = jsonArray.getJSONObject(i);
+		  
+		  //if (isGuidRecord(record)) 
+		  { 
+			  // Filter out any non-guids
+			  String name = record.getString(NameRecord.NAME.getName());
+			  if (info.addResponseIfNotSeenYet(name, record)) 
+			  {
+				  LOGGER.log(Level.FINE, "NS{0} added record {1}", new Object[]{ar.getNodeID(), record});
+			  } 
+			  else 
+			  {
+				  LOGGER.log(Level.FINE, "NS{0} already saw record {1}", new Object[]{ar.getNodeID(), record});
+			  }
+		  } 
+//		  else 
+//		  {
+//			  LOGGER.log(Level.FINE, "NS{0} not a guid record {1}", new Object[]{ar.getNodeID(), record});
+//		  }
+	  }
   }
   
-  private static boolean isGuidRecord(JSONObject json) {
+  /*private static boolean isGuidRecord(JSONObject json) {
     JSONObject valuesMap = json.optJSONObject(NameRecord.VALUES_MAP.getName());
     if (valuesMap != null) {
       return valuesMap.has(AccountAccess.GUID_INFO);
     }
     return false;
-  }
-
+  }*/
+  
   /**
    * Returns true if a query contains operations that are not allowed.
    * Currently $where is not allowed as well as attempts to use
