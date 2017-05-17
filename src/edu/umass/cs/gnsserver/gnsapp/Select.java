@@ -19,6 +19,7 @@
  */
 package edu.umass.cs.gnsserver.gnsapp;
 
+import edu.umass.cs.contextservice.utils.Utils;
 /*
  * Copyright (C) 2014
  * University of Massachusetts
@@ -143,6 +144,26 @@ public class Select
 	public static long incomingMongoReq = 0;
 	public static long outgoingMongoReq = 0;
 	public static final Object MONGO_CAP_LOCK = new Object();
+	
+	
+	public static JSONArray dummyResult;
+	// if true then mongodb is bypassed and the dummy result is returned.
+	
+	public static boolean nomongoEnabled = true;
+	static
+	{
+		if(nomongoEnabled)
+		{
+			dummyResult = new JSONArray();
+			for(int i=0; i<19; i++)
+			{
+				String guidAlias = "GUID"+i;
+				String guid = Utils.getSHA1(guidAlias);
+				dummyResult.put(guid);
+			}
+			System.out.println("No mongo enabled. Dummy GUID list "+dummyResult);
+		}
+	}
 	
   /**
    * Handles a select request that was received from a client.
@@ -575,6 +596,11 @@ public class Select
   private static JSONArray getJSONRecordsForSelect(SelectRequestPacket request,
           GNSApplicationInterface<String> ar) throws FailedDBOperationException 
   {
+	  if(nomongoEnabled)
+	    {
+	    	return dummyResult; 
+	    }
+	  
 	  long s = System.nanoTime();
   	if(Config.getGlobalBoolean(RC.ENABLE_INSTRUMENTATION))
   	{
