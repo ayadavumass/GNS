@@ -159,7 +159,14 @@ public class Select
 			{
 				String guidAlias = "GUID"+i;
 				String guid = Utils.getSHA1(guidAlias);
-				dummyResult.put(guid);
+				JSONObject recordJSON = new JSONObject();
+				try {
+					recordJSON.put(NameRecord.NAME.getName(), guid);
+				} catch (JSONException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+				dummyResult.put(recordJSON);
 			}
 			System.out.println("No mongo enabled. Dummy GUID list "+dummyResult);
 		}
