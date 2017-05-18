@@ -149,7 +149,7 @@ public class Select
 	public static JSONArray dummyResult;
 	// if true then mongodb is bypassed and the dummy result is returned.
 	
-	public static boolean nomongoEnabled = true;
+	public static boolean nomongoEnabled = false;
 	static
 	{
 		if(nomongoEnabled)
