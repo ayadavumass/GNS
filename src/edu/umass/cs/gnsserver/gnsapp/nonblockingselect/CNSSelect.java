@@ -103,8 +103,6 @@ public class CNSSelect extends AbstractSelect
 					Set<InetSocketAddress> serverAddresses 
 								= gnsApp.getSelectPolicy().getNodesForSelectRequest(selectPacket);
 					
-					System.out.println("serverAddresses "+serverAddresses);
-					
 					int requestId = addSelectRequestIntoPendingMap(selectPacket, 
 													serverAddresses, wosignCmd);
 					
