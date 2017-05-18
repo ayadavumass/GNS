@@ -46,9 +46,10 @@ public class GNSAppUtil {
           MessageExtractor.stampAddressIntoJSONObject(header.sndr,
                   header.rcvr, json);
           request = (Request) Packet.createInstance(json, unstringer);
-        } else {
-          // parse non-JSON byteified form
-          return fromBytes(msgBytes);
+        } else 
+        {
+        	// parse non-JSON byteified form
+        	return fromBytes(msgBytes);
         }
         if (Util.oneIn(100)) {
           DelayProfiler.updateDelayNano(
@@ -59,7 +60,7 @@ public class GNSAppUtil {
       }
       return request;
     }
-
+    
     /**
      * This method should invert the implementation of the
      * {@link Byteable#toBytes()} method for GNSApp packets.

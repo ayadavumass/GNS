@@ -39,7 +39,10 @@ public abstract class BasicPacketWithClientAddress extends BasicPacket {
 
   private final static String CLIENT_ADDRESS = "clientAddress";
 
-  private InetSocketAddress clientAddress = null;
+  protected InetSocketAddress clientAddress = null;
+  
+  //FIXME: aditya: not sure if we need server listening address, but putting field for testing
+  protected InetSocketAddress serverListeningAddress = null;
 
   /**
    * Creates a BasicPacket.
@@ -91,5 +94,15 @@ public BasicPacketWithClientAddress setResponse(ClientRequest response) {
    */
   public InetSocketAddress getClientAddress() {
     return clientAddress;
+  }
+  
+  /**
+   * Returns server listening address.
+   * May be null if not set while creating the object of this class or child class.
+   * @return
+   */
+  public InetSocketAddress getServerListeningAddress()
+  {
+	  return this.serverListeningAddress;
   }
 }

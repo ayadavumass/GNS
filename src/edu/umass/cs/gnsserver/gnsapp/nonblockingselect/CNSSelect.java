@@ -2,7 +2,6 @@ package edu.umass.cs.gnsserver.gnsapp.nonblockingselect;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.util.List;
 import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -12,7 +11,6 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import edu.umass.cs.gigapaxos.interfaces.Request;
 import edu.umass.cs.gnscommon.GNSProtocol;
 import edu.umass.cs.gnscommon.ResponseCode;
 import edu.umass.cs.gnscommon.packets.CommandPacket;
@@ -30,13 +28,18 @@ import edu.umass.cs.gnsserver.gnsapp.nonblockingselect.helper.PendingSelectReqIn
 import edu.umass.cs.gnsserver.gnsapp.packet.BasicPacketWithClientAddress;
 import edu.umass.cs.gnsserver.gnsapp.packet.SelectRequestPacket;
 import edu.umass.cs.gnsserver.gnsapp.packet.SelectResponsePacket;
+import edu.umass.cs.nio.JSONMessenger;
+import edu.umass.cs.nio.interfaces.Byteable;
 import edu.umass.cs.reconfiguration.ReconfigurationConfig;
-import edu.umass.cs.reconfiguration.reconfigurationpackets.ReplicableClientRequest;
 
 /**
  * This class implements the CNS select mechanism.
  * The set of nodes that a select request contacts is based 
  * on the demand profile and select policy used. 
+ * 
+ * FIXME: Add support for Future in the public methods, 
+ * so the methods can be used in both non-blocking and blocking 
+ * manner.
  * 
  * @author ayadav
  */
@@ -56,9 +59,7 @@ public class CNSSelect extends AbstractSelect
 	
 	@Override
 	public void handleSelectRequestFromClient(CommandPacket request)
-	{
-		System.out.println("CNSSelect: handleSelectRequestFromClient "+request);
-		
+	{	
 		try
 		{
 			// from now on we only use this as command packet, and not the request
@@ -139,7 +140,6 @@ public class CNSSelect extends AbstractSelect
 		}
 	}
 	
-	
 	@Override
 	public void handleSelectRequestAtNS(SelectRequestPacket selectReq)
 	{
@@ -150,7 +150,6 @@ public class CNSSelect extends AbstractSelect
 	@Override
 	public void handleSelectResponseFromNS(SelectResponsePacket selectResp) throws IOException, JSONException
 	{
-		System.out.println("handleSelectResponseFromNS "+selectResp);
 		LOG.log(Level.FINE,
 				"NS {0} recvd from NS {1}",
 				new Object[]{gnsApp.getNodeID(),
@@ -218,43 +217,19 @@ public class CNSSelect extends AbstractSelect
 	          SelectResponsePacket incomingSelectResp, PendingSelectReqInfo pendingSelect) 
 	        		  								throws IOException, JSONException
 	{
-		System.out.println("handledAllServersResponded ");
 		// must be done before the notify below
 	    // we're done processing this select query
-		
-		Set<JSONObject> allRecords = pendingSelect.getNSInfo().getResponsesAsSet();
-	    // Todo - clean up this use of guids further below in the group code
-	    Set<String> guids = Select.extractGuidsFromRecords(allRecords);
-	    
-	    LOG.log(Level.FINE, 
-	    		"NS{0} guids:{1}", new Object[]{gnsApp.getNodeID(), guids});
-	    
-	    SelectResponsePacket responseToClient;
-	    // If projection is null we return guids (old-style).
-	    if (pendingSelect.getNSInfo().getProjection() == null) 
-	    {
-	    	responseToClient = SelectResponsePacket.makeSuccessPacketForGuidsOnly(
-	    			incomingSelectResp.getId(), null, -1, null, new JSONArray(guids));
-	    	// Otherwise we return a list of records.
-	    }
-	    else
-	    {
-	    	List<JSONObject> records = Select.filterAndMassageRecords(allRecords);
-	    	LOG.log(Level.FINE, "NS{0} record:{1}",
-	              new Object[]{gnsApp.getNodeID(), records});
-	    	
-	    	responseToClient = SelectResponsePacket.makeSuccessPacketForFullRecords
-	    			(incomingSelectResp.getId(), null, -1, -1, null, new JSONArray(records));
-	    }
-	    
-	    //FIXME: projection code missing here.
-	    JSONArray resultGUIDs = responseToClient.getGuids();
+		JSONArray guidArray = pendingSelect.getNSInfo().getResponseGUIDsSet();
+		//SelectResponsePacket responseToClient = 
+		//			SelectResponsePacket.makeSuccessPacketForFullRecords(incomingSelectResp.getId(),
+		//         null, -1, -1, null, guidArray);
 	    
 	    CommandResponse clientResp = null;
 	    
-	    if(resultGUIDs != null)
+	    if(guidArray != null)
 	    {
-	    	clientResp = new CommandResponse(ResponseCode.NO_ERROR, resultGUIDs.toString());
+	    	// FIXME: guidArray.toString() could be high stringification overhead.
+	    	clientResp = new CommandResponse(ResponseCode.NO_ERROR, guidArray.toString());
 	    }
 	    else
 	    {
@@ -272,10 +247,6 @@ public class CNSSelect extends AbstractSelect
 	    // remove before sending response
 	    this.pendingSelectRequests.remove(pendingSelect.getNSInfo().getId());
 	    
-	    System.out.println("Client response original request "+pendingSelect.getOriginalRequest()
-	    			+" returnPacket "+returnPacket);
-	    
-	    System.out.println("Client response returnPacket "+returnPacket);
 	    
 	    //Note: gnsApp.sendToClient won't work here because the gnsApp.execute
 	    // method called by gigapxos already returned, so it won't send any
@@ -284,13 +255,32 @@ public class CNSSelect extends AbstractSelect
 	    //gnsApp.sendToClient(pendingSelect.getOriginalRequest(), 
 		//		returnPacket, returnPacket.toJSONObject());
 	    
-	    InetSocketAddress clientAddress = ((BasicPacketWithClientAddress) 
-	    						pendingSelect.getOriginalRequest()).getClientAddress();
-	    System.out.println("\n\n clientAddress "+clientAddress+"\n\n");
-	    
-	    
-	    
-	    gnsApp.sendToAddress(clientAddress, returnPacket.toJSONObject());
+	    if(pendingSelect.getOriginalRequest() instanceof BasicPacketWithClientAddress)
+	    {
+	    	InetSocketAddress clientAddress = ((BasicPacketWithClientAddress) 
+					pendingSelect.getOriginalRequest()).getClientAddress();
+	    	
+	    	InetSocketAddress serverAddress = ((BasicPacketWithClientAddress) 
+					pendingSelect.getOriginalRequest()).getServerListeningAddress();
+	    	
+	    	if(clientAddress != null)
+	    	{
+	    		((JSONMessenger<?>) gnsApp.getMessenger()).sendClient(
+	    				clientAddress,
+	    				returnPacket instanceof Byteable ? ((Byteable) returnPacket)
+								.toBytes() : returnPacket, serverAddress);
+	    	}
+	    	else
+	    	{
+	    		// client address should have been set.
+	    		assert(false);
+	    	}
+	    }
+	    else
+	    {
+	    	// original request should always be an instance of BasicPacketWithClientAddress
+	    	assert(false);
+	    }
 	}
 	
 	

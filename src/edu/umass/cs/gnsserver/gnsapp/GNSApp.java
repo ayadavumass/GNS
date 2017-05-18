@@ -562,7 +562,8 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
    */
   @Override
   public Request getRequest(byte[] msgBytes, NIOHeader header)
-          throws RequestParseException {
+          throws RequestParseException 
+  {
     return GNSAppUtil.getRequestStatic(msgBytes, header, nodeConfig);
   }
   
@@ -762,6 +763,11 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
     return nameRecordDB;
   }
   
+  
+  public SSLMessenger<String, JSONObject> getMessenger()
+  {
+	  return this.messenger;
+  }
   /**
    *
    */

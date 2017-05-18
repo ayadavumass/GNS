@@ -17,6 +17,7 @@ package edu.umass.cs.gnscommon.packets;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 
 import edu.umass.cs.gigapaxos.PaxosConfig.PC;
@@ -143,8 +144,36 @@ public class CommandPacket extends BasicPacketWithClientAddress implements
       } else {
         throw new JSONException("Packet missing field " + COMMAND);
       }
+      
+      //FIXME: not all constructors are handled for the sender and client address
+      if(json.has(MessageNIOTransport.SNDR_ADDRESS_FIELD))
+      {
+    	  String sndrIPAddressInfo = 
+    			  	json.getString(MessageNIOTransport.SNDR_ADDRESS_FIELD);
+    	  String[] parsed = sndrIPAddressInfo.split(":");
+    	  this.clientAddress = new InetSocketAddress(parsed[0], 
+    			  		Integer.parseInt(parsed[1]));	  
+      }
+      
+      if(json.has(MessageNIOTransport.SNDR_ADDRESS_FIELD))
+      {
+    	  String sndrIPAddressInfo = 
+    			  	json.getString(MessageNIOTransport.SNDR_ADDRESS_FIELD);
+    	  String[] parsed = sndrIPAddressInfo.split(":");
+    	  this.clientAddress = new InetSocketAddress(parsed[0], 
+    			  		Integer.parseInt(parsed[1]));
+      }
+      
+      if(json.has(MessageNIOTransport.RCVR_ADDRESS_FIELD))
+      {
+    	  String recvIPAddressInfo = 
+  			  	json.getString(MessageNIOTransport.RCVR_ADDRESS_FIELD);
+    	  String[] parsed = recvIPAddressInfo.split(":");
+    	  this.serverListeningAddress = new InetSocketAddress(parsed[0], 
+  			  		Integer.parseInt(parsed[1]));
+      }
     }
-
+    
     this.forceCoordination = json.has(GNSProtocol.FORCE_COORDINATE_READS.toString())
             ? json.getBoolean(GNSProtocol.FORCE_COORDINATE_READS.toString()) : false;
 
