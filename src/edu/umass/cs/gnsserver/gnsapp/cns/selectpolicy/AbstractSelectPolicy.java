@@ -62,6 +62,11 @@ public abstract class AbstractSelectPolicy
 		return null;
 	}
 	
+	// not reading from file on disk on each request.
+	// as that has overhad. We need to fetch this
+	// information from active replicas using ** name request. 
+	private static Set<InetSocketAddress> currActives = new HashSet<>(PaxosConfig.getActives().values());
+	
 	/**
 	 * Fetches the current set of actives. Currently it fetches by reading the gns config files, but 
 	 * a TODO: is to directly fetch these from reconfigurators, which is a good design. 
@@ -69,6 +74,6 @@ public abstract class AbstractSelectPolicy
 	 */
 	protected Set<InetSocketAddress> fetchCurrentActives()
 	{
-		return new HashSet<>(PaxosConfig.getActives().values());
+		return currActives;
 	}
 }
