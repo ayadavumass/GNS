@@ -59,9 +59,10 @@ public class CNSSelect extends AbstractSelect
 	
 	@Override
 	public void handleSelectRequestFromClient(CommandPacket request)
-	{	
+	{
 		try
 		{
+			System.out.println("handleSelectRequestFromClient "+this.gnsApp.getNodeID());
 			// from now on we only use this as command packet, and not the request
 			CommandPacket wosignCmd = CommandHandler.addMessageWithoutSignatureToCommand(request);
 			
@@ -143,7 +144,6 @@ public class CNSSelect extends AbstractSelect
 	{
 		// original Select.handleSelectRequest is used 
 	}
-	
 	
 	@Override
 	public void handleSelectResponseFromNS(SelectResponsePacket selectResp) throws IOException, JSONException
