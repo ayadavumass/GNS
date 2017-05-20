@@ -289,7 +289,7 @@ public class GNSClient {
 			return this.asyncClient.sendRequest(request, callback);
 		}
 	}
-
+	
 	/**
 	 * This method synchronously retrieves the response and checks for and
 	 * throws exceptions if needed. This checkResponse behavior is unlike

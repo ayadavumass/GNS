@@ -62,7 +62,6 @@ public class CNSSelect extends AbstractSelect
 	{
 		try
 		{
-			System.out.println("handleSelectRequestFromClient "+this.gnsApp.getNodeID());
 			// from now on we only use this as command packet, and not the request
 			CommandPacket wosignCmd = CommandHandler.addMessageWithoutSignatureToCommand(request);
 			
