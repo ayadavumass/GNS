@@ -58,7 +58,7 @@ public class CNSSelect extends AbstractSelect
 	}
 	
 	@Override
-	public void handleSelectRequestFromClient(CommandPacket request)
+	public SelectFuture handleSelectRequestFromClient(CommandPacket request)
 	{
 		try
 		{
@@ -84,6 +84,7 @@ public class CNSSelect extends AbstractSelect
 			if(selectPacket == null)
 			{
 				//FIXME: send an error back to client
+				return new PendingSelectReqInfo(true);
 			}
 			else
 			{
@@ -95,23 +96,24 @@ public class CNSSelect extends AbstractSelect
 			    
 				if (!FieldAccess.signatureCheckForSelect(reader, signature, message, gnsApp)) 
 				{
-					//return null;
 					// FIXME: send bad signature message to client
+					return new PendingSelectReqInfo(true);
 				}
 				else
 				{
 					Set<InetSocketAddress> serverAddresses 
 								= gnsApp.getSelectPolicy().getNodesForSelectRequest(selectPacket);
 					
-					int requestId = addSelectRequestIntoPendingMap(selectPacket, 
-													serverAddresses, wosignCmd);
+					PendingSelectReqInfo pendingSelectInfo = addSelectRequestIntoPendingMap
+													(selectPacket, serverAddresses, wosignCmd);
+					
 					
 					InetSocketAddress returnAddress 
 							= new InetSocketAddress(gnsApp.getNodeAddress().getAddress(),
 				            ReconfigurationConfig.getClientFacingPort(gnsApp.getNodeAddress().getPort()));
 					
 					selectPacket.setNSReturnAddress(returnAddress);
-					selectPacket.setNsQueryId(requestId); // Note: this also tells handleSelectRequest that it should go to NS now
+					selectPacket.setNsQueryId(pendingSelectInfo.getNSInfo().getId()); // Note: this also tells handleSelectRequest that it should go to NS now
 				    JSONObject outgoingJSON = selectPacket.toJSONObject();
 				    
 				    for (InetSocketAddress address : serverAddresses)
@@ -123,6 +125,8 @@ public class CNSSelect extends AbstractSelect
 				                  new Object[]{gnsApp.getNodeID(), outgoingJSON, offsetAddress, address});
 				    	gnsApp.sendToAddress(offsetAddress, outgoingJSON);
 				    }
+				    
+				    return pendingSelectInfo;
 				}
 			}
 			
@@ -131,10 +135,12 @@ public class CNSSelect extends AbstractSelect
 		{
 			//FIXME: send error message to client
 			jsonex.printStackTrace();
+			return new PendingSelectReqInfo(true);
 		} catch (IOException e) 
 		{
 			//FIXME: send error message to client
 			e.printStackTrace();
+			return new PendingSelectReqInfo(true);
 		}
 	}
 	
@@ -200,7 +206,7 @@ public class CNSSelect extends AbstractSelect
 	    {
 	    	handledAllServersResponded(selectResp, pendingSelect);
 	    }
-	    else 
+	    else
 	    {
 	    	LOG.log(Level.FINE,
 	    			"NS{0} servers yet to respond:{1}",
@@ -266,6 +272,8 @@ public class CNSSelect extends AbstractSelect
 	    				clientAddress,
 	    				returnPacket instanceof Byteable ? ((Byteable) returnPacket)
 								.toBytes() : returnPacket, serverAddress);
+	    		
+	    		pendingSelect.setCompletion();
 	    	}
 	    	else
 	    	{
@@ -280,12 +288,12 @@ public class CNSSelect extends AbstractSelect
 	    }
 	}
 	
-	
-	private int addSelectRequestIntoPendingMap(SelectRequestPacket selectPacket, 
+	private PendingSelectReqInfo addSelectRequestIntoPendingMap(SelectRequestPacket selectPacket, 
 												Set<InetSocketAddress> serverAddresses,
 												CommandPacket wosignCmd)
 	{
 		int reqId = -1;
+		PendingSelectReqInfo selectInfo = null;
 		synchronized(this.selectLock)
 		{
 			do
@@ -301,13 +309,10 @@ public class CNSSelect extends AbstractSelect
 						selectPacket.getProjection(),
 						selectPacket.getMinRefreshInterval(), selectPacket.getGuid());
 			
-			PendingSelectReqInfo selectInfo 
-							= new PendingSelectReqInfo
-							(wosignCmd, info);
-			
+			selectInfo = new PendingSelectReqInfo(wosignCmd, info);
 			
 			pendingSelectRequests.put(reqId, selectInfo);
 		}
-		return reqId;
+		return selectInfo;
 	}
 }

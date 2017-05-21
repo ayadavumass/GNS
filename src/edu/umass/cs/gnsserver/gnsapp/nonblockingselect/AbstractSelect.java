@@ -46,8 +46,10 @@ public abstract class AbstractSelect
 	 * SelectRequest, i.e., GNSApp.execute calls handleSelectRequestFromClient method and 
 	 * this method forwards the select request to the  required NSs and returns. 
 	 * @param request
+	 * @return Returns {@link SelectFuture}, which the caller of handleSelectRequestFromClient can use 
+	 * to wait for the completion. 
 	 */
-	public abstract void handleSelectRequestFromClient(CommandPacket request) throws JSONException;
+	public abstract SelectFuture handleSelectRequestFromClient(CommandPacket request) throws JSONException;
 	
 	
 	/**
