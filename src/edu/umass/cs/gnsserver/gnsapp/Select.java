@@ -679,7 +679,6 @@ public class Select
 			}
 		}
 	}
-
 	
     return jsonRecords;
   }

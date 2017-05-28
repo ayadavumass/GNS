@@ -164,7 +164,7 @@ public class NSAuthentication {
       return ResponseCode.SIGNATURE_ERROR;
     }
   }
-
+  
   /**
    * Check the acl to insure that {@code accessorGuid} can access {@code targetGuid}'s {@code field}.
    *
@@ -229,7 +229,7 @@ public class NSAuthentication {
       return new AclCheckResult(publicKey, ResponseCode.NO_ERROR);
     }
   }
-
+  
   /**
    * Attempts to look up the public key for a accessorGuid using the
    * ACL of the guid for the given field.
