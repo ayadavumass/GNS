@@ -77,7 +77,6 @@ import edu.umass.cs.nio.interfaces.SSLMessenger;
 import edu.umass.cs.nio.nioutils.NIOHeader;
 import edu.umass.cs.reconfiguration.ReconfigurationConfig;
 import edu.umass.cs.reconfiguration.examples.AbstractReconfigurablePaxosApp;
-import edu.umass.cs.reconfiguration.interfaces.ActiveReplicaToAppInterface;
 import edu.umass.cs.reconfiguration.interfaces.Reconfigurable;
 import edu.umass.cs.reconfiguration.interfaces.ReconfigurableRequest;
 import edu.umass.cs.reconfiguration.reconfigurationutils.RequestParseException;
@@ -103,7 +102,7 @@ import java.util.logging.Level;
  */
 public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
         GNSApplicationInterface<String>, Replicable, Reconfigurable,
-        ClientMessenger, AppRequestParserBytes, Shutdownable, ActiveReplicaToAppInterface
+        ClientMessenger, AppRequestParserBytes, Shutdownable
   {
 	private String nodeID;
   private InetSocketAddress nodeAddress;
@@ -874,24 +873,6 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
    */
   public ContextServiceGNSInterface getContextServiceGNSClient() {
     return contextServiceGNSClient;
-  }
-  
-  @Override
-  public JSONObject getNameRecord(String name) 
-  {
-	  try 
-	  {
-		  return nameRecordDB.lookupEntireRecord(name);
-	  } catch (RecordNotFoundException | FailedDBOperationException e) 
-	  {
-		  GNSConfig
-          .getLogger().log(Level.FINE, "{0} Record not foung in DB or DB operation failed {1}", 
-        		  			new Object[]{name, e.getMessage()});
-		  // commenting out exception as it is not any severe exception and the caller 
-		  // expects null return value in case this exception occurs. 
-		  //e.printStackTrace();
-		  return null;
-	  }
   }
 
   private void startDNS() throws SecurityException, SocketException,
