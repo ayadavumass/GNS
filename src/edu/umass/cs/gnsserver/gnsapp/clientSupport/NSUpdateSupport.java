@@ -88,7 +88,7 @@ public class NSUpdateSupport {
     ResponseCode errorCode = ResponseCode.NO_ERROR;
     assert (header != null);
     // No checks for local non-auth commands like verifyAccount or for mutual auth
-    /*if (!GNSProtocol.INTERNAL_QUERIER.toString().equals(writer)
+    if (!GNSProtocol.INTERNAL_QUERIER.toString().equals(writer)
             && !commandPacket.getCommandType().isMutualAuth()) {
       if (!header.verifyInternal()) {
         // This the standard auth check for most updates
@@ -118,7 +118,7 @@ public class NSUpdateSupport {
           }
         }
       }
-    }*/
+    }
     
     
     
