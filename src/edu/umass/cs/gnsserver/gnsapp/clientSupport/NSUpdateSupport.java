@@ -136,7 +136,7 @@ public class NSUpdateSupport {
     if (!operation.equals(UpdateOperation.CREATE_INDEX)) {
       // Handle usual case
       NameRecord nameRecord = getNameRecord(guid, field, operation, app.getDB());
-      System.out.println("Name Record read "+nameRecord.toJSONObject());
+      
       updateNameRecord(header, nameRecord, guid, field, operation, updateValue, oldValue, argument, userJSON,
               app.getDB(), app.getActiveCodeHandler());
       return ResponseCode.NO_ERROR;

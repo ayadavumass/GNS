@@ -431,7 +431,6 @@ public class MongoRecords implements NoSQLRecords {
         }
       }
     }
-    System.out.println("updateIndividualFields "+updates);
     doUpdate(collectionName, guid, updates);
   }
 
