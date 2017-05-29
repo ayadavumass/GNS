@@ -88,7 +88,7 @@ public class NSUpdateSupport {
     ResponseCode errorCode = ResponseCode.NO_ERROR;
     assert (header != null);
     // No checks for local non-auth commands like verifyAccount or for mutual auth
-    if (!GNSProtocol.INTERNAL_QUERIER.toString().equals(writer)
+    /*if (!GNSProtocol.INTERNAL_QUERIER.toString().equals(writer)
             && !commandPacket.getCommandType().isMutualAuth()) {
       if (!header.verifyInternal()) {
         // This the standard auth check for most updates
@@ -118,7 +118,10 @@ public class NSUpdateSupport {
           }
         }
       }
-    }
+    }*/
+    
+    
+    
     // Check for stale commands.
     if (timestamp != null) {
       if (timestamp.before(DateUtils.addMinutes(new Date(),
@@ -133,6 +136,7 @@ public class NSUpdateSupport {
     if (!operation.equals(UpdateOperation.CREATE_INDEX)) {
       // Handle usual case
       NameRecord nameRecord = getNameRecord(guid, field, operation, app.getDB());
+      System.out.println("Name Record read "+nameRecord.toJSONObject());
       updateNameRecord(header, nameRecord, guid, field, operation, updateValue, oldValue, argument, userJSON,
               app.getDB(), app.getActiveCodeHandler());
       return ResponseCode.NO_ERROR;

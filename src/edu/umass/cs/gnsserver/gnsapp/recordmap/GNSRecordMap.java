@@ -102,7 +102,7 @@ public class GNSRecordMap<NodeIDType> extends BasicRecordMap {
   @Override
   public void updateEntireValuesMap(String name, ValuesMap valuesMap)
           throws FailedDBOperationException {
-    noSqlRecords.updateEntireRecord(collectionName, name, valuesMap);
+	  noSqlRecords.updateEntireRecord(collectionName, name, valuesMap);
   }
 
   @Override

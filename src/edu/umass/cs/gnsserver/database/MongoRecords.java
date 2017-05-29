@@ -42,7 +42,6 @@ import edu.umass.cs.gnsserver.gnsapp.recordmap.NameRecord;
 import edu.umass.cs.gnsserver.main.GNSConfig;
 import edu.umass.cs.gnsserver.utils.JSONUtils;
 import edu.umass.cs.gnsserver.utils.ValuesMap;
-import edu.umass.cs.reconfiguration.ReconfigurationConfig.RC;
 import edu.umass.cs.utils.Config;
 import edu.umass.cs.utils.DelayProfiler;
 import edu.umass.cs.utils.Util;
@@ -95,9 +94,10 @@ public class MongoRecords implements NoSQLRecords {
    * @param port port at which mongo is running. if port = -1, mongo connects to default port.
    */
   public MongoRecords(String nodeID, int port) {
-    init(nodeID, port);
+	  init(nodeID, port);
   }
-
+  
+  
   private void init(String nodeID, int mongoPort) {
     if (Config.getGlobalBoolean(GNSConfig.GNSC.IN_MEMORY_DB)) {
       return;
@@ -431,6 +431,7 @@ public class MongoRecords implements NoSQLRecords {
         }
       }
     }
+    System.out.println("updateIndividualFields "+updates);
     doUpdate(collectionName, guid, updates);
   }
 
