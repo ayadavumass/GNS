@@ -51,9 +51,13 @@ public class GNSAppUtil {
         	// parse non-JSON byteified form
         	return fromBytes(msgBytes);
         }
-        if (Util.oneIn(100)) {
-          DelayProfiler.updateDelayNano(
+        //FIXME: aditya: Sometimes request is null here, not sure if that is correct behavior  
+        if(request != null)
+        {
+        	if (Util.oneIn(100)) {
+        		DelayProfiler.updateDelayNano(
                   "getRequest." + request.getRequestType(), t);
+        	}
         }
       } catch (JSONException | UnsupportedEncodingException e) {
         throw new RequestParseException(e);
