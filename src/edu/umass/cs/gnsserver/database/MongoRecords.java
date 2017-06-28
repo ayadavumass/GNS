@@ -164,8 +164,11 @@ public class MongoRecords implements NoSQLRecords {
     MongoCollectionSpec spec = mongoCollectionSpecs.getCollectionSpec(collectionName);
     // Prepend this because of the way we store the records.
     // only integer values of index are allowed like 1, -1 etc. 
-    DBObject index2d = BasicDBObjectBuilder.start(NameRecord.VALUES_MAP.getName() + "." + field, 
-    						Integer.parseInt(index)).get();
+    //DBObject index2d = BasicDBObjectBuilder.start(NameRecord.VALUES_MAP.getName() + "." + field, 
+    //						Integer.parseInt(index)).get();
+    
+    DBObject index2d = BasicDBObjectBuilder.start(NameRecord.VALUES_MAP.getName() + "." + field,
+    					index).get();
     db.getCollection(spec.getName()).createIndex(index2d);
   }
 
