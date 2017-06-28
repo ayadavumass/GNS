@@ -124,12 +124,20 @@ public class NSAccessSupport {
   }
 
   private static int sigIndex = 0;
-
-  private synchronized static Signature getSignatureInstance() {
-    return signatureInstances[sigIndex++ % signatureInstances.length];
+  
+  private static Signature getSignatureInstance() 
+  {
+	  synchronized(signatureInstances)
+	  {
+		  //aditya: to prevent int overflow error
+		  // in a long running system with high request rate, sigIndex can overflow. 
+		  if(sigIndex>signatureInstances.length)
+			  sigIndex=0;
+		  return signatureInstances[sigIndex++ % signatureInstances.length];
+	  }
   }
 
-  private static synchronized boolean verifySignatureInternal(byte[] publickeyBytes, String signature, String message)
+  private static boolean verifySignatureInternal(byte[] publickeyBytes, String signature, String message)
           throws InvalidKeyException, SignatureException, UnsupportedEncodingException, InvalidKeySpecException {
 
     if (Config.getGlobalBoolean(GNSC.ENABLE_SECRET_KEY)) {
@@ -167,7 +175,7 @@ public class NSAccessSupport {
     }
   }
 
-  private static final MessageDigest[] mds = new MessageDigest[Runtime.getRuntime().availableProcessors()];
+  private static final MessageDigest[] mds = new MessageDigest[2*Runtime.getRuntime().availableProcessors()];
 
   static {
     for (int i = 0; i < mds.length; i++) {
@@ -182,7 +190,13 @@ public class NSAccessSupport {
   private static int mdIndex = 0;
 
   private static MessageDigest getMessageDigestInstance() {
-    return mds[mdIndex++ % mds.length];
+	  synchronized(mds)
+	  {
+		  if(mdIndex > mds.length)
+			  mdIndex  = 0;
+		  
+		  return mds[mdIndex++ % mds.length];
+	  }
   }
 
   private static final Cipher[] ciphers = new Cipher[2 * Runtime.getRuntime().availableProcessors()];
@@ -201,10 +215,16 @@ public class NSAccessSupport {
   private static int cipherIndex = 0;
 
   private static Cipher getCipherInstance() {
-    return ciphers[cipherIndex++ % ciphers.length];
+	  synchronized(ciphers)
+	  {
+		  if(cipherIndex > ciphers.length)
+			  cipherIndex = 0;
+		  
+		  return ciphers[cipherIndex++ % ciphers.length];
+	  }
   }
 
-  private static synchronized boolean verifySignatureInternalSecretKey(byte[] publickeyBytes, String signature, String message)
+  private static boolean verifySignatureInternalSecretKey(byte[] publickeyBytes, String signature, String message)
           throws InvalidKeyException, SignatureException, UnsupportedEncodingException, InvalidKeySpecException, NoSuchAlgorithmException, NoSuchPaddingException, IllegalBlockSizeException, BadPaddingException {
 
     PublicKey publicKey = keyFactory.generatePublic(new X509EncodedKeySpec(publickeyBytes));

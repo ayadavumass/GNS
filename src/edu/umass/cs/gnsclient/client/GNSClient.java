@@ -600,6 +600,16 @@ public class GNSClient {
 			return GNSAppUtil.getRequestStatic(bytes, header, unstringer);
 		}
 		
+		/**
+		 * Sets the maximum outstanding app requests in the {@link GNSClient},
+		 * which internally sets the maximum outstanding app requests in 
+		 * {@link ReconfigurableAppClientAsync}
+		 * @param n The maximum number of outstanding app requests to allow.
+		 */
+		public void setMaximumOutstandingAppRequests(int n)
+		{
+			ReconfigurableAppClientAsync.setMaxOutstandingAppRequests(n);
+		}
 		
 	} // End of AsyncClient
 
@@ -629,6 +639,18 @@ public class GNSClient {
 		this.forcedTimeout = t;
 		return this;
 	}
+	
+	/**
+	 * Sets the maximum outstanding app requests in the {@link GNSClient},
+	 * which internally sets the maximum outstanding app requests in 
+	 * {@link ReconfigurableAppClientAsync}
+	 * @param n The maximum number of outstanding app requests to allow.
+	 */
+	public void setMaximumOutstandingAppRequests(int n)
+	{
+		asyncClient.setMaximumOutstandingAppRequests(n);
+	}
+	
 
 	/* **************** Start of execute methods ****************** */
 	/**

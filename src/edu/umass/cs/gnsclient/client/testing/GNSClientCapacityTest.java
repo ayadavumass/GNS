@@ -3,6 +3,7 @@ package edu.umass.cs.gnsclient.client.testing;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -32,7 +33,6 @@ import edu.umass.cs.gnscommon.AclAccessType;
 import edu.umass.cs.gnscommon.GNSProtocol;
 import edu.umass.cs.gnscommon.exceptions.client.ClientException;
 import edu.umass.cs.gnscommon.exceptions.client.DuplicateNameException;
-import edu.umass.cs.gnscommon.packets.CommandPacket;
 import edu.umass.cs.utils.Config;
 import edu.umass.cs.utils.DefaultTest;
 import edu.umass.cs.utils.DelayProfiler;
@@ -95,7 +95,7 @@ public class GNSClientCapacityTest extends DefaultTest {
 	private static void setupClientsAndGuids() throws Exception {
 		clients = new GNSClient[numClients];
 		executor = (ThreadPoolExecutor) Executors
-				.newFixedThreadPool(50*numClients);
+				.newFixedThreadPool(numClients);
 		for (int i = 0; i < numClients; i++)
 			clients[i] = new GNSClientCommands();
 		@SuppressWarnings("deprecation")
@@ -127,8 +127,8 @@ public class GNSClientCapacityTest extends DefaultTest {
 		accessor = GuidUtils.lookupOrCreateAccountGuid(clients[0], accountGUIDPrefix+"_accessor", PASSWORD);
 				System.out.println("Created (" + (numAccountGuids - numPreExisting)
 				+ ") or found pre-existing (" + numPreExisting
-				+ ") a total of " + numAccountGuids + " account GUIDs: "
-				+ Arrays.asList(accountGuidEntries));
+				+ ") a total of " + numAccountGuids + " GUIDs.  Printing first 10 account GUIDs: "
+				+ Arrays.asList(accountGuidEntries).subList(0, 10));
 
 		if (accountGuidsOnly) {
 			for (int i = 0; i < accountGuidEntries.length; i++)
@@ -186,7 +186,8 @@ public class GNSClientCapacityTest extends DefaultTest {
 			assert (guidEntry != null);
 
 		System.out.println("Created or found " + guidEntries.length
-				+ " pre-existing sub-guids " + Arrays.asList(guidEntries));
+				+ " pre-existing sub-guids. Printing first 10 sub-guids "
+				+ Arrays.asList(guidEntries).subList(0, 10));
 	}
 
 	private static final String someField = "someField";
@@ -255,13 +256,13 @@ public class GNSClientCapacityTest extends DefaultTest {
 		});
 	}
 	
-	private void blockingWrite(int clientIndex, GuidEntry guid, int reqID) {
+	private void blockingWrite(int clientIndex, GuidEntry guid, int reqID, String field, String value) {
 		executor.submit(new Runnable() {
 
 			@Override
 			public void run() {
 				try {
-					clients[clientIndex].execute(GNSCommand.fieldUpdate(guid, someField, someValue));					
+					clients[clientIndex].execute(GNSCommand.fieldUpdate(guid, field, value));
 				} catch (ClientException | IOException e) {
 					log.severe("Client " + clientIndex + " failed to update "
 							+ guid);
@@ -320,7 +321,7 @@ public class GNSClientCapacityTest extends DefaultTest {
 		int numWrites = numWriteAndRemove;
 		long t = System.currentTimeMillis();
 		for (int i=0; i<numWrites; i++){
-			blockingWrite(i % numClients, guidEntries[0], i);
+			blockingWrite(i % numClients, guidEntries[0], i, someField, someValue);
 		}
 		System.out.print("[total_writes=" + numWrites+": ");
 		int lastCount = 0;
@@ -494,6 +495,40 @@ public class GNSClientCapacityTest extends DefaultTest {
 		System.out.print("] ");
 		System.out.print("parallel_remove_rate="
 				+ Util.df(numRemoves * 1.0 / (lastOpFinishedTime - t))
+				+ "K/s");
+	}
+	
+	/**
+	 * The test measures the write capacity by issuing updates to all GUIDs
+	 * in a round robin manner. This test updates the value of someField to a 
+	 * randomly chosen value.
+	 * 
+	 * @throws Exception The exception is thrown because of Thread.sleep method.
+	 */
+	@Test
+	public void test_22_ParralelWriteCapacityForAllGUIDs() throws Exception 
+	{
+		reset();
+		Random rand = new Random();
+		
+		int numWrites = Config.getGlobalInt(TC.NUM_REQUESTS);;
+		long t = System.currentTimeMillis();
+		for (int i=0; i<numWrites; i++){
+			blockingWrite(i % numClients, guidEntries[i%guidEntries.length], 
+					i, someField, someValue+rand.nextDouble());
+		}
+		System.out.print("[total_allguid_writes=" + numWrites+": ");
+		int lastCount = 0;
+		while (numFinishedOps < numWrites) {
+			if(numFinishedOps>lastCount)  {
+				lastCount = numFinishedOps;
+				System.out.print(numFinishedOps + "@" + Util.df(numFinishedOps * 1.0 / (lastOpFinishedTime - t))+"K/s ");
+			}
+			Thread.sleep(1000);
+		}
+		System.out.print("] ");
+		System.out.print("parallel_allguid_write_rate="
+				+ Util.df(numWrites * 1.0 / (lastOpFinishedTime - t))
 				+ "K/s");
 	}
 	

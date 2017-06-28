@@ -275,7 +275,16 @@ public class GNSConfig {
 	 * The class name to use for doing sanity checks while updating GNS
      * record. Must extend {@link edu.umass.cs.gnsserver.extensions.sanitycheck.AbstractSanityCheck}
      */
-    SANITY_CHECKER(NullSanityCheck.class.getName())
+    SANITY_CHECKER(NullSanityCheck.class.getName()),
+    
+    /**
+     * This is for MOB-893 - logging updates
+     * If true then updates to the GNS are logged separately.
+     * This should be false for any performance measurements, as it is 
+     * an additional logging outside the update protocol of the GNS.
+     */ 
+    LOG_GNS_UPDATES(false)
+    
     ;
 	  
     final Object defaultValue;
