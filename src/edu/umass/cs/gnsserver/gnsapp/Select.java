@@ -55,9 +55,7 @@ import edu.umass.cs.gnsserver.gnsapp.recordmap.NameRecord;
 import edu.umass.cs.gnsserver.interfaces.InternalRequestHeader;
 import edu.umass.cs.gnsserver.main.GNSConfig;
 import edu.umass.cs.reconfiguration.ReconfigurationConfig;
-import edu.umass.cs.reconfiguration.ReconfigurationConfig.RC;
 import edu.umass.cs.utils.Config;
-import edu.umass.cs.utils.DelayProfiler;
 
 import java.io.UnsupportedEncodingException;
 import java.net.InetSocketAddress;
@@ -139,11 +137,6 @@ public class Select
 	
 	private static final ConcurrentMap<Integer, SelectResponsePacket> QUERY_RESULT
           = new ConcurrentHashMap<>(10, 0.75f, 3);
-	
-	public static long lastTime    		= -1;
-	public static long incomingMongoReq = 0;
-	public static long outgoingMongoReq = 0;
-	public static final Object MONGO_CAP_LOCK = new Object();
 	
 	
 	public static JSONArray dummyResult;
@@ -572,28 +565,25 @@ public class Select
 	  // must be done before the notify below
 	  // we're done processing this select query
 	  QUERIES_IN_PROGRESS.remove(packet.getNsQueryId());
-	  JSONArray guidArray = info.getResponseGUIDsSet();
+	  //JSONArray guidArray = info.getResponseGUIDsSet();
 	  
-	 // System.out.println("Result size length "+guidArray.length() +" "+guidArray);
+   Set<JSONObject> allRecords = info.getResponsesAsSet();
+   // Todo - clean up this use of guids further below in the group code
+   Set<String> guids = extractGuidsFromRecords(allRecords);
+   LOGGER.log(Level.FINE,
+           "NS{0} guids:{1}",
+           new Object[]{replica.getNodeID(), guids});
    
-//   Set<JSONObject> allRecords = info.getResponsesAsSet();
-//   // Todo - clean up this use of guids further below in the group code
-//   Set<String> guids = extractGuidsFromRecords(allRecords);
-//   LOGGER.log(Level.FINE,
-//           "NS{0} guids:{1}",
-//           new Object[]{replica.getNodeID(), guids});
-	  
-   //SelectResponsePacket response;
-  SelectResponsePacket response = SelectResponsePacket.makeSuccessPacketForFullRecords(packet.getId(),
-          null, -1, -1, null, guidArray);
+   SelectResponsePacket response;
+//  SelectResponsePacket response = SelectResponsePacket.makeSuccessPacketForFullRecords(packet.getId(),
+//          null, -1, -1, null, guidArray);
 
   //System.out.println("GNS Internal resp null proj"+response);
    // If projection is null we return guids (old-style).
-   /*if (info.getProjection() == null) 
+   if (info.getProjection() == null) 
    {
    	response = SelectResponsePacket.makeSuccessPacketForGuidsOnly(packet.getId(),
              null, -1, null, new JSONArray(guids));
-   	System.out.println("GNS Internal resp null proj"+response);
    	// Otherwise we return a list of records.
    } else 
    {
@@ -603,8 +593,7 @@ public class Select
              new Object[]{replica.getNodeID(), records});
    	response = SelectResponsePacket.makeSuccessPacketForFullRecords(packet.getId(),
              null, -1, -1, null, new JSONArray(records));
-   	System.out.println("GNS Internal resp "+response);
-   }*/
+   }
   
    // Put the result where the coordinator can see it.
    QUERY_RESULT.put(packet.getNsQueryId(), response);
@@ -673,18 +662,9 @@ public class Select
           GNSApplicationInterface<String> ar) throws FailedDBOperationException 
   {
 	  if(nomongoEnabled)
-	    {
-	    	return dummyResult; 
-	    }
-	  
-	  long s = System.nanoTime();
-  	if(Config.getGlobalBoolean(RC.ENABLE_INSTRUMENTATION))
-  	{
-	    	synchronized(MONGO_CAP_LOCK)
-	    	{
-	    		incomingMongoReq++;
-	    	}
-  	}
+	  {
+		  return dummyResult; 
+	  }
   	
     JSONArray jsonRecords = new JSONArray();
     // actually only need name and values map... fix this
@@ -723,32 +703,7 @@ public class Select
       LOGGER.log(Level.FINE, "NS{0} record returned: {1}", new Object[]{ar.getNodeID(), record});
       jsonRecords.put(record);
     }
-	
-    // FIXME: remove this code into a general throughput profiler. 
-    if(Config.getGlobalBoolean(RC.ENABLE_INSTRUMENTATION))
-	{
-		DelayProfiler.updateDelayNano("getJSONRecordsForSelect", s);
-		synchronized(MONGO_CAP_LOCK)
-		{
-			outgoingMongoReq++;
-			if(lastTime == -1)
-			{
-				lastTime = System.currentTimeMillis();
-			}
-			
-			long curr = System.currentTimeMillis() - lastTime;
-			if(curr > 5000)
-			{
-				curr = curr/1000;
-				System.out.println("MongoIncomingRate "+(incomingMongoReq/curr) +" reqs/s"
-					  	+" MongoOutgoingRate "+(outgoingMongoReq/curr) +" reqs/s");
-				incomingMongoReq = 0;
-				outgoingMongoReq = 0;
-				lastTime = System.currentTimeMillis();
-			}
-		}
-	}
-	
+    
     return jsonRecords;
   }
 

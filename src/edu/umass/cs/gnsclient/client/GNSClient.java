@@ -504,8 +504,6 @@ public class GNSClient {
 				boolean checkConnectivity) throws IOException {
 			super(reconfigurators, sslMode, clientPortOffset, checkConnectivity);
 			this.enableJSONPackets();
-			
-			AsyncClient.setMaxOutstandingAppRequests(100000);
 		}
 
 		/**
