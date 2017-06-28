@@ -32,6 +32,7 @@ import java.util.jar.Manifest;
 import java.util.logging.Logger;
 
 import edu.umass.cs.gnsclient.client.GNSClientConfig;
+import edu.umass.cs.gnsserver.extensions.sanitycheck.NullSanityCheck;
 import edu.umass.cs.utils.Config;
 
 /**
@@ -268,9 +269,15 @@ public class GNSConfig {
      * TODO: Once we completely move to the custom CNS based non-blocking select class then 
      * the above two flags can be removed.
      */
-    SELECT_CLASS("");
+    SELECT_CLASS(""),
+    
+	/** 
+	 * The class name to use for doing sanity checks while updating GNS
+     * record. Must extend {@link edu.umass.cs.gnsserver.extensions.sanitycheck.AbstractSanityCheck}
+     */
+    SANITY_CHECKER(NullSanityCheck.class.getName())
+    ;
 	  
-
     final Object defaultValue;
     final boolean unsafeTestingOnly;
 
