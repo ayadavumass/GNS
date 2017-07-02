@@ -355,6 +355,9 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
         }
         case COMMAND:
         {
+        	GNSConfig.getLogger().log(Level.FINEST,"GNSConfig: Recvd command {0}", 
+        			new Object[]{request});
+        			
         	if(this.enableCNSSelect && ((CommandPacket) request).getCommandType().isSelect())
         	{
         		// in select command , doNotReplyToClient will be false,
@@ -362,6 +365,7 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
         		// checking this here because the CNS select internally replies to the client.
         		assert(!doNotReplyToClient);
         		this.selectPolicy.handleSelectRequestFromClient((CommandPacket) request);
+        		
         	}
         	else
         	{
