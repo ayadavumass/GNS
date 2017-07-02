@@ -54,8 +54,6 @@ import edu.umass.cs.gnsserver.nodeconfig.GNSNodeConfig;
 import edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.ClientRequestHandler;
 import edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commandSupport.Admintercessor;
 import edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commandSupport.CommandHandler;
-import edu.umass.cs.gnsserver.gnsapp.cns.selectpolicy.AbstractSelectPolicy;
-import edu.umass.cs.gnsserver.gnsapp.nonblockingselect.AbstractSelect;
 import edu.umass.cs.gnsserver.gnsapp.packet.BasicPacketWithClientAddress;
 import edu.umass.cs.gnsserver.gnamed.DnsTranslator;
 import edu.umass.cs.gnsserver.gnamed.UdpDnsServer;
@@ -68,6 +66,7 @@ import edu.umass.cs.gnsserver.gnsapp.packet.PacketInterface;
 import edu.umass.cs.gnsserver.gnsapp.recordmap.BasicRecordMap;
 import edu.umass.cs.gnsserver.gnsapp.recordmap.GNSRecordMap;
 import edu.umass.cs.gnsserver.gnsapp.recordmap.NameRecord;
+import edu.umass.cs.gnsserver.gnsapp.selectpolicy.AbstractSelectPolicy;
 import edu.umass.cs.gnsserver.httpserver.GNSHttpServer;
 import edu.umass.cs.gnsserver.httpserver.GNSHttpsServer;
 import edu.umass.cs.gnsserver.localnameserver.LocalNameServer;
@@ -128,26 +127,16 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
     }
   }, DEFAULT_REQUEST_TIMEOUT);
   
+  
   /**
-   * A policy to decide the nodes at which the GNS should process a select request. 
-   * FIXME: For correctness of select request results, the select policy depends on the type 
-   * of demand profile used for reconfiguration. Right now, there is no check in the system
-   * to tell a user if the specified select policy and the demand profile are incompatible, i.e., 
-   * a select request will return wrong results. 
+   * A policy for processing select requests.
+   * The object of this class is created using reflection by reading the
+   * classpath from the gigapaxosConfig file. 
    */
   private AbstractSelectPolicy selectPolicy;
-  
-  
-  /**
-   * This object is responsible for select processing. 
-   * The object is created based on the reflection using the 
-   * classpath specified in the gns config files.
-   * 
-   */
-  private AbstractSelect selectProcessor;
 
   /**
-   * This flag is controlled by GNSC.GNSC.ENABLE_CNS_SELECT
+   * This flag is controlled by {@link GNSConfig#GNSC#ENABLE_CNS_SELECT}
    * By default it is false for now.
    * But if it is true then a non-blocking cns select implementation
    * is used. If it is false then blocking gnsApp.Select is used. 
@@ -356,7 +345,7 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
         {
         	if(this.enableCNSSelect)
         	{
-        		this.selectProcessor.handleSelectResponseFromNS((SelectResponsePacket) request);
+        		this.selectPolicy.handleSelectResponseFromNS((SelectResponsePacket) request);
         	}
         	else
         	{
@@ -370,8 +359,9 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
         	{
         		// in select command , doNotReplyToClient will be false,
         		// as this NS is the originating NS for the select request.
+        		// checking this here because the CNS select internally replies to the client.
         		assert(!doNotReplyToClient);
-        		this.selectProcessor.handleSelectRequestFromClient((CommandPacket) request);
+        		this.selectPolicy.handleSelectRequestFromClient((CommandPacket) request);
         	}
         	else
         	{
@@ -453,9 +443,9 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
   }
   
   @Override
-  public AbstractSelectPolicy getSelectPolicy() 
+  public SSLMessenger<String, JSONObject> getSSLMessenger() 
   {
-	  return this.selectPolicy;
+	  return this.messenger;
   }
   
   /**
@@ -548,10 +538,11 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
       contextServiceGNSClient = new ContextServiceGNSClient(host, port);
       GNSConfig.getLogger().fine("ContextServiceGNSClient initialization completed");
     }
-    this.initializeSelectPolicy();
-    
-    this.initializeSelectProcessor();
-    
+    this.enableCNSSelect = Config.getGlobalBoolean(GNSConfig.GNSC.ENABLE_CNS_SELECT);
+    if(this.enableCNSSelect)
+    {
+    	this.initializeSelectPolicy();
+    }
     constructed = true;
   }
   
@@ -892,19 +883,19 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
   
   @Override
   public ActiveCodeHandler getActiveCodeHandler() {
-    return activeCodeHandler;
+	  return activeCodeHandler;
   }
   
   @Override
   public ClientRequestHandlerInterface getRequestHandler() {
-    return requestHandler;
+	  return requestHandler;
   }
-
+  
   /**
    * @return ContextServiceGNSInterface
    */
   public ContextServiceGNSInterface getContextServiceGNSClient() {
-    return contextServiceGNSClient;
+	  return contextServiceGNSClient;
   }
 
   private void startDNS() throws SecurityException, SocketException,
@@ -948,10 +939,9 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
   
   private void initializeSelectPolicy()
   {
-	  String selectPolicyClassName = Config.getGlobalString(GNSConfig.GNSC.SELECT_POLICY_TYPE);
+	  String selectPolicyClassName = Config.getGlobalString(GNSConfig.GNSC.SELECT_POLICY);
 	  
 	  Class<?> selectClass = null;
-	  
 	  try
 	  {
 		  selectClass = Class.forName(selectPolicyClassName);
@@ -959,65 +949,26 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
 	  catch (ClassNotFoundException e) 
 	  {
 		  GNSConfig.getLogger().log(Level.WARNING, 
-				  "Error in creating the select policy class at classpath "+
-				   selectPolicyClassName +". The error is "+e.getMessage()+" .\n "
-				   + "Falling back to the default select policy "+ 
-				   GNSConfig.GNSC.SELECT_POLICY_TYPE.getDefaultValue());
+				  "Error in creating the select policy object for class {0}."
+						  + " The error is {1}"
+						  + "Disabling CNS select "
+						  , new Object[]{selectPolicyClassName, e.getMessage()});
 		  
-		  try
-		  {
-			  selectClass = Class.forName(GNSConfig.GNSC.SELECT_POLICY_TYPE.getDefaultValue().toString());
-		  } catch (ClassNotFoundException e1) 
-		  {
-			  // this exception should not be there as it is a default class.
-			  e1.printStackTrace();
-		  }
+		  this.enableCNSSelect = false;
 	  }
 	  if(selectClass != null)
 	  {
-		  this.selectPolicy = AbstractSelectPolicy.createSelectPolicy(selectClass);
-		  assert(this.selectPolicy != null);
+		  this.selectPolicy = AbstractSelectPolicy.createSelectObject(selectClass, this);
 		  
 		  if(this.selectPolicy == null)
 		  {
-			  //FIXME: need to get it checked if this is the correct exception 
-			  // handling here.
-			  throw new RuntimeException("Unable to create object for the class "
-	    												+selectClass.getCanonicalName());
+			  GNSConfig.getLogger().log(Level.WARNING, 
+					  "Failed in creating the select policy object for class {0}."
+							  + "Disabling CNS select "
+							  , new Object[]{selectPolicyClassName});
+			  this.enableCNSSelect = false;
 		  }
 	  }
   }
   
-  
-  private void initializeSelectProcessor()
-  {
-	  this.enableCNSSelect = Config.getGlobalBoolean(GNSConfig.GNSC.ENABLE_CNS_SELECT);
-	  
-	  if(enableCNSSelect)
-	  {
-		  String selectClassName = Config.getGlobalString(GNSConfig.GNSC.SELECT_CLASS);
-		  Class<?> selectClass = null;
-		  try
-		  {
-			  selectClass = Class.forName(selectClassName);
-	      }
-		  catch (ClassNotFoundException e) 
-		  {
-			  throw new RuntimeException("Unable to find class "
-						+selectClassName);
-	      }
-		  
-		  if(selectClass != null)
-	  	  {
-	  		  this.selectProcessor = AbstractSelect.createSelectObject(selectClass, this);
-	  		  assert(this.selectProcessor != null);
-	  		  
-	  		  if(this.selectProcessor == null)
-	  		  {
-	  			  throw new RuntimeException("Unable to create object for the class "
-	  	    												+selectClass.getCanonicalName());
-	  		  }
-	  	  }
-	  }
-  }
 }

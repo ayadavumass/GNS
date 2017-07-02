@@ -1,36 +1,41 @@
-package edu.umass.cs.gnsserver.gnsapp.nonblockingselect;
-
+package edu.umass.cs.gnsserver.gnsapp.selectpolicy;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.net.InetSocketAddress;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.concurrent.Future;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.json.JSONException;
 
+import edu.umass.cs.gigapaxos.PaxosConfig;
 import edu.umass.cs.gnscommon.packets.CommandPacket;
-import edu.umass.cs.gnsserver.gnsapp.GNSApp;
+import edu.umass.cs.gnsserver.gnsapp.GNSApplicationInterface;
 import edu.umass.cs.gnsserver.gnsapp.packet.SelectRequestPacket;
 import edu.umass.cs.gnsserver.gnsapp.packet.SelectResponsePacket;
 
+
 /**
- * This class defines the methods that a select request processing class
- * should implement. This class replaces 
- * edu.umass.cs.gnsserver.gnsapp.Select class in the GNS.
- * The GNS takes the select request processing classpath as
- * input from config files and creates an object using reflection. Ideally, the 
- * select processing class would be included in the CNS project. 
+ * This class is an abstract class for specifying a select policy.
+ * 
+ * The object of this class is created based on Java reflection, 
+ * by taking the class name as input from the GNS config files. 
+ * The child class must implement a constructor that takes {@link GNSApplicationInterface}
+ * as input. This class also has a cyclic dependency with {@link GNSApp} but that is needed
+ * to perform signature checking for select requests. 
  * 
  * @author ayadav
  */
-public abstract class AbstractSelect 
-{	
-	protected static final Logger LOG = Logger.getLogger(AbstractSelect.class.getName());
+public abstract class AbstractSelectPolicy
+{
+	protected static final Logger LOG = Logger.getLogger(AbstractSelectPolicy.class.getName());
 	
-	protected final GNSApp gnsApp;
+	protected final GNSApplicationInterface<String> gnsApp;
 	
-	
-	public AbstractSelect(GNSApp gnsApp)
+	public AbstractSelectPolicy(GNSApplicationInterface<String> gnsApp)
 	{
 		this.gnsApp = gnsApp;
 	}
@@ -45,15 +50,15 @@ public abstract class AbstractSelect
 	 * The  GNSApp.execute(.) method doesn't need to block for the completion of a
 	 * SelectRequest, i.e., GNSApp.execute calls handleSelectRequestFromClient method and 
 	 * this method forwards the select request to the  required NSs and returns. 
-	 * @param request
-	 * @return Returns {@link SelectFuture}, which the caller of handleSelectRequestFromClient can use 
+	 * @param request, the incoming request
+	 * @return Returns {@link Future}, which the caller of handleSelectRequestFromClient can use 
 	 * to wait for the completion. 
 	 */
-	public abstract SelectFuture handleSelectRequestFromClient(CommandPacket request) throws JSONException;
+	public abstract Future<Boolean> handleSelectRequestFromClient(CommandPacket request);
 	
 	
 	/**
-	 * This method is called in the SELECT_REQUEST case of GNAApp.execute(.)
+	 * This method is called in the {@link SELECT_REQUEST} case of {@link GNAApp#execute}
 	 * This method is called on NSs that process a select request and return GUIDs  
 	 * to the select request originating NS. 
 	 * 
@@ -80,15 +85,16 @@ public abstract class AbstractSelect
 	
 	/**
 	 * Creates the object of clazz by reflection. clazz will be a child class of
-	 * AbstractSelect whose class path will be specified in the GNS config files.
+	 * {@link AbstractSelectPolicy} whose class path will be specified in the GNS config files.
 	 * @param clazz
 	 * @return
 	 */
-	public static AbstractSelect createSelectObject(Class<?> clazz, GNSApp gnsApp) 
+	public static AbstractSelectPolicy createSelectObject(Class<?> clazz, 
+											GNSApplicationInterface<?> gnsApp) 
 	{
 		try 
 		{
-			return (AbstractSelect) clazz.getConstructor(GNSApp.class).newInstance(gnsApp);
+			return (AbstractSelectPolicy) clazz.getConstructor(GNSApplicationInterface.class).newInstance(gnsApp);
 		} catch (InstantiationException | IllegalAccessException
 				| IllegalArgumentException | InvocationTargetException
 				| NoSuchMethodException | SecurityException e) {
@@ -97,5 +103,21 @@ public abstract class AbstractSelect
 			e.printStackTrace();
 		}
 		return null;
+	}
+	
+	
+	/**
+	 * The code below reads actives once from files on the disk.
+	 */
+	private static Set<InetSocketAddress> currActives = new HashSet<>(PaxosConfig.getActives().values());
+	
+	/**
+	 * Fetches the current set of actives. Currently it fetches by reading the gns config files, but 
+	 * a TODO: is to directly fetch these from reconfigurators, which is a good design. 
+	 * @return
+	 */
+	protected Set<InetSocketAddress> fetchCurrentActives()
+	{
+		return currActives;
 	}
 }

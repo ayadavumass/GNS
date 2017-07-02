@@ -250,12 +250,6 @@ public class GNSConfig {
      * Temporary - The use of this will go away at some point.
      */
     DISABLE_ACTIVE_CODE(true),
-    /**
-     * Specifies the select policy type.
-     * An abstract select policy and the default select policy is in 
-     * edu.umass.cs.gnsserver.gnsapp.cns.selectpolicy package.
-     */
-    SELECT_POLICY_TYPE("edu.umass.cs.gnsserver.gnsapp.cns.selectpolicy.ReplicateAllSelectPolicy"),
     
     /**
      * If the flag is true then a custom select implementation is used
@@ -264,12 +258,10 @@ public class GNSConfig {
     ENABLE_CNS_SELECT(false),
     
     /**
-     * Specifies the classpath for the select processing class. 
-     * For the specified class to be used ENABLE_CNS_SELECT should be set to true.
-     * TODO: Once we completely move to the custom CNS based non-blocking select class then 
-     * the above two flags can be removed.
+     * Specifies the select policy type.
+     * This policy is only used with {@link #ENABLE_CNS_SELECT} is true.
      */
-    SELECT_CLASS(""),
+    SELECT_POLICY(""),
     
 	/** 
 	 * The class name to use for doing sanity checks while updating GNS
@@ -284,19 +276,18 @@ public class GNSConfig {
      * an additional logging outside the update protocol of the GNS.
      */ 
     LOG_GNS_UPDATES(false)
-    
     ;
 	  
     final Object defaultValue;
     final boolean unsafeTestingOnly;
 
     GNSC(Object defaultValue) {
-      this(defaultValue, false);
+    	this(defaultValue, false);
     }
 
     GNSC(Object defaultValue, boolean testingOnly) {
-      this.defaultValue = defaultValue;
-      this.unsafeTestingOnly = testingOnly;
+    	this.defaultValue = defaultValue;
+    	this.unsafeTestingOnly = testingOnly;
     }
 
     /**
@@ -306,7 +297,7 @@ public class GNSConfig {
      */
     @Override
     public Object getDefaultValue() {
-      return this.defaultValue;
+    	return this.defaultValue;
     }
 
     private static Class<?> noSqlRecordsclass = getNoSqlRecordsClass();

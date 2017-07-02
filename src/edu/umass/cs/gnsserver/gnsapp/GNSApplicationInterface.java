@@ -24,8 +24,8 @@ import edu.umass.cs.gigapaxos.interfaces.Request;
 import edu.umass.cs.gnscommon.packets.CommandPacket;
 import edu.umass.cs.gnsserver.activecode.ActiveCodeHandler;
 import edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.ClientRequestHandlerInterface;
-import edu.umass.cs.gnsserver.gnsapp.cns.selectpolicy.AbstractSelectPolicy;
 import edu.umass.cs.gnsserver.gnsapp.recordmap.BasicRecordMap;
+import edu.umass.cs.nio.interfaces.SSLMessenger;
 
 import java.io.IOException;
 
@@ -108,8 +108,8 @@ public interface GNSApplicationInterface<NodeIDType> {
   ActiveCodeHandler getActiveCodeHandler();
   
   /**
-   * Returns the select policy.
-   * @return
+   * 
+   * @return returns {@link SSLMessenger}
    */
-  public AbstractSelectPolicy getSelectPolicy();
+  public SSLMessenger<String, JSONObject> getSSLMessenger();
 }

@@ -20,6 +20,7 @@
 package edu.umass.cs.gnsserver.gnsapp;
 
 import edu.umass.cs.contextservice.utils.Utils;
+import edu.umass.cs.gigapaxos.PaxosConfig;
 /*
  * Copyright (C) 2014
  * University of Massachusetts
@@ -209,10 +210,7 @@ public class Select
             + " Request: Forwarding request for "
             + packet.getGuid() != null ? packet.getGuid() : "non-guid select");   
 	  
-	  //Set<InetSocketAddress> serverAddresses = new HashSet<>(PaxosConfig.getActives().values());
-	  
-	  Set<InetSocketAddress> serverAddresses = app.getSelectPolicy().getNodesForSelectRequest(packet);
-	  //Set<String> serverIds = app.getGNSNodeConfig().getActiveReplicas();
+	  Set<InetSocketAddress> serverAddresses = new HashSet<>(PaxosConfig.getActives().values());
     
 	  // store the info for later
 	  int queryId = addQueryInfo(serverAddresses, packet.getSelectOperation(), packet.getGroupBehavior(),
