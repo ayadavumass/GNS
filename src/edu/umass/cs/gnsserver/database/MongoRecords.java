@@ -23,7 +23,6 @@ import com.mongodb.BasicDBList;
 import com.mongodb.BasicDBObject;
 import com.mongodb.BasicDBObjectBuilder;
 import com.mongodb.BulkWriteOperation;
-import com.mongodb.BulkWriteResult;
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
 import com.mongodb.DBCursor;
@@ -65,19 +64,19 @@ import java.util.logging.Level;
  * @author westy, Abhigyan, arun
  */
 public class MongoRecords implements NoSQLRecords {
-
+	
   private static final String DBROOTNAME = "UMASS_GNS_DB_";
   /**
    * The name of the document where name records are stored.
    */
   public static final String DBNAMERECORD = "NameRecord";
-
+  
   private DB db;
   private String dbName;
-
+  
   private MongoClient mongoClient;
   private MongoCollectionSpecs mongoCollectionSpecs;
-
+  
   /**
    * Creates database tables for nodeID, by connecting to mongoDB on default port.
    *
@@ -428,7 +427,7 @@ public class MongoRecords implements NoSQLRecords {
       }
     }
     // Maybe check the result?
-    BulkWriteResult result = unordered.execute();
+    unordered.execute();
   }
 
   @Override
@@ -739,7 +738,9 @@ public class MongoRecords implements NoSQLRecords {
     // Always return the guid
     result.put(NameRecord.NAME.getName(), "true");
     // Put this in so the upstream receiver knows that it is a GUID record
-    result.put(NameRecord.VALUES_MAP.getName() + "." + AccountAccess.GUID_INFO, "true");
+    //aditya: This is a big field, as it contains publickey in string form, so not fetching
+    // this, and it is also not needed as all records are GUID records.
+    //result.put(NameRecord.VALUES_MAP.getName() + "." + AccountAccess.GUID_INFO, "true");
     // Add all the fields in the projection
     for (String field : fields) {
       result.put(NameRecord.VALUES_MAP.getName() + "." + field, "true");
@@ -789,19 +790,17 @@ public class MongoRecords implements NoSQLRecords {
     }
     String dbName = DBROOTNAME + sanitizeDBName(nodeID);
     mongoClient.dropDatabase(dbName);
-
+    
     List<String> names = mongoClient.getDatabaseNames();
     for (String name : names) {
       if (name.startsWith(dbName)) {
         mongoClient.dropDatabase(name);
       }
     }
-
     System.out.println("Dropped DB " + dbName);
   }
-
+  
   private static String sanitizeDBName(String nodeID) {
     return nodeID.replace('.', '_');
   }
-
 }

@@ -33,6 +33,7 @@ import java.util.logging.Logger;
 
 import edu.umass.cs.gnsclient.client.GNSClientConfig;
 import edu.umass.cs.gnsserver.extensions.sanitycheck.NullSanityCheck;
+import edu.umass.cs.reconfiguration.reconfigurationutils.ReconfigurationRecord;
 import edu.umass.cs.utils.Config;
 
 /**
@@ -223,15 +224,6 @@ public class GNSConfig {
     // Contect Name Service
     //
     /**
-     * If set to true enables update forwarding to CNS
-     */
-    ENABLE_CNS(false),
-    /**
-     * Ip address:port of one node of CNS. If ENABLE_CNS is set to true then
-     * this option should definitely be set.
-     */
-    CNS_NODE_ADDRESS(NONE),
-    /**
      * The alias of the private key in the java keyStore.
      */
     PRIVATE_KEY_ALIAS("node100"),
@@ -254,7 +246,39 @@ public class GNSConfig {
      * The class name to use for doing sanity checks while updating GNS
      * record. Must extend {@link edu.umass.cs.gnsserver.extensions.sanitycheck.AbstractSanityCheck}
      */
-    SANITY_CHECKER(NullSanityCheck.class.getName())
+    SANITY_CHECKER(NullSanityCheck.class.getName()),
+    
+    /** If the flag is true then a custom select implementation is used.
+     * If it is false the blocking {@link edu.umass.cs.gnsserver.gnsapp.Select} 
+     * is used.
+     */
+    ENABLE_CNS_SELECT(false),
+    
+    /**
+     * Specifies the select policy type.
+     * This policy is only used when {@link #ENABLE_CNS_SELECT} is true.
+     */
+    SELECT_POLICY(""),
+    
+    
+    /**
+     * This is for MOB-893 - logging updates
+     * If true then updates to the GNS are logged separately.
+     * This should be false for any performance measurements, as it is 
+     * an additional logging outside the update protocol of the GNS.
+     */ 
+    LOG_GNS_UPDATES(false),
+    
+    
+    /**
+     * This macro specifies the reconfigure on active change policy
+     * for GUIDs. {@link ReconfigurationRecord.ReconfigureUponActivesChange} 
+     * enum specifies the set of values. 
+     * The default value is {@link ReconfigurationRecord.ReconfigureUponActivesChange#DEFAULT},
+     * which means the GUIDs are not reconfigured on change of actives.
+     */
+    RECONFIGURE_ON_ACTIVE_CHANGE_POLICY(ReconfigurationRecord.ReconfigureUponActivesChange.DEFAULT)
+    
     ;
 
     final Object defaultValue;

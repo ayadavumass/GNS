@@ -604,9 +604,19 @@ public class FieldAccess {
       return null;
     }
   }
-
-  private static boolean signatureCheckForSelect(String reader, String signature,
+  
+  /**
+   * Performs the signature checks for the select requests. 
+   * 
+   * @param reader
+   * @param signature
+   * @param message
+   * @param app
+   * @return
+   */
+  public static boolean signatureCheckForSelect(String reader, String signature,
           String message, GNSApplicationInterface<String> app) {
+	  //aditya: made this method public as it is used by the CNS select
     try {
       if (signature == null || reader == null) {
         // Return true... later check will catch fields that aren't world readable

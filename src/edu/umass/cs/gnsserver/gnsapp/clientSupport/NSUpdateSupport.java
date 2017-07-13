@@ -25,6 +25,7 @@ import edu.umass.cs.gnsserver.gnsapp.recordmap.BasicRecordMap;
 import edu.umass.cs.gnsserver.gnsapp.recordmap.NameRecord;
 import edu.umass.cs.gnsserver.interfaces.InternalRequestHeader;
 import edu.umass.cs.gnsserver.main.GNSConfig;
+import edu.umass.cs.gnsserver.main.GNSConfig.GNSC;
 import edu.umass.cs.gnsserver.utils.ResultValue;
 import edu.umass.cs.gnsserver.utils.ValuesMap;
 import edu.umass.cs.utils.Config;
@@ -181,7 +182,8 @@ public class NSUpdateSupport {
     // Apply updateEntireValuesMap to record in the database
     nameRecord.updateNameRecord(field, updateValue, oldValue, argument, newValue, operation);
     // This is for MOB-893 - logging updates
-    writeUpdateLog(guid, field, updateValue, newValue, operation);
+    if(Config.getGlobalBoolean(GNSC.LOG_GNS_UPDATES))
+    	writeUpdateLog(guid, field, updateValue, newValue, operation);
   }
 
   // This is for MOB-893 - logging updates

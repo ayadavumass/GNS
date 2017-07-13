@@ -15,8 +15,6 @@
  * Initial developer(s): Westy, arun */
 package edu.umass.cs.gnsserver.gnsapp;
 
-import edu.umass.cs.contextservice.integration.ContextServiceGNSClient;
-import edu.umass.cs.contextservice.integration.ContextServiceGNSInterface;
 import edu.umass.cs.gigapaxos.interfaces.AppRequestParserBytes;
 import edu.umass.cs.gigapaxos.interfaces.ClientMessenger;
 import edu.umass.cs.gigapaxos.interfaces.ClientRequest;
@@ -66,6 +64,7 @@ import edu.umass.cs.gnsserver.gnsapp.packet.PacketInterface;
 import edu.umass.cs.gnsserver.gnsapp.recordmap.BasicRecordMap;
 import edu.umass.cs.gnsserver.gnsapp.recordmap.GNSRecordMap;
 import edu.umass.cs.gnsserver.gnsapp.recordmap.NameRecord;
+import edu.umass.cs.gnsserver.gnsapp.selectpolicy.AbstractSelectPolicy;
 import edu.umass.cs.gnsserver.httpserver.GNSHttpServer;
 import edu.umass.cs.gnsserver.httpserver.GNSHttpsServer;
 import edu.umass.cs.gnsserver.localnameserver.LocalNameServer;
@@ -125,6 +124,29 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
     public void callbackGC(Object key, Object value) {
     }
   }, DEFAULT_REQUEST_TIMEOUT);
+  
+  
+  /**
+   * This flag is controlled by {@link GNSConfig#GNSC#ENABLE_CNS_SELECT}
+   * By default it is false for now.
+   * But if it is true then a non-blocking cns select implementation
+   * is used. If it is false then blocking gnsApp.Select is used. 
+   */
+  private boolean enableCNSSelect;
+  
+  /**
+   * A policy for processing select requests.
+   * The object of this class is created using reflection by reading the
+   * classpath from the gigapaxosConfig file. This policy 
+   * is used when {@link #enableCNSSelect} is true. 
+   */
+  private AbstractSelectPolicy selectPolicy;
+  
+  
+  
+  
+  
+  
 
   /* It's silly to enqueue requests when all GNS calls are blocking anyway. We
    * now use a simpler and more sensible sendToClient method that tracks the
@@ -137,11 +159,6 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
    * Active code handler
    */
   private ActiveCodeHandler activeCodeHandler;
-
-  /**
-   * context service interface
-   */
-  private ContextServiceGNSInterface contextServiceGNSClient;
 
   /**
    * The non-secure http server
@@ -271,7 +288,6 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
    * @param doNotReplyToClient
    * @return true if the command is successfully executed
    */
-  @SuppressWarnings("unchecked")
   // we explicitly check type
   @Override
   public boolean execute(Request request, boolean doNotReplyToClient) {
@@ -314,17 +330,42 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
         return true;
       }
 
-
       switch (packetType) {
         case SELECT_REQUEST:
           Select.handleSelectRequest((SelectRequestPacket) request, this);
           break;
         case SELECT_RESPONSE:
-          Select.handleSelectResponse((SelectResponsePacket) request, this);
-          break;
+        {
+        	//Select.handleSelectResponse((SelectResponsePacket) request, this);
+        	if(this.enableCNSSelect)
+        	{
+        		this.selectPolicy.handleSelectResponseFromNS((SelectResponsePacket) request);
+        	}
+        	else
+        	{
+        		Select.handleSelectResponse((SelectResponsePacket) request, this);
+        	}
+        	break;
+        }
         case COMMAND:
-          CommandHandler.handleCommandPacket((CommandPacket) request, doNotReplyToClient, this);
-          break;
+        {
+        	GNSConfig.getLogger().log(Level.FINEST,"GNSConfig: Recvd command {0}", 
+        			new Object[]{request});
+        	
+        	if(this.enableCNSSelect && ((CommandPacket) request).getCommandType().isSelect())
+        	{
+        		// In the select command , doNotReplyToClient will be false,
+        		// as this NS is the originating NS for the select request.
+        		// checking this here because the CNS select internally replies to the client.
+        		assert(!doNotReplyToClient);
+        		this.selectPolicy.handleSelectRequestFromClient((CommandPacket) request);
+        	}
+        	else
+        	{
+        		CommandHandler.handleCommandPacket((CommandPacket) request, doNotReplyToClient, this);
+        	}
+        	break;
+        }
         case ADMIN_COMMAND:
           CommandHandler.handleCommandPacket((AdminCommandPacket) request, doNotReplyToClient, this);
           break;
@@ -351,7 +392,7 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
                           : null});
         this.outstanding.remove(((RequestIdentifier) request).getRequestID());
       }
-
+      
     } catch (JSONException | IOException | ClientException | InternalRequestException e) {
       e.printStackTrace();
     } catch (FailedDBOperationException e) {
@@ -397,7 +438,13 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
       this.requestHandler.getInternalClient().close();
     }
   }
-
+  
+  @Override
+  public SSLMessenger<String, JSONObject> getSSLMessenger()
+  {
+	  return this.messenger;
+  }
+  
   /**
    * Actually creates the application. This strange way of constructing the application
    * is because of legacy code that used the createAppCoordinator interface.
@@ -471,25 +518,17 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
     }
     this.activeCodeHandler = !Config.getGlobalBoolean(GNSConfig.GNSC.DISABLE_ACTIVE_CODE)
             ? new ActiveCodeHandler(nodeID) : null;
-
-    // context service init
-    if (Config.getGlobalBoolean(GNSConfig.GNSC.ENABLE_CNS)) {
-      String nodeAddressString = Config.getGlobalString(GNSConfig.GNSC.CNS_NODE_ADDRESS);
-
-      String[] parsed = nodeAddressString.split(":");
-
-      assert (parsed.length == 2);
-
-      String host = parsed[0];
-      int port = Integer.parseInt(parsed[1]);
-      GNSConfig.getLogger().fine("ContextServiceGNSClient initialization started");
-      contextServiceGNSClient = new ContextServiceGNSClient(host, port);
-      GNSConfig.getLogger().fine("ContextServiceGNSClient initialization completed");
+            
+    this.enableCNSSelect = Config.getGlobalBoolean(GNSConfig.GNSC.ENABLE_CNS_SELECT);
+    
+    if(this.enableCNSSelect)
+    {
+    	this.initializeSelectPolicy();
     }
-
+    
     constructed = true;
   }
-
+  
   // For InterfaceApplication
   /**
    *
@@ -823,14 +862,7 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
   public ClientRequestHandlerInterface getRequestHandler() {
     return requestHandler;
   }
-
-  /**
-   * @return ContextServiceGNSInterface
-   */
-  public ContextServiceGNSInterface getContextServiceGNSClient() {
-    return contextServiceGNSClient;
-  }
-
+  
   private void startDNS() throws SecurityException, SocketException,
           UnknownHostException {
     try {
@@ -868,5 +900,36 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
               + "If you want DNS run the server using sudo.");
     }
   }
-
+  
+  private void initializeSelectPolicy()
+  {
+	  String selectPolicyClassName = Config.getGlobalString(GNSConfig.GNSC.SELECT_POLICY);
+	  Class<?> selectClass = null;
+	  try
+	  {
+		  selectClass = Class.forName(selectPolicyClassName);
+	  }
+	  catch (ClassNotFoundException e) 
+	  {
+		  GNSConfig.getLogger().log(Level.WARNING, 
+				  "Error in creating the select policy object for class {0}."
+						  + " The error is {1}"
+						  + "Disabling CNS select "
+						  , new Object[]{selectPolicyClassName, e.getMessage()});
+		  this.enableCNSSelect = false;
+	  }
+	  if(selectClass != null)
+	  {
+		  this.selectPolicy = AbstractSelectPolicy.createSelectObject(selectClass, this);
+		  
+		  if(this.selectPolicy == null)
+		  {
+			  GNSConfig.getLogger().log(Level.WARNING, 
+					  "Failed in creating the select policy object for class {0}."
+							  + "Disabling CNS select "
+							  , new Object[]{selectPolicyClassName});
+			  this.enableCNSSelect = false;
+		  }
+	  }
+  }
 }
