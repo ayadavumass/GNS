@@ -19,7 +19,7 @@
  */
 package edu.umass.cs.gnsserver.gnsapp;
 
-import edu.umass.cs.contextservice.integration.ContextServiceGNSInterface;
+
 import edu.umass.cs.gigapaxos.interfaces.Request;
 import edu.umass.cs.gnscommon.packets.CommandPacket;
 import edu.umass.cs.gnsserver.activecode.ActiveCodeHandler;
@@ -38,8 +38,8 @@ import org.json.JSONObject;
  * @author westy
  * @param <NodeIDType>
  */
-public interface GNSApplicationInterface<NodeIDType> {
-
+public interface GNSApplicationInterface<NodeIDType> 
+{	
   /**
    * Returns the node id.
    *
@@ -89,17 +89,12 @@ public interface GNSApplicationInterface<NodeIDType> {
 		  throws IOException;
   
   /**
-   * @return ContextServiceGNSInterface
-   */
-  public ContextServiceGNSInterface getContextServiceGNSClient();
-  
-  /**
    * Returns the request handler.
    *
    * @return the request handler
    */
   ClientRequestHandlerInterface getRequestHandler();
-
+  
   /**
    * Returns the active code handler.
    *
@@ -109,7 +104,7 @@ public interface GNSApplicationInterface<NodeIDType> {
   
   /**
    * 
-   * @return returns {@link SSLMessenger}
+   * @return the SSLMessenger 
    */
   public SSLMessenger<String, JSONObject> getSSLMessenger();
 }

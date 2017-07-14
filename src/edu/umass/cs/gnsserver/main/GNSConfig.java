@@ -224,15 +224,6 @@ public class GNSConfig {
     // Contect Name Service
     //
     /**
-     * If set to true enables update forwarding to CNS
-     */
-    ENABLE_CNS(false),
-    /**
-     * Ip address:port of one node of CNS. If ENABLE_CNS is set to true then
-     * this option should definitely be set.
-     */
-    CNS_NODE_ADDRESS(NONE),
-    /**
      * The alias of the private key in the java keyStore.
      */
     PRIVATE_KEY_ALIAS("node100"),
@@ -251,24 +242,26 @@ public class GNSConfig {
      * Temporary - The use of this will go away at some point.
      */
     DISABLE_ACTIVE_CODE(true),
-    
-    /**
-     * If the flag is true then a custom select implementation is used
-     * If it is false the blocking gnsApp.Select is used.
-     */
-    ENABLE_CNS_SELECT(false),
-    
-    /**
-     * Specifies the select policy type.
-     * This policy is only used with {@link #ENABLE_CNS_SELECT} is true.
-     */
-    SELECT_POLICY(""),
-    
+       
 	/** 
 	 * The class name to use for doing sanity checks while updating GNS
      * record. Must extend {@link edu.umass.cs.gnsserver.extensions.sanitycheck.AbstractSanityCheck}
      */
     SANITY_CHECKER(NullSanityCheck.class.getName()),
+    
+
+    /** If the flag is true then a custom select implementation is used.
+     * If it is false the blocking {@link edu.umass.cs.gnsserver.gnsapp.Select} 
+     * is used.
+     */
+    ENABLE_CUSTOM_SELECT(false),
+    
+    /**
+     * Specifies the select policy type.
+     * This policy is only used when {@link #ENABLE_CNS_SELECT} is true.
+     */
+    SELECT_POLICY(""),
+    
     
     /**
      * This is for MOB-893 - logging updates

@@ -18,7 +18,6 @@ package edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commandSupport;
 import edu.umass.cs.gnsclient.client.CommandUtils;
 import edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commands.CommandModule;
 import edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commands.AbstractCommand;
-import edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commands.data.AbstractUpdate;
 import edu.umass.cs.gnscommon.GNSProtocol;
 import edu.umass.cs.gnscommon.ResponseCode;
 import edu.umass.cs.gnscommon.exceptions.server.InternalRequestException;
@@ -78,6 +77,16 @@ public class CommandHandler {
             app.getRequestHandler(), doNotReplyToClient, app);
   }
   
+  /**
+   * Returns the command module. Mainly used
+   * by CNS selects, outside this class. 
+   * @return
+   */
+  public static CommandModule getCommandModule()
+  {
+	  return commandModule;
+  }
+  
   private static final long LONG_DELAY_THRESHOLD = 1;
   
   private static void runCommand(CommandPacket commandPacket,
@@ -130,35 +139,23 @@ public class CommandHandler {
         ClientCommandProcessorConfig.getLogger().log(Level.SEVERE,
                 "Problem replying to command: {0}", e);
       }
-
     } catch (JSONException e) {
       ClientCommandProcessorConfig.getLogger().log(Level.SEVERE,
               "{0}: problem  executing command: {1}",
               new Object[]{handler.getApp(), e});
       e.printStackTrace();
     }
-
-    // reply to client is true, this means this is the active replica
-    // that recvd the request from the gnsClient. So, let's check for
-    // sending trigger to Context service here.
-    if (Config.getGlobalBoolean(GNSConfig.GNSC.ENABLE_CNS)) {
-      if (!doNotReplyToClient) {
-
-        if (command.getClass().getSuperclass() == AbstractUpdate.class) 
-        {
-        	JSONObject jsonFormattedCommand = PacketUtils.getCommand(commandPacket);
-        	GNSConfig.getLogger().log(Level.FINE, "{0} sending trigger to context service for {1}:{2}",
-                          new Object[]{handler.getApp(), command,
-                            jsonFormattedCommand});
-
-          app.getContextServiceGNSClient().sendTiggerOnGnsCommand(
-                  jsonFormattedCommand, command, false);
-        }
-      }
-    }
-    
   }
   
+  /**
+   * FIXME: aditya: Made this method public, as it needs to be used
+   * by the CNS select. But not sure what this method actually does 
+   * for adding the documentation.
+   * 
+   * @param commandPacket
+   * @return
+   * @throws JSONException
+   */
   public static CommandPacket addMessageWithoutSignatureToCommand(
           CommandPacket commandPacket) throws JSONException {
     JSONObject command = PacketUtils.getCommand(commandPacket);

@@ -19,7 +19,6 @@
  */
 package edu.umass.cs.gnsserver.gnsapp;
 
-import edu.umass.cs.contextservice.utils.Utils;
 import edu.umass.cs.gigapaxos.PaxosConfig;
 /*
  * Copyright (C) 2014
@@ -139,33 +138,6 @@ public class Select
 	private static final ConcurrentMap<Integer, SelectResponsePacket> QUERY_RESULT
           = new ConcurrentHashMap<>(10, 0.75f, 3);
 	
-	
-	public static JSONArray dummyResult;
-	// if true then mongodb is bypassed and the dummy result is returned.
-	
-	public static boolean nomongoEnabled = false;
-	static
-	{
-		if(nomongoEnabled)
-		{
-			dummyResult = new JSONArray();
-			for(int i=0; i<19; i++)
-			{
-				String guidAlias = "GUID"+i;
-				String guid = Utils.getSHA1(guidAlias);
-				JSONObject recordJSON = new JSONObject();
-				try {
-					recordJSON.put(NameRecord.NAME.getName(), guid);
-				} catch (JSONException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-				dummyResult.put(recordJSON);
-			}
-			System.out.println("No mongo enabled. Dummy GUID list "+dummyResult);
-		}
-	}
-	
   /**
    * Handles a select request that was received from a client.
    *
@@ -208,12 +180,15 @@ public class Select
   {  
 	  LOGGER.fine(packet.getSelectOperation().toString()
             + " Request: Forwarding request for "
-            + packet.getGuid() != null ? packet.getGuid() : "non-guid select");   
-	  
-	  Set<InetSocketAddress> serverAddresses = new HashSet<>(PaxosConfig.getActives().values());
+            + packet.getGuid() != null ? packet.getGuid() : "non-guid select");
     
-	  // store the info for later
-	  int queryId = addQueryInfo(serverAddresses, packet.getSelectOperation(), packet.getGroupBehavior(),
+    // If it's not a group lookup or is but enough time has passed we do the usual thing
+    // and send the request out to all the servers. We'll receive a response sent on the flipside.
+    Set<InetSocketAddress> serverAddresses = new HashSet<>(PaxosConfig.getActives().values());
+    //Set<String> serverIds = app.getGNSNodeConfig().getActiveReplicas();
+    
+    // store the info for later
+    int queryId = addQueryInfo(serverAddresses, packet.getSelectOperation(), packet.getGroupBehavior(),
             packet.getQuery(), packet.getProjection(), packet.getMinRefreshInterval(), packet.getGuid());
     
     
@@ -260,6 +235,7 @@ public class Select
     }
     return null;
   }
+  
   
   private static SelectResponsePacket getMySelectedRecords(
           SelectRequestPacket request,
@@ -313,17 +289,15 @@ public class Select
       // grab the records
       JSONArray jsonRecords = getJSONRecordsForSelect(request, app);
       jsonRecords = aclCheckFilterReturnedRecord(request, jsonRecords, request.getReader(), app);
-      
       SelectResponsePacket response = SelectResponsePacket.makeSuccessPacketForFullRecords(request.getId(),
               request.getClientAddress(),
               request.getCcpQueryId(), request.getNsQueryId(), app.getNodeAddress(), jsonRecords);
-    	
-    	LOGGER.log(Level.FINE,
-              "NS {0} sending back {1} record(s) in response to {2}",
-              new Object[]{app.getNodeID(), jsonRecords.length(), request.getSummary()});
+      LOGGER.log(Level.FINE,
+              "NS {0} sending back {1} record(s) in response to {2}. Actual records: {3}",
+              new Object[]{app.getNodeID(), jsonRecords.length(), request.getSummary(), jsonRecords});
+      // and send them back to the originating NS
+      app.sendToAddress(request.getNSReturnAddress(), response.toJSONObject());
 
-    	// and send them back to the originating NS
-    	app.sendToAddress(request.getNSReturnAddress(), response.toJSONObject());
     } catch (FailedDBOperationException | JSONException | IOException e) {
       LOGGER.log(Level.SEVERE, "Exception while handling select request: {0}", e);
       SelectResponsePacket failResponse = SelectResponsePacket.makeFailPacket(request.getId(),
@@ -370,21 +344,22 @@ public class Select
           String reader, GNSApplicationInterface<String> app) {
     JSONArray result = new JSONArray();
     for (int i = 0; i < records.length(); i++) {
+    	JSONObject record = null;
       try {
-        JSONObject record = records.getJSONObject(i);
+    	  record = records.getJSONObject(i);
         String guid = record.getString(NameRecord.NAME.getName());
         List<String> queryFields = getFieldsForQueryType(packet);
         ResponseCode responseCode = NSAuthentication.signatureAndACLCheck(null, guid, null, queryFields, reader,
                 null, null, MetaDataTypeName.READ_WHITELIST, app, true);
-        LOGGER.log(Level.FINE, "{0} ACL check for select: guid={0} queryFields={1} responsecode={2}",
+        LOGGER.log(Level.FINE, "{0} ACL check for select: guid={1} queryFields={2} responsecode={3}",
                 new Object[]{app.getNodeID(), guid, queryFields, responseCode});
         if (responseCode.isOKResult()) {
           result.put(record);
         }
-      } catch (JSONException | InvalidKeyException | InvalidKeySpecException | SignatureException | NoSuchAlgorithmException | FailedDBOperationException | UnsupportedEncodingException e) {
-        // ignore json errros
-        LOGGER.log(Level.FINE, "{0} Problem getting guid from json: {1}",
-                new Object[]{app.getNodeID(), e.getMessage()});
+      } catch (JSONException | InvalidKeyException | InvalidKeySpecException | SignatureException | NoSuchAlgorithmException | FailedDBOperationException | UnsupportedEncodingException e) 
+      {
+    	  LOGGER.log(Level.WARNING, "{0} Problem getting guid from json {1}, error {2}",
+                new Object[]{app.getNodeID(), record, e.getMessage()});
       }
     }
     return result;
@@ -402,34 +377,39 @@ public class Select
   private static JSONArray aclCheckFilterFields(SelectRequestPacket packet, JSONArray records,
           String reader, GNSApplicationInterface<String> app) {
     for (int i = 0; i < records.length(); i++) {
+    	JSONObject record = null;
       try {
-        JSONObject record = records.getJSONObject(i);
+        record = records.getJSONObject(i);
         String guid = record.getString(NameRecord.NAME.getName());
-        // Look at the keys in the values map
-        JSONObject valuesMap = record.getJSONObject(NameRecord.VALUES_MAP.getName());
-        Iterator<?> keys = valuesMap.keys();
-        while (keys.hasNext()) {
-          String field = (String) keys.next();
-          if (!InternalField.isInternalField(field)) {
-            LOGGER.log(Level.FINE, "{0} Checking: {1}", new Object[]{app.getNodeID(), field});
-            ResponseCode responseCode = NSAuthentication.signatureAndACLCheck(null, guid, field, null, reader,
-                    null, null, MetaDataTypeName.READ_WHITELIST, app, true);
-            if (!responseCode.isOKResult()) {
-              LOGGER.log(Level.FINE, "{0} Removing: {1}", new Object[]{app.getNodeID(), field});
-              // removing the offending field
-              keys.remove();
-            }
-          }
+        
+        if(record.has(NameRecord.VALUES_MAP.getName()))
+        {
+	        // Look at the keys in the values map
+	        JSONObject valuesMap = record.getJSONObject(NameRecord.VALUES_MAP.getName());
+	        Iterator<?> keys = valuesMap.keys();
+	        while (keys.hasNext()) {
+	          String field = (String) keys.next();
+	          if (!InternalField.isInternalField(field)) {
+	            LOGGER.log(Level.FINE, "{0} Checking: {1}", new Object[]{app.getNodeID(), field});
+	            ResponseCode responseCode = NSAuthentication.signatureAndACLCheck(null, guid, field, null, reader,
+	                    null, null, MetaDataTypeName.READ_WHITELIST, app, true);
+	            if (!responseCode.isOKResult()) {
+	              LOGGER.log(Level.FINE, "{0} Removing: {1}", new Object[]{app.getNodeID(), field});
+	              // removing the offending field
+	              keys.remove();
+	            }
+	          }
+	        }
         }
       } catch (JSONException | InvalidKeyException | InvalidKeySpecException | SignatureException | NoSuchAlgorithmException | FailedDBOperationException | UnsupportedEncodingException e) {
         // ignore json errros
-        LOGGER.log(Level.FINE, "{0} Problem getting guid from json: {1}",
-                new Object[]{app.getNodeID(), e.getMessage()});
+        LOGGER.log(Level.WARNING, "{0} Problem getting guid from json {1}, error  {2}",
+                new Object[]{app.getNodeID(), record, e.getMessage()});
       }
     }
     return records;
   }
-
+  
   // Returns the fields that present in a query.
   private static List<String> getFieldsForQueryType(SelectRequestPacket request) {
     switch (request.getSelectOperation()) {
@@ -512,49 +492,6 @@ public class Select
     }
   }
   
-  // If all the servers have sent us a response we're done.
-  /*private static void handledAllServersResponded(InternalRequestHeader header,
-          SelectResponsePacket packet, NSSelectInfo info,
-          GNSApplicationInterface<String> replica) throws JSONException,
-          ClientException, IOException, InternalRequestException {
-    // must be done before the notify below
-    // we're done processing this select query
-    QUERIES_IN_PROGRESS.remove(packet.getNsQueryId());
-
-    Set<JSONObject> allRecords = info.getResponsesAsSet();
-    // Todo - clean up this use of guids further below in the group code
-    Set<String> guids = extractGuidsFromRecords(allRecords);
-    LOGGER.log(Level.FINE,
-            "NS{0} guids:{1}",
-            new Object[]{replica.getNodeID(), guids});
-
-    SelectResponsePacket response;
-    // If projection is null we return guids (old-style).
-    if (info.getProjection() == null) 
-    {
-    	response = SelectResponsePacket.makeSuccessPacketForGuidsOnly(packet.getId(),
-              null, -1, null, new JSONArray(guids));
-    	// Otherwise we return a list of records.
-    } else 
-    {
-    	List<JSONObject> records = filterAndMassageRecords(allRecords);
-    	LOGGER.log(Level.FINE,
-              "NS{0} record:{1}",
-              new Object[]{replica.getNodeID(), records});
-    	response = SelectResponsePacket.makeSuccessPacketForFullRecords(packet.getId(),
-              null, -1, -1, null, new JSONArray(records));
-    }
-
-    // Put the result where the coordinator can see it.
-    QUERY_RESULT.put(packet.getNsQueryId(), response);
-    // and let the coordinator know the value is there
-    if (GNSApp.DELEGATE_CLIENT_MESSAGING) {
-      synchronized (QUERIES_IN_PROGRESS) {
-        QUERIES_IN_PROGRESS.notify();
-      }
-    }
-  }*/
-  
   //If all the servers have sent us a response we're done.
   private static void handledAllServersResponded(InternalRequestHeader header,
          SelectResponsePacket packet, NSSelectInfo info,
@@ -603,8 +540,14 @@ public class Select
    } 
  }
   
-  // Converts a record from the database into something we can return to 
-  // the user. Adds the "_GUID" and removes internal fields.
+  
+  /**
+   * Converts a record from the database into a format thhat we can return to 
+   * the user. Adds the "_GUID" and removes internal fields.
+   * 
+   * @param records
+   * @return
+   */
   public static List<JSONObject> filterAndMassageRecords(Set<JSONObject> records) {
     List<JSONObject> result = new ArrayList<>();
     for (JSONObject record : records) {
@@ -613,23 +556,34 @@ public class Select
         // add the _GUID record
         newRecord.put("_GUID", record.getString(NameRecord.NAME.getName()));
         //Now add all the non-internal records from the valuesMap
-        JSONObject valuesMap = record.getJSONObject(NameRecord.VALUES_MAP.getName());
-        Iterator<?> keyIter = valuesMap.keys();
-        while (keyIter.hasNext()) {
-          String key = (String) keyIter.next();
-          if (!InternalField.isInternalField(key)) {
-            newRecord.put(key, valuesMap.get(key));
-          }
+        if(record.has(NameRecord.VALUES_MAP.getName()))
+        {
+	        JSONObject valuesMap = record.getJSONObject(NameRecord.VALUES_MAP.getName());
+	        Iterator<?> keyIter = valuesMap.keys();
+	        while (keyIter.hasNext()) {
+	          String key = (String) keyIter.next();
+	          if (!InternalField.isInternalField(key)) {
+	            newRecord.put(key, valuesMap.get(key));
+	          }
+	        }
         }
+        
         result.add(newRecord);
       } catch (JSONException e) {
+    	  LOGGER.log(Level.WARNING, "JSONException in filterAndMassageRecords ");
       }
     }
     return result;
   }
   
-  // Pulls the guids out of the record to return to the user for "old-style" 
-  // select calls.
+
+  /**
+   * Pulls the guids out of the record to return to the user for "old-style" 
+   * select calls.
+   * 
+   * @param records
+   * @return
+   */
   public static Set<String> extractGuidsFromRecords(Set<JSONObject> records) {
     Set<String> result = new HashSet<>();
     for (JSONObject json : records) {
@@ -659,11 +613,6 @@ public class Select
   private static JSONArray getJSONRecordsForSelect(SelectRequestPacket request,
           GNSApplicationInterface<String> ar) throws FailedDBOperationException 
   {
-	  if(nomongoEnabled)
-	  {
-		  return dummyResult; 
-	  }
-  	
     JSONArray jsonRecords = new JSONArray();
     // actually only need name and values map... fix this
     AbstractRecordCursor cursor = null;
@@ -703,47 +652,34 @@ public class Select
     }
     
     return jsonRecords;
-  }
-
-  // Takes the JSON records that are returned from an NS and stuffs the into the NSSelectInfo record
-  public static void processJSONRecords(JSONArray jsonArray, NSSelectInfo info,
-          GNSApplicationInterface<String> ar) throws JSONException 
-  {
-	  int length = jsonArray.length();
-	  LOGGER.log(Level.FINE,
-            "NS{0} processing {1} records", new Object[]{ar.getNodeID(), length});
-	  
-	  for (int i = 0; i < length; i++) 
-	  {
-		  JSONObject record = jsonArray.getJSONObject(i);
-		  
-		  //if (isGuidRecord(record)) 
-		  { 
-			  // Filter out any non-guids
-			  String name = record.getString(NameRecord.NAME.getName());
-			  if (info.addResponseIfNotSeenYet(name, record)) 
-			  {
-				  LOGGER.log(Level.FINE, "NS{0} added record {1}", new Object[]{ar.getNodeID(), record});
-			  } 
-			  else 
-			  {
-				  LOGGER.log(Level.FINE, "NS{0} already saw record {1}", new Object[]{ar.getNodeID(), record});
-			  }
-		  } 
-//		  else 
-//		  {
-//			  LOGGER.log(Level.FINE, "NS{0} not a guid record {1}", new Object[]{ar.getNodeID(), record});
-//		  }
-	  }
-  }
+  }  
   
-  /*private static boolean isGuidRecord(JSONObject json) {
-    JSONObject valuesMap = json.optJSONObject(NameRecord.VALUES_MAP.getName());
-    if (valuesMap != null) {
-      return valuesMap.has(AccountAccess.GUID_INFO);
+  
+  /**
+   * Takes the JSON records that are returned from an NS and 
+   * stuffs the into the {@link NSSelectInfo} record
+   * 
+   * @param jsonArray
+   * @param info
+   * @param ar
+   * 
+   * @throws JSONException if there is any JSON parsing exception. 
+   */
+  public static void processJSONRecords(JSONArray jsonArray, NSSelectInfo info,
+          GNSApplicationInterface<String> ar) throws JSONException {
+    int length = jsonArray.length();
+    LOGGER.log(Level.FINE,
+            "NS{0} processing {1} records", new Object[]{ar.getNodeID(), length});
+    for (int i = 0; i < length; i++) {
+    	JSONObject record = jsonArray.getJSONObject(i);
+        String name = record.getString(NameRecord.NAME.getName());
+        if (info.addResponseIfNotSeenYet(name, record)) {
+          LOGGER.log(Level.FINE, "NS{0} added record {1}", new Object[]{ar.getNodeID(), record});
+        } else {
+          LOGGER.log(Level.FINE, "NS{0} already saw record {1}", new Object[]{ar.getNodeID(), record});
+        }
     }
-    return false;
-  }*/
+  }
   
   /**
    * Returns true if a query contains operations that are not allowed.

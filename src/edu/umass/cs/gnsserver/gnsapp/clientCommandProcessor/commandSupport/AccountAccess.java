@@ -814,17 +814,15 @@ public class AccountAccess {
           throws IOException {
     try {
       ResponseCode returnCode;
-      // First try to createField the HRN record to make sure this name
-      // isn't already registered
       ReconfigureUponActivesChange activesChangePolicy = 
-    		  	ReconfigureUponActivesChange.valueOf(ReconfigureUponActivesChange.class, 
-      		Config.getGlobalString(GNSConfig.GNSC.RECONFIGURE_ON_ACTIVE_CHANGE_POLICY));
+    		  ReconfigureUponActivesChange.valueOf(ReconfigureUponActivesChange.class, 
+    				  Config.getGlobalString(GNSConfig.GNSC.RECONFIGURE_ON_ACTIVE_CHANGE_POLICY));
       
       JSONObject jsonHRN = new JSONObject();
       jsonHRN.put(HRN_GUID, guid);
       returnCode = handler.getInternalClient().createOrExists(
               new CreateServiceName(name, jsonHRN.toString(), activesChangePolicy));
-      
+
       String boundGUID = null;
       if (!returnCode.isExceptionOrError()
               || (guid.equals(boundGUID = HRNMatchingGUIDExists(header, handler, returnCode, name,
@@ -1133,8 +1131,8 @@ public class AccountAccess {
     boolean createdName = false, createdGUID = false;
     try {
     	ReconfigureUponActivesChange activesChangePolicy = 
-    		  	ReconfigureUponActivesChange.valueOf(ReconfigureUponActivesChange.class, 
-      		Config.getGlobalString(GNSConfig.GNSC.RECONFIGURE_ON_ACTIVE_CHANGE_POLICY));
+    			ReconfigureUponActivesChange.valueOf(ReconfigureUponActivesChange.class,
+    					Config.getGlobalString(GNSConfig.GNSC.RECONFIGURE_ON_ACTIVE_CHANGE_POLICY));
     	
       JSONObject jsonHRN = new JSONObject();
       jsonHRN.put(HRN_GUID, guid);
@@ -1332,10 +1330,11 @@ public class AccountAccess {
         nameStates.put(key, hrnMap.get(key).toString());
       }
       ReconfigureUponActivesChange activesChangePolicy = 
-  		  	ReconfigureUponActivesChange.valueOf(ReconfigureUponActivesChange.class, 
-    		Config.getGlobalString(GNSConfig.GNSC.RECONFIGURE_ON_ACTIVE_CHANGE_POLICY));
+    		  ReconfigureUponActivesChange.valueOf(ReconfigureUponActivesChange.class, 
+    				  Config.getGlobalString(GNSConfig.GNSC.RECONFIGURE_ON_ACTIVE_CHANGE_POLICY));
       
-      if (!(returnCode = handler.getInternalClient().createOrExists(new CreateServiceName(nameStates, activesChangePolicy)))
+      if (!(returnCode = handler.getInternalClient().createOrExists(
+    		  new CreateServiceName(nameStates, activesChangePolicy)))
               .isExceptionOrError()) {
         // now we update the account info
         if (updateAccountInfoNoAuthentication(header, commandPacket, accountInfo,
@@ -1344,7 +1343,8 @@ public class AccountAccess {
           for (String key : guidInfoMap.keySet()) {
             guidInfoNameStates.put(key, guidInfoMap.get(key).toString());
           }
-          handler.getInternalClient().createOrExists(new CreateServiceName(guidInfoNameStates, activesChangePolicy));
+          handler.getInternalClient().createOrExists(
+        		  new CreateServiceName(guidInfoNameStates, activesChangePolicy));
 
           GNSConfig.getLogger().info(DelayProfiler.getStats());
           return new CommandResponse(ResponseCode.NO_ERROR,
@@ -1592,15 +1592,15 @@ public class AccountAccess {
     // insure that that name does not already exist
     try {
     	ReconfigureUponActivesChange activesChangePolicy = 
-      		  	ReconfigureUponActivesChange.valueOf(ReconfigureUponActivesChange.class, 
-        		Config.getGlobalString(GNSConfig.GNSC.RECONFIGURE_ON_ACTIVE_CHANGE_POLICY));
-    	
+    			ReconfigureUponActivesChange.valueOf(ReconfigureUponActivesChange.class, 
+    					Config.getGlobalString(GNSConfig.GNSC.RECONFIGURE_ON_ACTIVE_CHANGE_POLICY));
+      
       ResponseCode returnCode;
       JSONObject jsonHRN = new JSONObject();
       jsonHRN.put(HRN_GUID, accountInfo.getGuid());
       if ((returnCode
               = handler.getInternalClient().createOrExists(
-         new CreateServiceName(alias, jsonHRN.toString(), activesChangePolicy))).isExceptionOrError()) {
+            		  new CreateServiceName(alias, jsonHRN.toString(), activesChangePolicy))).isExceptionOrError()) {
         // roll this back
         accountInfo.removeAlias(alias);
         return new CommandResponse(returnCode,
