@@ -252,7 +252,7 @@ public class GNSConfig {
      * If it is false the blocking {@link edu.umass.cs.gnsserver.gnsapp.Select} 
      * is used.
      */
-    ENABLE_CNS_SELECT(false),
+    ENABLE_CUSTOM_SELECT(false),
     
     /**
      * Specifies the select policy type.

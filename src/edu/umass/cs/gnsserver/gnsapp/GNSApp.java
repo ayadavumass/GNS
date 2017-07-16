@@ -127,18 +127,18 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
   
   
   /**
-   * This flag is controlled by {@link GNSConfig#GNSC#ENABLE_CNS_SELECT}
+   * This flag is controlled by {@link GNSConfig#GNSC#ENABLE_CUSTOM_SELECT}
    * By default it is false for now.
    * But if it is true then a non-blocking cns select implementation
    * is used. If it is false then blocking gnsApp.Select is used. 
    */
-  private boolean enableCNSSelect;
+  private boolean enableCustomSelect;
   
   /**
    * A policy for processing select requests.
    * The object of this class is created using reflection by reading the
    * classpath from the gigapaxosConfig file. This policy 
-   * is used when {@link #enableCNSSelect} is true. 
+   * is used when {@link #enableCustomSelect} is true. 
    */
   private AbstractSelectPolicy selectPolicy;
   
@@ -337,7 +337,7 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
         case SELECT_RESPONSE:
         {
         	//Select.handleSelectResponse((SelectResponsePacket) request, this);
-        	if(this.enableCNSSelect)
+        	if(this.enableCustomSelect)
         	{
         		this.selectPolicy.handleSelectResponseFromNS((SelectResponsePacket) request);
         	}
@@ -352,7 +352,7 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
         	GNSConfig.getLogger().log(Level.FINEST,"GNSConfig: Recvd command {0}", 
         			new Object[]{request});
         	
-        	if(this.enableCNSSelect && ((CommandPacket) request).getCommandType().isSelect())
+        	if(this.enableCustomSelect && ((CommandPacket) request).getCommandType().isSelect())
         	{
         		// In the select command , doNotReplyToClient will be false,
         		// as this NS is the originating NS for the select request.
@@ -519,9 +519,9 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
     this.activeCodeHandler = !Config.getGlobalBoolean(GNSConfig.GNSC.DISABLE_ACTIVE_CODE)
             ? new ActiveCodeHandler(nodeID) : null;
             
-    this.enableCNSSelect = Config.getGlobalBoolean(GNSConfig.GNSC.ENABLE_CNS_SELECT);
+    this.enableCustomSelect = Config.getGlobalBoolean(GNSConfig.GNSC.ENABLE_CUSTOM_SELECT);
     
-    if(this.enableCNSSelect)
+    if(this.enableCustomSelect)
     {
     	this.initializeSelectPolicy();
     }
@@ -916,7 +916,7 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
 						  + " The error is {1}"
 						  + "Disabling CNS select "
 						  , new Object[]{selectPolicyClassName, e.getMessage()});
-		  this.enableCNSSelect = false;
+		  this.enableCustomSelect = false;
 	  }
 	  if(selectClass != null)
 	  {
@@ -928,7 +928,7 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
 					  "Failed in creating the select policy object for class {0}."
 							  + "Disabling CNS select "
 							  , new Object[]{selectPolicyClassName});
-			  this.enableCNSSelect = false;
+			  this.enableCustomSelect = false;
 		  }
 	  }
   }
