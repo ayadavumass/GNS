@@ -266,7 +266,8 @@ public class Select {
     }
     return null;
   }
-
+  
+  
   
   private static SelectResponsePacket getMySelectedRecords(
           SelectRequestPacket request,
@@ -294,7 +295,7 @@ public class Select {
     }
     return response;
   }
-
+  
   /**
    * Handle a select request from the collecting NS. This is what other NSs do when they
    * get a SelectRequestPacket from the NS that originally received the packet (the one that is collecting
@@ -512,7 +513,7 @@ public class Select {
               new Object[]{replica.getNodeID(), info.serversYetToRespond()});
     }
   }
-
+  
   // If all the servers have sent us a response we're done.
   private static void handledAllServersResponded(InternalRequestHeader header,
           SelectResponsePacket packet, NSSelectInfo info,
@@ -682,7 +683,7 @@ public class Select {
       jsonRecords.put(record);
     }
     return jsonRecords;
-  }  
+  }
   
   
   /**
@@ -710,7 +711,7 @@ public class Select {
         }
     }
   }
-
+  
   /**
    * Returns true if a query contains operations that are not allowed.
    * Currently $where is not allowed as well as attempts to use
@@ -728,7 +729,7 @@ public class Select {
       return false;
     }
   }
-
+  
   // Traverses the json looking for a key that contains the string
   private static boolean jsonObjectKeyContains(String key, JSONObject jsonObject) {
     LOGGER.log(Level.FINEST, "{0} {1}", new Object[]{key, jsonObject.toString()});

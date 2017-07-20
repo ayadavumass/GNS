@@ -44,7 +44,9 @@ public class ResponsePacket extends BasicPacketWithClientAddress
   private final static String NAME = GNSProtocol.SERVICE_NAME.toString();
   private final static String RETVAL = GNSProtocol.RETURN_VALUE.toString();
   private final static String ERRCODE = GNSProtocol.ERROR_CODE.toString();
-
+  private final static String NS_REQ_ID = GNSProtocol.NAMESERVER_REQUEST_ID.toString();
+  
+  
   private final static boolean SUPPORT_OLD_PROTOCOL = true;
   private final static String OLD_COMMAND_RETURN_PACKET_REQUESTID = "clientreqID";
   private final static String OLD_COMMAND_RETURN_PACKET_RETURNVALUE = "returnValue";
@@ -168,7 +170,7 @@ public class ResponsePacket extends BasicPacketWithClientAddress
     this.returnValue = responseValue;
     this.errorCode = ResponseCode.getResponseCode(errorNumber);
   }
-
+  
   /**
    * Converts the command object into a JSONObject.
    *

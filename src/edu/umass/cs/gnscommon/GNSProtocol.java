@@ -546,7 +546,21 @@ public enum GNSProtocol {
    * Indicates that sanity check failed
    * See {@link edu.umass.cs.gnscommon.ResponseCode#SANITY_CHECK_ERROR}.
    */
-  SANITY_CHECK_ERROR("+SANITY_CHECK_ERROR+"),;
+  SANITY_CHECK_ERROR("+SANITY_CHECK_ERROR+"),
+  
+  /**
+   * The request id at the nameserver that received a client
+   * request directly from a client. This is included in 
+   * {@link edu.umass.cs.gnscommon.packets.CommandPacket}.
+   * This is mainly used as an identifier when an iterator
+   * is returned for a select request. On subsequent calls to
+   * a select iterator, a select request goes to the nameserver that
+   * processed the select request earlier, and at that nameserver 
+   * we need the name server request id to lookup the state and process
+   * the current select request.
+   */
+  NAMESERVER_REQUEST_ID("NS_REQ_ID"),
+  ;
 
   final String label;
 

@@ -504,5 +504,4 @@ public class NameRecord implements Comparable<NameRecord>, Summarizable {
   public Object getSummary() {
     return Util.truncate(NameRecord.this, 64, 64);
   }
-
 }
