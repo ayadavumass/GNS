@@ -123,6 +123,8 @@ public class CommandPacket extends BasicPacketWithClientAddress implements
    * @throws JSONException
    */
   public CommandPacket(JSONObject json) throws JSONException {
+	  // for setting client address in the parent class.
+	  super(json);
     this.type = Packet.getPacketType(json);
 
     if (!SUPPORT_OLD_PROTOCOL) {
