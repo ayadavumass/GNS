@@ -813,11 +813,22 @@ public class AccountAccess {
           String verifyCode, ClientRequestHandlerInterface handler)
           throws IOException {
     try {
+<<<<<<< HEAD
       ResponseCode returnCode;
+=======
+    	
+      ResponseCode returnCode;
+      
+>>>>>>> upstream/master
       ReconfigureUponActivesChange activesChangePolicy = 
     		  ReconfigureUponActivesChange.valueOf(ReconfigureUponActivesChange.class, 
     				  Config.getGlobalString(GNSConfig.GNSC.RECONFIGURE_ON_ACTIVE_CHANGE_POLICY));
       
+<<<<<<< HEAD
+=======
+      // First try to createField the HRN record to make sure this name
+      // isn't already registered
+>>>>>>> upstream/master
       JSONObject jsonHRN = new JSONObject();
       jsonHRN.put(HRN_GUID, guid);
       returnCode = handler.getInternalClient().createOrExists(
@@ -1329,13 +1340,22 @@ public class AccountAccess {
       for (String key : hrnMap.keySet()) {
         nameStates.put(key, hrnMap.get(key).toString());
       }
+<<<<<<< HEAD
+=======
+      
+>>>>>>> upstream/master
       ReconfigureUponActivesChange activesChangePolicy = 
     		  ReconfigureUponActivesChange.valueOf(ReconfigureUponActivesChange.class, 
     				  Config.getGlobalString(GNSConfig.GNSC.RECONFIGURE_ON_ACTIVE_CHANGE_POLICY));
       
       if (!(returnCode = handler.getInternalClient().createOrExists(
     		  new CreateServiceName(nameStates, activesChangePolicy)))
+<<<<<<< HEAD
               .isExceptionOrError()) {
+=======
+              .isExceptionOrError()) 
+      {
+>>>>>>> upstream/master
         // now we update the account info
         if (updateAccountInfoNoAuthentication(header, commandPacket, accountInfo,
                 handler, true).isOKResult()) {
@@ -1592,16 +1612,28 @@ public class AccountAccess {
     // insure that that name does not already exist
     try {
     	ReconfigureUponActivesChange activesChangePolicy = 
+<<<<<<< HEAD
     			ReconfigureUponActivesChange.valueOf(ReconfigureUponActivesChange.class, 
     					Config.getGlobalString(GNSConfig.GNSC.RECONFIGURE_ON_ACTIVE_CHANGE_POLICY));
       
+=======
+    			ReconfigureUponActivesChange.valueOf(ReconfigureUponActivesChange.class,
+    					Config.getGlobalString(GNSConfig.GNSC.RECONFIGURE_ON_ACTIVE_CHANGE_POLICY));
+    	
+>>>>>>> upstream/master
       ResponseCode returnCode;
       JSONObject jsonHRN = new JSONObject();
       jsonHRN.put(HRN_GUID, accountInfo.getGuid());
       if ((returnCode
               = handler.getInternalClient().createOrExists(
+<<<<<<< HEAD
             		  new CreateServiceName(alias, jsonHRN.toString(), activesChangePolicy))).isExceptionOrError()) {
         // roll this back
+=======
+          new CreateServiceName(alias, jsonHRN.toString(), activesChangePolicy))).isExceptionOrError()) {
+        
+    	// roll this back
+>>>>>>> upstream/master
         accountInfo.removeAlias(alias);
         return new CommandResponse(returnCode,
                 GNSProtocol.BAD_RESPONSE.toString() + " "

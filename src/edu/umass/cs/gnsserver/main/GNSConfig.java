@@ -249,6 +249,18 @@ public class GNSConfig {
      */
     SANITY_CHECKER(NullSanityCheck.class.getName()),
     
+<<<<<<< HEAD
+=======
+    /**
+     * This macro specifies the reconfigure on active change policy
+     * for GUIDs. {@link ReconfigurationRecord.ReconfigureUponActivesChange} 
+     * enum specifies the set of values. 
+     * The default value is {@link ReconfigurationRecord.ReconfigureUponActivesChange#DEFAULT},
+     * which means the GUIDs are not reconfigured on change of actives.
+     */
+    RECONFIGURE_ON_ACTIVE_CHANGE_POLICY(ReconfigurationRecord.ReconfigureUponActivesChange.DEFAULT)
+    ;
+>>>>>>> upstream/master
 
     /** If the flag is true then a custom select implementation is used.
      * If it is false the blocking {@link edu.umass.cs.gnsserver.gnsapp.Select} 
