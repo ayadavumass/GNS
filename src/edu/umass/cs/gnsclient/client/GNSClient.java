@@ -608,7 +608,6 @@ public class GNSClient {
 		{
 			ReconfigurableAppClientAsync.setMaxOutstandingAppRequests(n);
 		}
-		
 	} // End of AsyncClient
 
 	/**
