@@ -20,6 +20,7 @@
 package edu.umass.cs.gnsclient.client.singletests;
 
 import edu.umass.cs.gnsclient.client.GNSClientCommands;
+import edu.umass.cs.gnsclient.client.GNSCommand;
 import edu.umass.cs.gnscommon.AclAccessType;
 import edu.umass.cs.gnsclient.client.util.GuidEntry;
 import edu.umass.cs.gnsclient.client.util.GuidUtils;
@@ -54,7 +55,7 @@ import org.junit.runners.MethodSorters;
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class AclDefaultsTest extends DefaultGNSTest {
 
-  private static GNSClientCommands clientCommands = null;
+  //private static GNSClientCommands clientCommands = null;
   private static GuidEntry masterGuid;
   private static GuidEntry westyEntry;
   private static GuidEntry samEntry;
@@ -64,14 +65,6 @@ public class AclDefaultsTest extends DefaultGNSTest {
    *
    */
   public AclDefaultsTest() {
-    if (clientCommands == null) {
-      try {
-        clientCommands = new GNSClientCommands();
-        clientCommands.setForceCoordinatedReads(true).setNumRetriesUponTimeout(1);
-      } catch (IOException e) {
-        Utils.failWithStackTrace("Exception creating client: ", e);
-      }
-    }
   }
 
   /**
@@ -94,7 +87,7 @@ public class AclDefaultsTest extends DefaultGNSTest {
   @Test
   public void test_101_ACLCreateField() {
     try {
-      clientCommands.fieldCreateOneElementList(masterGuid.getGuid(), TEST_FIELD_NAME, "testValue", masterGuid);
+      client.execute(GNSCommand.fieldCreateOneElementList(masterGuid.getGuid(), TEST_FIELD_NAME, "testValue", masterGuid));
     } catch (Exception e) {
       Utils.failWithStackTrace("Exception while creating fields in ACLCreateFields: ", e);
 
@@ -110,12 +103,13 @@ public class AclDefaultsTest extends DefaultGNSTest {
   @Test
   public void test_110_ACLMaybeAddAllFields() {
     try {
-      if (!JSONUtils.JSONArrayToArrayList(clientCommands.aclGet(AclAccessType.READ_WHITELIST, masterGuid,
-              GNSProtocol.ENTIRE_RECORD.toString(), masterGuid.getGuid()))
-              .contains(GNSProtocol.ALL_GUIDS.toString())) {
-        clientCommands.aclAdd(AclAccessType.READ_WHITELIST, masterGuid,
-                GNSProtocol.ENTIRE_RECORD.toString(),
-                GNSProtocol.ALL_GUIDS.toString());
+      if (!JSONUtils.JSONArrayToArrayList(
+    		  client.execute(GNSCommand.aclGet(AclAccessType.READ_WHITELIST, masterGuid,
+              GNSProtocol.ENTIRE_RECORD.toString(), masterGuid.getGuid())).getResultJSONArray()
+    		  ).contains(GNSProtocol.ALL_GUIDS.toString())) {
+    	  client.execute(GNSCommand.aclAdd(AclAccessType.READ_WHITELIST, masterGuid,
+                  GNSProtocol.ENTIRE_RECORD.toString(),
+                  GNSProtocol.ALL_GUIDS.toString()));
       }
     } catch (ClientException | IOException | JSONException e) {
       Utils.failWithStackTrace("Exception while checking for ALL_FIELDS in ACLMaybeAddAllFields: ", e);
@@ -131,8 +125,9 @@ public class AclDefaultsTest extends DefaultGNSTest {
       ThreadUtils.sleep(100);
       JSONArray expected = new JSONArray(Arrays.asList(GNSProtocol.ALL_GUIDS.toString()));
       JSONAssert.assertEquals(expected,
-              clientCommands.aclGet(AclAccessType.READ_WHITELIST, masterGuid,
-                      GNSProtocol.ENTIRE_RECORD.toString(), masterGuid.getGuid()), true);
+              client.execute(GNSCommand.aclGet(AclAccessType.READ_WHITELIST, masterGuid,
+                      GNSProtocol.ENTIRE_RECORD.toString(), masterGuid.getGuid())).getResultJSONArray()
+              , true);
     } catch (ClientException | IOException | JSONException e) {
       Utils.failWithStackTrace("Exception while checking ALL_FIELDS in ACLCheckForAllFieldsPass: ", e);
     }
@@ -145,11 +140,11 @@ public class AclDefaultsTest extends DefaultGNSTest {
   public void test_112_ACLRemoveAllFields() {
     try {
       // remove default read access for this test
-      clientCommands.aclRemove(AclAccessType.READ_WHITELIST, masterGuid,
-              GNSProtocol.ENTIRE_RECORD.toString(), GNSProtocol.ALL_GUIDS.toString());
+      client.execute(GNSCommand.aclRemove(AclAccessType.READ_WHITELIST, masterGuid,
+              GNSProtocol.ENTIRE_RECORD.toString(), GNSProtocol.ALL_GUIDS.toString()));
+      
     } catch (ClientException | IOException e) {
       Utils.failWithStackTrace("Exception while removing ACL in ACLRemoveAllFields: ", e);
-
     }
   }
 
@@ -161,8 +156,9 @@ public class AclDefaultsTest extends DefaultGNSTest {
     try {
       JSONArray expected = new JSONArray();
       JSONAssert.assertEquals(expected,
-              clientCommands.aclGet(AclAccessType.READ_WHITELIST, masterGuid,
-                      GNSProtocol.ENTIRE_RECORD.toString(), masterGuid.getGuid()), true);
+              client.execute(GNSCommand.aclGet(AclAccessType.READ_WHITELIST, masterGuid,
+                      GNSProtocol.ENTIRE_RECORD.toString(), masterGuid.getGuid())).getResultJSONArray()
+              , true);
     } catch (ClientException | IOException | JSONException e) {
       Utils.failWithStackTrace("Exception while checking ALL_FIELDS in ACLCheckForAllFieldsMissing: ", e);
 
@@ -175,7 +171,10 @@ public class AclDefaultsTest extends DefaultGNSTest {
   @Test
   public void test_114_CheckAllFieldsAcl() {
     try {
-      Assert.assertTrue(clientCommands.fieldAclExists(AclAccessType.READ_WHITELIST, masterGuid, GNSProtocol.ENTIRE_RECORD.toString()));
+      Assert.assertTrue(	  
+    		  client.execute(GNSCommand.fieldAclExists
+    		(AclAccessType.READ_WHITELIST, masterGuid, GNSProtocol.ENTIRE_RECORD.toString(), 
+    				masterGuid.getGuid())).getResultBoolean());
     } catch (ClientException | IOException e) {
       Utils.failWithStackTrace("Exception in CheckAllFieldsAcl: ", e);
     }
@@ -187,7 +186,9 @@ public class AclDefaultsTest extends DefaultGNSTest {
   @Test
   public void test_115_DeleteAllFieldsAcl() {
     try {
-      clientCommands.fieldDeleteAcl(AclAccessType.READ_WHITELIST, masterGuid, GNSProtocol.ENTIRE_RECORD.toString());
+      client.execute(GNSCommand.fieldDeleteAcl(AclAccessType.READ_WHITELIST, 
+    		  masterGuid, GNSProtocol.ENTIRE_RECORD.toString(), masterGuid.getGuid()));
+      
     } catch (ClientException | IOException e) {
       Utils.failWithStackTrace("Exception in DeleteAllFieldsAcl: ", e);
     }
@@ -199,7 +200,12 @@ public class AclDefaultsTest extends DefaultGNSTest {
   @Test
   public void test_116_CheckAllFieldsAclGone() {
     try {
-      Assert.assertFalse(clientCommands.fieldAclExists(AclAccessType.READ_WHITELIST, masterGuid, GNSProtocol.ENTIRE_RECORD.toString()));
+      Assert.assertFalse(
+ client.execute(GNSCommand.fieldAclExists(AclAccessType.READ_WHITELIST, 
+		masterGuid, GNSProtocol.ENTIRE_RECORD.toString(), masterGuid.getGuid())).getResultBoolean()
+    		  );
+      
+      
     } catch (ClientException | IOException e) {
       Utils.failWithStackTrace("Exception in CheckAllFieldsAclGone: ", e);
     }
@@ -211,7 +217,9 @@ public class AclDefaultsTest extends DefaultGNSTest {
   @Test
   public void test_120_CreateAcl() {
     try {
-      clientCommands.fieldCreateAcl(AclAccessType.READ_WHITELIST, masterGuid, TEST_FIELD_NAME);
+      client.execute(GNSCommand.fieldCreateAcl(AclAccessType.READ_WHITELIST, masterGuid, 
+    		  TEST_FIELD_NAME, masterGuid.getGuid()));
+      
     } catch (ClientException | IOException e) {
       Utils.failWithStackTrace("Exception CreateAcl while creating ACL field: ", e);
     }
@@ -223,7 +231,11 @@ public class AclDefaultsTest extends DefaultGNSTest {
   @Test
   public void test_121_CheckAcl() {
     try {
-      Assert.assertTrue(clientCommands.fieldAclExists(AclAccessType.READ_WHITELIST, masterGuid, TEST_FIELD_NAME));
+      Assert.assertTrue(
+    		  client.execute(GNSCommand.fieldAclExists(AclAccessType.READ_WHITELIST, 
+    				masterGuid, TEST_FIELD_NAME, masterGuid.getGuid())).getResultBoolean()
+    		  );
+      
     } catch (ClientException | IOException e) {
       Utils.failWithStackTrace("Exception CheckAcl: ", e);
     }
@@ -235,7 +247,10 @@ public class AclDefaultsTest extends DefaultGNSTest {
   @Test
   public void test_122_DeleteAcl() {
     try {
-      clientCommands.fieldDeleteAcl(AclAccessType.READ_WHITELIST, masterGuid, TEST_FIELD_NAME);
+      clientCommands.fieldDeleteAcl();
+      client.execute(GNSCommand.fieldDeleteAcl(AclAccessType.READ_WHITELIST, 
+    		  masterGuid, TEST_FIELD_NAME, writerGuid));
+      
     } catch (ClientException | IOException e) {
       Utils.failWithStackTrace("Exception in DeleteAcl: ", e);
     }
