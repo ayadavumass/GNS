@@ -19,7 +19,7 @@
  */
 package edu.umass.cs.gnsclient.client.singletests;
 
-import edu.umass.cs.gnsclient.client.GNSClientCommands;
+import edu.umass.cs.gnsclient.client.GNSCommand;
 import edu.umass.cs.gnscommon.AclAccessType;
 import edu.umass.cs.gnsclient.client.util.GuidEntry;
 import edu.umass.cs.gnsclient.client.util.GuidUtils;
@@ -41,22 +41,13 @@ import org.junit.runners.MethodSorters;
  */
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class AclAllFieldsSuperuser extends DefaultGNSTest {
-
-  private static GNSClientCommands clientCommands = null;
+	
   private static GuidEntry masterGuid;
 
   /**
    *
    */
   public AclAllFieldsSuperuser() {
-    if (clientCommands == null) {
-      try {
-        clientCommands = new GNSClientCommands();
-        clientCommands.setForceCoordinatedReads(true).setNumRetriesUponTimeout(1);
-      } catch (IOException e) {
-        Utils.failWithStackTrace("Exception creating client: ", e);
-      }
-    }
   }
 
   private static GuidEntry barneyEntry;
@@ -81,15 +72,16 @@ public class AclAllFieldsSuperuser extends DefaultGNSTest {
     try {
       String barneyName = "barney" + RandomString.randomString(12);
       try {
-        clientCommands.lookupGuid(barneyName);
+    	  client.execute(GNSCommand.lookupGUID(barneyName));
         Utils.failWithStackTrace(barneyName + " entity should not exist");
       } catch (ClientException e) {
       } catch (IOException e) {
         Utils.failWithStackTrace("Exception looking up Barney: ", e);
       }
-      barneyEntry = clientCommands.guidCreate(masterGuid, barneyName);
+      client.execute(GNSCommand.guidCreate(masterGuid, barneyName));
+      barneyEntry = GuidUtils.lookupGuidEntryFromDatabase(client, barneyName);
       try {
-        clientCommands.lookupGuid(barneyName);
+        client.execute(GNSCommand.lookupGUID(barneyName));
       } catch (IOException | ClientException e) {
         Utils.failWithStackTrace("Exception looking up Barney: ", e);
       }
@@ -105,8 +97,8 @@ public class AclAllFieldsSuperuser extends DefaultGNSTest {
   public void test_143_ACLCreateFields() {
     try {
       // remove default read access for this test
-      clientCommands.fieldUpdate(barneyEntry.getGuid(), "cell", "413-555-1234", barneyEntry);
-      clientCommands.fieldUpdate(barneyEntry.getGuid(), "address", "100 Main Street", barneyEntry);
+      client.execute(GNSCommand.fieldUpdate(barneyEntry.getGuid(), "cell", "413-555-1234", barneyEntry));
+      client.execute(GNSCommand.fieldUpdate(barneyEntry.getGuid(), "address", "100 Main Street", barneyEntry));
     } catch (IOException | ClientException e) {
       Utils.failWithStackTrace("Exception when we were not expecting it in ACLPartTwo: ", e);
     }
@@ -122,13 +114,17 @@ public class AclAllFieldsSuperuser extends DefaultGNSTest {
     String superUserName = "superuser" + RandomString.randomString(12);
     try {
       try {
-        clientCommands.lookupGuid(superUserName);
+    	  client.execute(GNSCommand.lookupGUID(superUserName));
         Utils.failWithStackTrace(superUserName + " entity should not exist");
       } catch (ClientException e) {
       }
-      superuserEntry = clientCommands.guidCreate(masterGuid, superUserName);
+      client.execute(GNSCommand.guidCreate(masterGuid, superUserName));
+      superuserEntry =GuidUtils.lookupGuidEntryFromDatabase(client, superUserName);
       try {
-        Assert.assertEquals(superuserEntry.getGuid(), clientCommands.lookupGuid(superUserName));
+        Assert.assertEquals(superuserEntry.getGuid(), 
+        		client.execute(GNSCommand.lookupGUID(superUserName)).getResultString());
+        		
+        		//clientCommands.lookupGuid(superUserName));
       } catch (ClientException e) {
       }
     } catch (IOException | ClientException e) {
@@ -143,8 +139,8 @@ public class AclAllFieldsSuperuser extends DefaultGNSTest {
   public void test_145_ACLAddALLFields() {
     try {
       // let superuser read any of barney's fields
-      clientCommands.aclAdd(AclAccessType.READ_WHITELIST, barneyEntry,
-              GNSProtocol.ENTIRE_RECORD.toString(), superuserEntry.getGuid());
+      client.execute(GNSCommand.aclAdd(AclAccessType.READ_WHITELIST, barneyEntry,
+              GNSProtocol.ENTIRE_RECORD.toString(), superuserEntry.getGuid()));
     } catch (ClientException | IOException e) {
       Utils.failWithStackTrace("Exception when we were not expecting it in ACLALLFields: ", e);
     }
@@ -157,9 +153,9 @@ public class AclAllFieldsSuperuser extends DefaultGNSTest {
   public void test_146_ACLTestAllFieldsSuperuser() {
     try {
       Assert.assertEquals("413-555-1234",
-              clientCommands.fieldRead(barneyEntry.getGuid(), "cell", superuserEntry));
+    		  client.execute(GNSCommand.fieldRead(barneyEntry.getGuid(), "cell", superuserEntry)));
       Assert.assertEquals("100 Main Street",
-              clientCommands.fieldRead(barneyEntry.getGuid(), "address", superuserEntry));
+      		  client.execute(GNSCommand.fieldRead(barneyEntry.getGuid(), "address", superuserEntry)));
 
     } catch (ClientException | IOException e) {
       Utils.failWithStackTrace("Exception when we were not expecting it in ACLALLFields: ", e);
@@ -172,8 +168,8 @@ public class AclAllFieldsSuperuser extends DefaultGNSTest {
   @Test
   public void test_147_ACLTestAllFieldsSuperuserCleanup() {
     try {
-      clientCommands.guidRemove(masterGuid, superuserEntry.getGuid());
-      clientCommands.guidRemove(masterGuid, superuserEntry.getGuid());
+      client.execute(GNSCommand.guidRemove(masterGuid, superuserEntry.getGuid()));
+      client.execute(GNSCommand.guidRemove(masterGuid, superuserEntry.getGuid()));
     } catch (ClientException | IOException e) {
       Utils.failWithStackTrace("Exception during cleanup: " + e);
     }
