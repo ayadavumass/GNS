@@ -56,6 +56,7 @@ import edu.umass.cs.reconfiguration.ReconfigurationConfig;
 import edu.umass.cs.reconfiguration.ReconfigurationConfig.RC;
 import edu.umass.cs.reconfiguration.interfaces.ReconfiguratorRequest;
 import edu.umass.cs.reconfiguration.reconfigurationpackets.ActiveReplicaError;
+import edu.umass.cs.reconfiguration.reconfigurationpackets.ReconfigurationPacket;
 import edu.umass.cs.reconfiguration.reconfigurationutils.RequestParseException;
 import edu.umass.cs.utils.Config;
 
@@ -476,7 +477,9 @@ public class GNSClient {
 	}
 
 	private static final Set<IntegerPacketType> CLIENT_PACKET_TYPES = new HashSet<>(
-			Arrays.asList(Packet.PacketType.COMMAND_RETURN_VALUE));
+			Arrays.asList(Packet.PacketType.COMMAND_RETURN_VALUE, 
+					ReconfigurationPacket.PacketType.ACTIVE_REPLICA_ERROR)); // because ActiveReplica.java
+																			 // sends ActiveReplicaError to GNSClient 
 
 	/**
 	 * Straightforward async client implementation that expects only one packet

@@ -32,6 +32,7 @@ import edu.umass.cs.gnsserver.nodeconfig.PortOffsets;
 import edu.umass.cs.gnsserver.nodeconfig.GNSNodeConfig;
 import edu.umass.cs.nio.interfaces.IntegerPacketType;
 import edu.umass.cs.nio.interfaces.Stringifiable;
+import edu.umass.cs.reconfiguration.reconfigurationpackets.ActiveReplicaError;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -130,7 +131,16 @@ public class Packet {
     /**
      * TEST_NOOP
      */
-    TEST_NOOP(224, null),;
+    TEST_NOOP(224, null),
+    
+    /**
+     * Copied from {@link edu.umass.cs.reconfiguration.reconfigurationpackets.ReconfigurationPacket}
+     * We need to handle ACTIVE_REPLICA_ERROR because ActiveReplica.java sends 
+     * ActiveReplicaError to GNSClient
+     * 
+     */
+    ACTIVE_REPLICA_ERROR(237, ActiveReplicaError.class.getCanonicalName()),;
+	  
     private final int number;
     private String className;
     private static final Map<Integer, PacketType> map = new HashMap<>();
@@ -187,9 +197,7 @@ public class Packet {
     public static PacketType getPacketType(int number) {
       PacketType t = map.get(number);
 //      assert(t!=null) : number;
-      // aditya: commented this out, as sometimes we get ActiveReplicaError packet,
-      // which is not understod by the GNS. 
-//      if(t==null) throw new RuntimeException("Unrecognized packet type " + number);
+      if(t==null) throw new RuntimeException("Unrecognized packet type " + number);
       return t;
     }
   }
@@ -298,6 +306,8 @@ public class Packet {
           return new edu.umass.cs.gnsserver.gnsapp.packet.StopPacket(json);
         case TEST_NOOP:
           return null;
+        case ACTIVE_REPLICA_ERROR:
+        	return new edu.umass.cs.reconfiguration.reconfigurationpackets.ActiveReplicaError(json);
         default:
           GNSConfig.getLogger().log(Level.SEVERE,
                   "Packet type not found: {0} JSON: {1}", new Object[]{getPacketType(json), json});
