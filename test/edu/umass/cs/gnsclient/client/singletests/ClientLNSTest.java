@@ -71,6 +71,7 @@ public class ClientLNSTest extends DefaultGNSTest {
         Utils.failWithStackTrace("Exception while looking up account record: " + e);
       }
     }
+    // unsetting the proxy so that it doesn't affect later tests.
+    clientCommands.setGNSProxy(null);
   }
-
 }

@@ -28,7 +28,8 @@ while [[ $i -lt $RUNS ]]; do
     successes=`expr $successes + 1`
   else 
     failures=`expr $failures + 1`
-    exit
+    scritps/copyGNSLogsOnTestFail.sh $failures
+    #exit
   fi
   echo "===================successes=$successes, failures=$failures=================="
 

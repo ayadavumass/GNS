@@ -57,7 +57,7 @@ import org.junit.runners.MethodSorters;
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class SelectTest extends DefaultGNSTest {
 
-  private static final int WAIT_SETTLE = 200;
+  private static final int WAIT_SETTLE = 4000;
 
   //private static GNSClientCommands clientCommands = null;
   private static GuidEntry masterGuid;
