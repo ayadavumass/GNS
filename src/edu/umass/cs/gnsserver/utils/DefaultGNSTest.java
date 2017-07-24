@@ -37,6 +37,7 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.rules.TestWatcher;
+import org.junit.rules.Timeout;
 import org.junit.runner.Description;
 
 import edu.umass.cs.gigapaxos.PaxosConfig;
@@ -65,7 +66,10 @@ import edu.umass.cs.utils.Util;
 public class DefaultGNSTest extends DefaultTest {
 	/* arun: Do not change stuff or hardcode any thing in this class without
 	 * consulting me. */
-
+	
+	//aditya: added for timeout rule
+	private static final int PER_TEST_TIMEOUT	= 300; // in seconds.
+	
 	private static final String HOME = System.getProperty("user.home");
 	private static final String GNS_DIR = "GNS";
 	private static final String GNS_HOME = HOME + "/" + GNS_DIR + "/";
@@ -114,6 +118,12 @@ public class DefaultGNSTest extends DefaultTest {
 			System.exit(1);
 		}
 	};
+	
+	
+	// Per test timeout so that no tests blocks indefinitely. Although, GNSClient
+	// timeout is also setup. If there is a long test then PER_TEST_TIMEOUT needs to be changed accordingly.
+	@Rule
+    public Timeout globalTimeout = Timeout.seconds(PER_TEST_TIMEOUT);
 
 	protected static enum DefaultProps {
 		SERVER_COMMAND("server.command", GP_SERVER, true),

@@ -54,7 +54,7 @@ public class GNSAppUtil {
           return fromBytes(msgBytes);
         }
         if (Util.oneIn(100)) {
-        	if(request.getRequestType() !=null)
+        	if(request !=null)
         		DelayProfiler.updateDelayNano(
                   "getRequest." + request.getRequestType(), t);
         }
