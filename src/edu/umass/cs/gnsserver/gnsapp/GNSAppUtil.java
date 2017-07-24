@@ -54,7 +54,8 @@ public class GNSAppUtil {
           return fromBytes(msgBytes);
         }
         if (Util.oneIn(100)) {
-          DelayProfiler.updateDelayNano(
+        	if(request.getRequestType() !=null)
+        		DelayProfiler.updateDelayNano(
                   "getRequest." + request.getRequestType(), t);
         }
       } catch (JSONException | UnsupportedEncodingException e) {
