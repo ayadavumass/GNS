@@ -187,7 +187,9 @@ public class Packet {
     public static PacketType getPacketType(int number) {
       PacketType t = map.get(number);
 //      assert(t!=null) : number;
-      if(t==null) throw new RuntimeException("Unrecognized packet type " + number);
+      // aditya: commented this out, as sometimes we get ActiveReplicaError packet,
+      // which is not understod by the GNS. 
+//      if(t==null) throw new RuntimeException("Unrecognized packet type " + number);
       return t;
     }
   }
