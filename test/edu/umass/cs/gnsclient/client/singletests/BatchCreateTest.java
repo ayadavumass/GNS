@@ -147,8 +147,9 @@ public class BatchCreateTest extends DefaultGNSTest {
   private static long getTimeout() 
   {
 		long timeout = RC_TIMEOUT;
-		timeout += BATCH_TIMEOUT_FACTOR * BATCH_TIMEOUT_FACTOR;
-				
-		return timeout;
+		timeout += numberToCreate * BATCH_TIMEOUT_FACTOR;
+		// just for testing with very large value to see if this test failure rate is because 
+		// of insufficient run time. 
+		return 30*1000;
   }
 }
