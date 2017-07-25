@@ -207,6 +207,10 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
     } catch (IOException e) {
       e.printStackTrace();
       GNSConfig.getLogger().severe("Unable to create GNS app: exiting");
+      for(StackTraceElement ste : e.getStackTrace())
+    	  GNSConfig.getLogger().log(Level.SEVERE, "GNSApp failed stacktrace {0}"
+    			  	, new Object[]{ste});
+      
       System.exit(1);
     }
   }

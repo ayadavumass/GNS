@@ -192,8 +192,18 @@ public class AccountAccess {
       String value = null;
       try {
         value = handler.getInternalClient().execute(GNSCommandInternal.fieldRead(guid, ACCOUNT_INFO, header)).getResultString();
-      } catch (IOException | JSONException | ClientException e) {
+        GNSConfig.getLogger().log(Level.FINE,
+                "READ ACCOUNT_INFO for {0} REMOTELY: {1}", new Object[]{guid, value});
+        
+      }
+      catch (IOException | JSONException | ClientException   e) {
+    	  GNSConfig.getLogger().log(Level.FINE,
+                  "EXCEPTION 1 IN READ ACCOUNT_INFO for {0} REMOTELY: value={1} exception={2}"
+    			  , new Object[]{guid, value, e.getMessage()});
+    	  e.printStackTrace();
       } catch (InternalRequestException e) {
+    	  GNSConfig.getLogger().log(Level.FINE,
+                  "EXCEPTION 2 IN READ ACCOUNT_INFO for {0} REMOTELY:", new Object[]{guid});
         //FIXME: This should do something other than print a stack trace
         e.printStackTrace();
       }
@@ -1489,11 +1499,32 @@ public class AccountAccess {
               guidInfo.getGuid(), handler, true);
       // should not happen unless records got messed up in GNS
       if (accountGuid == null) {
-        return new CommandResponse(ResponseCode.BAD_ACCOUNT_ERROR,
-                GNSProtocol.BAD_RESPONSE.toString() + " "
-                + GNSProtocol.BAD_ACCOUNT.toString() + " "
-                + guidInfo.getGuid()
-                + " does not have a primary account guid");
+    	  // aditya: The following error can happen and it occurs in long running tests.
+    	  // For GUID X, by the time we read the account guid, the guid record for GUID X 
+    	  // has already been deleted by a previous concurrent delete of GUID X
+    	  // Although, we did check this in the beginning in RemoveGuid.java.
+    	  // So, before sending a bad account error for GUID X
+    	  // we just check if the GUID X record exists or not.
+    	  // I also think that with this change, the Guid remove operation will become idempotent.
+    	  
+    	  // In ant test, In RemoveGuidTest.java. A GUID is removed twice. So, 
+    	  // the first removal completes when 2 out of 3 active replicas have removed the GUID.
+    	  // If we issue another removal, then the active replica that didn't
+    	  // remove the guid last time, starts two concurrent removal of the same GUID and that leads
+    	  // to the error mentioned above.
+    	  if (AccountAccess.lookupGuidInfoLocally(header, guidInfo.getGuid(), handler) == null) 
+    	  {
+    		  // Removing a non-existant guid is no longer an error.
+    	      return new CommandResponse(ResponseCode.NO_ERROR, GNSProtocol.OK_RESPONSE.toString());
+    	  }
+    	  else
+    	  {
+    		  return new CommandResponse(ResponseCode.BAD_ACCOUNT_ERROR,
+    	                GNSProtocol.BAD_RESPONSE.toString() + " "
+    	                + GNSProtocol.BAD_ACCOUNT.toString() + " "
+    	                + guidInfo.getGuid()
+    	                + " does not have a primary account guid");
+    	  }
       }
       if ((accountInfo = lookupAccountInfoFromGuidAnywhere(header, accountGuid,
               handler)) == null) {
