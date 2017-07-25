@@ -510,10 +510,7 @@ public class Select extends AbstractSelector {
           SelectResponsePacket packet, NSSelectInfo info,
           GNSApplicationInterface<String> replica) throws JSONException,
           ClientException, IOException, InternalRequestException {
-    // must be done before the notify below
-    // we're done processing this select query
-    QUERIES_IN_PROGRESS.remove(packet.getNsQueryId());
-
+	  
     Set<JSONObject> allRecords = info.getResponsesAsSet();
     // Todo - clean up this use of guids further below in the group code
     Set<String> guids = extractGuidsFromRecords(allRecords);
@@ -541,6 +538,9 @@ public class Select extends AbstractSelector {
     // and let the coordinator know the value is there
     if (GNSApp.DELEGATE_CLIENT_MESSAGING) {
       synchronized (QUERIES_IN_PROGRESS) {
+    	// must be done before the notify below
+    	// we're done processing this select query
+    	QUERIES_IN_PROGRESS.remove(packet.getNsQueryId());
         QUERIES_IN_PROGRESS.notify();
       }
     }
