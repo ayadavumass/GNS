@@ -120,7 +120,7 @@ public class BatchCreateTest extends DefaultGNSTest {
       aliases.add("testGUID511" + Integer.toString(i) + RandomString.randomString(12));
     }
     try {
-      clientCommands.guidBatchCreate(accountGuidForBatch, aliases, 20 * 1000);
+      clientCommands.guidBatchCreate(accountGuidForBatch, aliases, 30 * 1000);
       //result = client.guidBatchCreate(accountGuidForBatch, aliases);
     } catch (Exception e) {
       Utils.failWithStackTrace("Exception while creating guids: ", e);
