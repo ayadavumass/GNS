@@ -220,6 +220,21 @@ public class AccountAccess {
     }
     return null;
   }
+  
+  /**
+   * Removes entry from the cache. It is mainly called from 
+   * {@link edu.umass.cs.gnsserver.gnsapp.GNSApp#restore(String, String)}.
+   * When a GUID is deleted, but this active replica is not the active
+   * replica that received the original delete request, then the gigapaxos
+   * deletes the guid by calling restore, with null state, on all 
+   * other active replicas. So, on all active replicas we need to remove 
+   * the guid info from cache, which should be called from the restore method. 
+   * @param guid
+   */
+  public static void removeEntryFromGuidInfoCache(String guid)
+  {
+	  GUID_INFO_CACHE.invalidate(guid);
+  }
 
   /**
    * If this is a subguid associated with an account, returns the guid of that
