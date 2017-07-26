@@ -4,8 +4,10 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.logging.Level;
 
 import edu.umass.cs.gnsclient.client.GNSClient;
+import edu.umass.cs.gnsclient.client.GNSClientConfig;
 import edu.umass.cs.gnscommon.ResponseCode;
 import edu.umass.cs.gnscommon.exceptions.client.ClientException;
 import edu.umass.cs.gnscommon.packets.CommandPacket;
@@ -147,13 +149,33 @@ public class GNSClientInternal extends GNSClient {
 	 */
 	public ResponseCode createOrExists(CreateServiceName create)
 			throws ClientException {
-		try {
-			return this.sendRequest(create);
-		} catch (ClientException e) {
-			if (e.getCode().equals(ResponseCode.DUPLICATE_ID_EXCEPTION))
-				return e.getCode();
-			throw e;
-		}
+		int count = 0;
+		ResponseCode lastRepCode = null;
+		do {
+			if (count > 0)
+				GNSClientConfig
+						.getLogger()
+						.log(Level.INFO,
+								"{0} attempting retransmission {1} of {2} request upon response code {3}",
+								new Object[] { this, count, create.getSummary(), lastRepCode });
+			
+			try {
+				lastRepCode = this.sendRequest(create);
+			} catch (ClientException e) {
+				lastRepCode = e.getCode();
+				if (e.getCode().equals(ResponseCode.DUPLICATE_ID_EXCEPTION))
+					return e.getCode();
+				
+				if(e.getCode().equals(ResponseCode.TIMEOUT))
+				{
+					if(count >= this.numRetriesUponTimeout)
+						throw e;
+				}
+				else
+					throw e;
+			}
+		}while ((count++ < this.numRetriesUponTimeout && (lastRepCode == ResponseCode.TIMEOUT)));
+		return lastRepCode;
 	}
         
         /**
@@ -169,18 +191,38 @@ public class GNSClientInternal extends GNSClient {
 	 */
         public ResponseCode deleteOrNotExists(String name, boolean noErrorIfNotExists)
 			throws ClientException {
-		try {
-			return this.sendRequest(new DeleteServiceName(name));
-		} catch (ClientException e) {
-			if (e.getCode().equals(ResponseCode.NONEXISTENT_NAME_EXCEPTION)) {
-                          if (noErrorIfNotExists) {
-                            return ResponseCode.NO_ERROR;
-                          } else {
-                            return e.getCode();
-                          }
-                        }
-			throw e;
-		}
+		int count = 0;
+		ResponseCode lastRepCode = null;
+		do {
+			if (count > 0)
+				GNSClientConfig
+						.getLogger()
+						.log(Level.INFO,
+								"{0} attempting retransmission {1} of delete request for {2} request upon response code {3}",
+								new Object[] { this, count, name, lastRepCode });
+			
+			try {
+				lastRepCode = this.sendRequest(new DeleteServiceName(name));
+			} catch (ClientException e) {
+				if (e.getCode().equals(ResponseCode.NONEXISTENT_NAME_EXCEPTION)) {
+                    if (noErrorIfNotExists) {
+                      return ResponseCode.NO_ERROR;
+                    } else {
+                      return e.getCode();
+                    }
+                  }
+				
+				lastRepCode = e.getCode();
+				if(e.getCode().equals(ResponseCode.TIMEOUT))
+				{
+					if(count >= this.numRetriesUponTimeout)
+						throw e;
+				}
+				else
+					throw e;
+			}
+		}while ((count++ < this.numRetriesUponTimeout && (lastRepCode == ResponseCode.TIMEOUT)));
+		return lastRepCode;
 	}
 
 	/**

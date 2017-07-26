@@ -394,7 +394,7 @@ public class GNSClient {
 		 * for anycast/proxy/default. */
 	}
 
-	private int numRetriesUponTimeout = 0;
+	protected int numRetriesUponTimeout = 0;
 
 	/**
 	 * @param retries
