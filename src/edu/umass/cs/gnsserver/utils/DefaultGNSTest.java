@@ -247,8 +247,8 @@ public class DefaultGNSTest extends DefaultTest {
 		System.out.println(" ..created "
 				+ GuidUtils.getGUIDKeys(globalAccountName));
 	}
-
-	protected static final long TIMEOUT = 8000;
+	//aditya: setting more that 1 request + 1 retry timeout for GNSInternalClient
+	protected static final long TIMEOUT = 16000;
 
 	private static void startClients() throws IOException {
 		System.out.print("Starting client ");

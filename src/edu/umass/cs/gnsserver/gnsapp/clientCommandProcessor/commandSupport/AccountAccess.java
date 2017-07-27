@@ -392,7 +392,7 @@ public class AccountAccess {
    */
   public static GuidInfo lookupGuidInfoLocally(InternalRequestHeader header, String guid,
           ClientRequestHandlerInterface handler) {
-    return lookupGuidInfo(header, guid, handler, false);
+    return lookupGuidInfo(header, guid, handler, false, false);
   }
 
   /**
@@ -409,7 +409,7 @@ public class AccountAccess {
    */
   public static GuidInfo lookupGuidInfoAnywhere(InternalRequestHeader header, String guid,
           ClientRequestHandlerInterface handler) {
-    return lookupGuidInfo(header, guid, handler, true);
+    return lookupGuidInfo(header, guid, handler, true, false);
   }
 
   /**
@@ -423,9 +423,9 @@ public class AccountAccess {
    * @return an {@link GuidInfo} instance
    */
   private static GuidInfo lookupGuidInfo(InternalRequestHeader header, String guid,
-          ClientRequestHandlerInterface handler, boolean allowRemoteLookup) {
+          ClientRequestHandlerInterface handler, boolean allowRemoteLookup, boolean noLocalCache) {
     GuidInfo result;
-    if ((result = GUID_INFO_CACHE.getIfPresent(guid)) != null) {
+    if (!noLocalCache && (result = GUID_INFO_CACHE.getIfPresent(guid)) != null) {
       GNSConfig.getLogger().log(Level.FINE, "GuidInfo found in cache {0}", guid);
       return result;
     }
@@ -1527,7 +1527,8 @@ public class AccountAccess {
     	  // If we issue another removal, then the active replica that didn't
     	  // remove the guid last time, starts two concurrent removal of the same GUID and that leads
     	  // to the error mentioned above.
-    	  if (AccountAccess.lookupGuidInfoLocally(header, guidInfo.getGuid(), handler) == null) 
+    	  // we want to read directly from disk, as cache could be inconsistent.
+    	  if (AccountAccess.lookupGuidInfo(header, guidInfo.getGuid(), handler, false, true)== null) 
     	  {
     		  // Removing a non-existant guid is no longer an error.
     	      return new CommandResponse(ResponseCode.NO_ERROR, GNSProtocol.OK_RESPONSE.toString());
