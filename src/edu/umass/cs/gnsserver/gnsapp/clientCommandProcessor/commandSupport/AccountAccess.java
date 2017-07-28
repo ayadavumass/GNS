@@ -1582,11 +1582,15 @@ public class AccountAccess {
     } catch (ClientException e) {
       deleteNameResponseCode = e.getCode();
     }
+    
     if ((removedGroupLinksResponseCode.isExceptionOrError()
             || accountInfoResponseCode.isExceptionOrError())
             || deleteNameResponseCode.isExceptionOrError()) {
       // Don't really care who caused the error, other than for debugging.
-      return new CommandResponse(ResponseCode.UPDATE_ERROR,
+      return new CommandResponse((removedGroupLinksResponseCode.equals(ResponseCode.TIMEOUT) || 
+      		accountInfoResponseCode.equals(ResponseCode.TIMEOUT)
+      		|| deleteNameResponseCode.equals(ResponseCode.TIMEOUT))?ResponseCode.TIMEOUT:
+      			ResponseCode.UPDATE_ERROR,
               GNSProtocol.BAD_RESPONSE.toString()
               + " "
               + (removedGroupLinksResponseCode.isOKResult() ? "" : "; failed to remove group links")
@@ -1798,15 +1802,19 @@ public class AccountAccess {
                   GNSCommandInternal.fieldUpdate(guid, ACCOUNT_INFO,
                           accountInfo.toJSONObject(), header));
           response = ResponseCode.NO_ERROR;
-        } catch (JSONException e) {
-          GNSConfig.getLogger().log(Level.SEVERE,
-                  "JSON parse error with remote query:{0}", e);
-          response = ResponseCode.JSON_PARSE_ERROR;
-        } catch (ClientException | IOException | InternalRequestException e) {
-          GNSConfig.getLogger().log(Level.SEVERE,
-                  "Problem with remote query:{0}", e);
-          response = ResponseCode.UNSPECIFIED_ERROR;
+        }  catch (ClientException e)
+        {
+        	GNSConfig.getLogger().log(Level.SEVERE,
+                    "Problem with remote query:{0}", e);
+            response = e.getCode();
         }
+        catch(IOException | InternalRequestException e)
+        {
+        	GNSConfig.getLogger().log(Level.SEVERE,
+                    "Problem with remote query:{0}", e);
+            response = new ClientException(e).getCode();
+        }
+        
       } else {
         GNSConfig.getLogger().log(Level.FINE,
                 "Updating locally for GUID {0}:{1}<-{1}",
