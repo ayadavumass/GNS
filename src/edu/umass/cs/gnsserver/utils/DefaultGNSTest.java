@@ -356,13 +356,17 @@ public class DefaultGNSTest extends DefaultTest {
 			if (singleJVM())
 				startServersSingleJVM();
 			else {
+				System.out.println("Starting servers in different JVMs");
 				ArrayList<String> output = RunCommand.command(startServerCmd,
 						".");
+				
 				if (output != null)
 					for (String line : output)
 						System.out.println(line);
 				else
 					Util.suicide("Server command failure: ; aborting all tests.");
+				
+				System.out.println("Starting servers in different JVMs completed");
 			}
 		}
 

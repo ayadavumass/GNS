@@ -44,7 +44,8 @@ public class RunCommand {
 			final String directory) {
 		return command(cmdline, directory, "true".equals(System.getProperty("inheritIO")));
 	}
-
+	
+	
 	/**
 	 * Returns null if it failed for some reason.
 	 *
@@ -80,7 +81,8 @@ public class RunCommand {
 			return null;
 		}
 	}
-
+	
+	
 	private static ArrayList<String> gatherOutput(Process process)
 			throws IOException {
 		ArrayList<String> output = new ArrayList<>();
