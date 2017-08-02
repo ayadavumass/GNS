@@ -57,15 +57,22 @@ public class RunCommand {
 	public static ArrayList<String> command(final String cmdline,
 			final String directory, boolean inheritIO) {
 		try {
+			System.out.println("Executing "+cmdline
+					+" directory "+directory+" inheritIO "+inheritIO);
+			
+			
 			ProcessBuilder processBuilder = new ProcessBuilder(new String[] {
 					"bash", "-c", cmdline });
 			if (inheritIO)
 				processBuilder.inheritIO()
 				;
-
+			
+			System.out.println("Starting the process");
 			Process process = processBuilder.redirectErrorStream(true)
 					.directory(new File(directory)).start();
 
+			System.out.println("Starting the process completed");
+			
 			if (!inheritIO)
 				return gatherOutput(process);
 
