@@ -98,6 +98,10 @@ public class CommandPacket extends BasicPacketWithClientAddress implements
    */
   public CommandPacket(long requestId, JSONObject command) {
     this(requestId, command, true);
+    // We don't need to set the sender address in this constructor 
+    // because this constructor is only used to construct a command.
+    // This constructor is not used to get a CommandPacket object 
+    // after receiving a command from a client at a GNS server node.
   }
 
   /**
@@ -114,6 +118,10 @@ public class CommandPacket extends BasicPacketWithClientAddress implements
     if (validate) {
       validateCommandType();
     }
+    // We don't need to set the sender address in this constructor 
+    // because this constructor is only used to construct a command.
+    // This constructor is not used to get a CommandPacket object 
+    // after receiving a command from a client at a GNS server node.
   }
 
   /**
@@ -123,7 +131,10 @@ public class CommandPacket extends BasicPacketWithClientAddress implements
    * @throws JSONException
    */
   public CommandPacket(JSONObject json) throws JSONException {
-    this.type = Packet.getPacketType(json);
+	  // for setting client address in BasicPacketWithClientAddress
+	  super(json);
+	  
+	  this.type = Packet.getPacketType(json);
 
     if (!SUPPORT_OLD_PROTOCOL) {
       this.clientRequestId = json.getLong(QID);
@@ -159,7 +170,8 @@ public class CommandPacket extends BasicPacketWithClientAddress implements
    * @throws RequestParseException
    */
   public CommandPacket(byte[] bytes) throws RequestParseException {
-    ByteBuffer buf = ByteBuffer.wrap(bytes);
+	  
+	  ByteBuffer buf = ByteBuffer.wrap(bytes);
 
     /**
      * We will come here only if this class implements Byteable and the
@@ -181,6 +193,9 @@ public class CommandPacket extends BasicPacketWithClientAddress implements
     this.command = getJSONObject(buf, mode);
 
     validateCommandType();
+    
+    throw new RequestParseException(new RuntimeException(
+           "This constructor doesn't set the client address, so it cannot be used for non-blocking selects."));
   }
 
   /**
