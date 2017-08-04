@@ -394,6 +394,12 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
       this.requestHandler.getInternalClient().close();
     }
   }
+  
+  
+  @Override
+  public SSLMessenger<String, JSONObject> getSSLMessenger() {
+	  return this.messenger;
+  }
 
   /**
    * Actually creates the application. This strange way of constructing the application
@@ -865,5 +871,5 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
               + "If you want DNS run the server using sudo.");
     }
   }
-
+  
 }

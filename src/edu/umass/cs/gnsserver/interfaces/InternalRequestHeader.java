@@ -1,5 +1,6 @@
 package edu.umass.cs.gnsserver.interfaces;
 
+
 import edu.umass.cs.gnsserver.gnsapp.packet.InternalCommandPacket;
 
 /**
@@ -83,5 +84,20 @@ public interface InternalRequestHeader {
 	 */
 	default String getSourceAddress() {
 		return null;
+	}
+	
+	/**
+	 * Returns the source port.
+	 * 
+	 * {@link #getSourceAddress()} and {@link #getSourcePort()} 
+	 * methods are separate to maintain the backward compatibility, i.e.,
+	 * at many places in the GNS
+	 * only {@link #getSourceAddress()} is used.
+	 * 
+	 * @return Returns the source port.
+	 */
+	default int getSourcePort()
+	{
+		return -1;
 	}
 }

@@ -363,7 +363,7 @@ public class GNSConfig {
   /**
    * Returns the master GNS logger.
    *
-   * @return the master GNS logger
+   * @return the master GNS lgetLogger()ogger
    */
   public static Logger getLogger() {
     return LOGGER;

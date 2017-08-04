@@ -1,6 +1,7 @@
 package edu.umass.cs.gnscommon.packets;
 
 import edu.umass.cs.gnscommon.utils.JSONCommonUtils;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -71,6 +72,7 @@ public class PacketUtils {
 			}
 		};
 	}
+	
 	/**
 	 * @param commandPacket
 	 * @return {@link InternalRequestHeader} if {@code commandPacket} is an
@@ -89,7 +91,7 @@ public class PacketUtils {
 
 				new InternalRequestHeader() {
 
-					String mostRecentQueried = null;
+					//String mostRecentQueried = null;
 
 					@Override
 					public long getOriginatingRequestID() {
@@ -114,8 +116,8 @@ public class PacketUtils {
 													.toString()) ? commandPacket
 									.getCommand().getString(
 											GNSProtocol.ORIGINATING_GUID
-													.toString()) : (this.mostRecentQueried =PacketUtils
-									.getOriginatingGUID(commandPacket));
+													.toString()) : PacketUtils
+									.getOriginatingGUID(commandPacket);
 						} catch (JSONException e) {
 							return PacketUtils
 									.getOriginatingGUID(commandPacket);
@@ -124,8 +126,7 @@ public class PacketUtils {
 
 					@Override
 					public String getQueryingGUID() {
-						return this.mostRecentQueried=PacketUtils
-								.getOriginatingGUID(commandPacket);
+						return PacketUtils.getOriginatingGUID(commandPacket);
 					}
 
 					@Override
@@ -166,6 +167,28 @@ public class PacketUtils {
 							e.printStackTrace();
 						}
 						return GNSConfig.getInternalOpSecret().equals(proof);
+					}
+					
+					/**
+					 * Returns the client IP address of the client that
+					 * sent this command. This is used to process
+					 * commands in a non-blocking manner, like in a non-blocking 
+					 * custom select implementation.
+					 */
+					public String getSourceAddress() 
+					{
+						return commandPacket.getClientAddress().getAddress().getHostAddress();
+					}
+					
+					/**
+					 * Returns the client port that
+					 * sent this command. This is used to process
+					 * commands in a non-blocking manner, like in a non-blocking 
+					 * custom select implementation. 
+					 */
+					public int getSourcePort()
+					{
+						return commandPacket.getClientAddress().getPort();
 					}
 				};
 	}
