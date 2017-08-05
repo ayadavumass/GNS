@@ -551,9 +551,9 @@ public enum CommandType {
   //Fixme: CREATE_INDEX should be an ADMIN_UPDATE command.
 
   /**
-   *
+   * aditya: changed the CreateIndex category from OTHER to UPDATE for performing experiments. 
    */
-  CreateIndex(230, CommandCategory.OTHER, "edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commands.data.CreateIndex",
+  CreateIndex(230, CommandCategory.UPDATE, "edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commands.data.CreateIndex",
           CommandResultType.NULL, true, false,
           "Creates an index for field. The value is a string containing the index type.",
           new String[]{GNSProtocol.GUID.toString(),
