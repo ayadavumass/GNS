@@ -161,8 +161,34 @@ public class MongoRecords implements NoSQLRecords {
   public void createIndex(String collectionName, String field, String index) {
     MongoCollectionSpec spec = mongoCollectionSpecs.getCollectionSpec(collectionName);
     // Prepend this because of the way we store the records.
-    DBObject index2d = BasicDBObjectBuilder.start(NameRecord.VALUES_MAP.getName() + "." + field, index).get();
+    DBObject index2d = BasicDBObjectBuilder.start
+    		(NameRecord.VALUES_MAP.getName() + "." + field, 
+    		isIndexInt(index)?Integer.parseInt(index):index).get();
+    
     db.getCollection(spec.getName()).createIndex(index2d);
+  }
+  
+  /**
+   * This function checks if an index is an int in 
+   * the form of a string. In mongodb, there are some
+   * string indexes, and then are some int indexes like 1
+   * , -1 etc. So, we need to know which one a user
+   * has supplied. 
+   * 
+   * @param index
+   * @return
+   */
+  private boolean isIndexInt(String index)
+  {
+	 try
+	 {
+		 Integer.parseInt(index);
+		 return true;
+	 }
+	 catch(NumberFormatException  nfe)
+	 {
+		 return false;
+	 }
   }
 
   @Override
