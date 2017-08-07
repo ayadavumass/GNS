@@ -129,8 +129,7 @@ import edu.umass.cs.utils.Config;
  * @author westy
  */
 public class Select extends AbstractSelector {
-
-
+	
   private static final Random RANDOM_ID = new Random();
   private static final ConcurrentMap<Integer, NSSelectInfo> QUERIES_IN_PROGRESS
           = new ConcurrentHashMap<>(10, 0.75f, 3);
@@ -312,6 +311,7 @@ public class Select extends AbstractSelector {
       // grab the records
       JSONArray jsonRecords = getJSONRecordsForSelect(request, app);
       jsonRecords = aclCheckFilterReturnedRecord(request, jsonRecords, request.getReader(), app);
+      
       SelectResponsePacket response = SelectResponsePacket.makeSuccessPacketForFullRecords(request.getId(),
               request.getClientAddress(),
               request.getCcpQueryId(), request.getNsQueryId(), app.getNodeAddress(), jsonRecords);
@@ -370,8 +370,12 @@ public class Select extends AbstractSelector {
         JSONObject record = records.getJSONObject(i);
         String guid = record.getString(NameRecord.NAME.getName());
         List<String> queryFields = getFieldsForQueryType(packet);
+        
+        NameRecord nr = new NameRecord(app.getDB(), record);
+        
         ResponseCode responseCode = NSAuthentication.signatureAndACLCheck(null, guid, null, queryFields, reader,
-                null, null, MetaDataTypeName.READ_WHITELIST, app, true);
+                null, null, MetaDataTypeName.READ_WHITELIST, app, true, nr);
+        
         LOGGER.log(Level.FINE, "{0} ACL check for select: guid={0} queryFields={1} responsecode={2}",
                 new Object[]{app.getNodeID(), guid, queryFields, responseCode});
         if (responseCode.isOKResult()) {
@@ -409,7 +413,9 @@ public class Select extends AbstractSelector {
           if (!InternalField.isInternalField(field)) {
             LOGGER.log(Level.FINE, "{0} Checking: {1}", new Object[]{app.getNodeID(), field});
             ResponseCode responseCode = NSAuthentication.signatureAndACLCheck(null, guid, field, null, reader,
-                    null, null, MetaDataTypeName.READ_WHITELIST, app, true);
+                    null, null, MetaDataTypeName.READ_WHITELIST, app, true, 
+                    new NameRecord(app.getDB(), record));
+            
             if (!responseCode.isOKResult()) {
               LOGGER.log(Level.FINE, "{0} Removing: {1}", new Object[]{app.getNodeID(), field});
               // removing the offending field
@@ -649,7 +655,9 @@ public class Select extends AbstractSelector {
       case QUERY:
         LOGGER.log(Level.FINE, "NS{0} query: {1} {2}",
                 new Object[]{ar.getNodeID(), request.getQuery(), request.getProjection()});
-        cursor = NameRecord.selectRecordsQuery(ar.getDB(), request.getQuery(), request.getProjection());
+        // aditya: fetch full record as we need that for ACL check
+        //cursor = NameRecord.selectRecordsQuery(ar.getDB(), request.getQuery(), request.getProjection());
+        cursor = NameRecord.selectRecordsQuery(ar.getDB(), request.getQuery(), null);
         break;
       default:
         break;
