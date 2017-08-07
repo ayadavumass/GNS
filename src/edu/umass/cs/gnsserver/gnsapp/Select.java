@@ -35,6 +35,7 @@ import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -51,6 +52,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import edu.umass.cs.gigapaxos.PaxosConfig;
+import edu.umass.cs.gnscommon.GNSProtocol;
 import edu.umass.cs.gnscommon.ResponseCode;
 import edu.umass.cs.gnscommon.exceptions.client.ClientException;
 import edu.umass.cs.gnscommon.exceptions.server.FailedDBOperationException;
@@ -312,12 +314,14 @@ public class Select extends AbstractSelector {
       JSONArray jsonRecords = getJSONRecordsForSelect(request, app);
       jsonRecords = aclCheckFilterReturnedRecord(request, jsonRecords, request.getReader(), app);
       
+      JSONArray finalResult = performProjectionForUserRequestedAttributes(app, request, jsonRecords);
+      
       SelectResponsePacket response = SelectResponsePacket.makeSuccessPacketForFullRecords(request.getId(),
               request.getClientAddress(),
-              request.getCcpQueryId(), request.getNsQueryId(), app.getNodeAddress(), jsonRecords);
+              request.getCcpQueryId(), request.getNsQueryId(), app.getNodeAddress(), finalResult);
       LOGGER.log(Level.FINE,
               "NS {0} sending back {1} record(s) in response to {2}",
-              new Object[]{app.getNodeID(), jsonRecords.length(), request.getSummary()});
+              new Object[]{app.getNodeID(), finalResult.length(), request.getSummary()});
       // and send them back to the originating NS
       app.sendToAddress(request.getNSReturnAddress(), response.toJSONObject());
     } catch (FailedDBOperationException | JSONException | IOException e) {
@@ -350,7 +354,70 @@ public class Select extends AbstractSelector {
     // then we filter fields
     return aclCheckFilterFields(packet, filteredRecords, reader, app);
   }
-
+  
+  
+  private static JSONArray performProjectionForUserRequestedAttributes(GNSApplicationInterface<String> app, 
+		  			SelectRequestPacket packet, JSONArray records)
+  {
+	  List<String> projection = packet.getProjection();
+	  if (projection == null
+              // this handles the special case of the user wanting all fields 
+              // in the projection
+              || (!projection.isEmpty()
+              && projection.get(0).equals(GNSProtocol.ENTIRE_RECORD.toString())))
+		  return records;
+	  
+	  
+	  HashMap<String, Boolean> fieldsMap = new HashMap<String, Boolean>();
+	  for(String field: projection)
+	  {
+		  fieldsMap.put(field, true);
+	  }
+	  
+	  for (int i = 0; i < records.length(); i++) {
+	      try {
+	        JSONObject record = records.getJSONObject(i);
+	        // JSON iterator type warning suppressed.
+	        @SuppressWarnings("unchecked")
+			Iterator<String> recordKeyIter = record.keys();
+	        
+	        while(recordKeyIter.hasNext())
+	        {
+	        	String key = recordKeyIter.next();
+	        	if(key.equals(NameRecord.NAME.getName()))
+	        	{
+	        		// do nothing, as we want to keep the name field.
+	        	}
+	        	else if(key.equals(NameRecord.VALUES_MAP.getName()))
+	        	{
+	        		JSONObject valuesMap = record.getJSONObject(NameRecord.VALUES_MAP.getName());
+	        		// JSON iterator type warning suppressed.
+	    	        @SuppressWarnings("unchecked")
+	        		Iterator<String> valueMapIter = valuesMap.keys();
+	        		while(valueMapIter.hasNext())
+	        		{
+	        			String valKey = valueMapIter.next();
+	        			// we want to only return GUID info or user request attributes.
+	        			if( !(valKey.equals(AccountAccess.GUID_INFO) || fieldsMap.containsKey(valKey)) )
+	        			{
+	        				valueMapIter.remove();
+	        			}
+	        		}
+	        	}
+	        	else
+	        	{
+	        		recordKeyIter.remove();
+	        	}
+	        }
+	        
+	      } catch (JSONException e) {
+	        // ignore the record on JSON error
+	        LOGGER.log(Level.FINE, "{0} Problem getting guid from json: {1}",
+	                new Object[]{app.getNodeID(), e.getMessage()});
+	      }
+	    }
+	    return records;
+  	}
   /**
    * This filters entire records if the query uses fields that cannot be accessed in the
    * returned record by the reader. Otherwise the user would be able to determine that
@@ -577,7 +644,7 @@ public class Select extends AbstractSelector {
 
   // Converts a record from the database into something we can return to 
   // the user. Adds the "_GUID" and removes internal fields.
-  private static List<JSONObject> filterAndMassageRecords(Set<JSONObject> records) {
+  protected static List<JSONObject> filterAndMassageRecords(Set<JSONObject> records) {
     List<JSONObject> result = new ArrayList<>();
     for (JSONObject record : records) {
       try {
@@ -602,7 +669,7 @@ public class Select extends AbstractSelector {
 
   // Pulls the guids out of the record to return to the user for "old-style" 
   // select calls.
-  private static Set<String> extractGuidsFromRecords(Set<JSONObject> records) {
+  protected static Set<String> extractGuidsFromRecords(Set<JSONObject> records) {
     Set<String> result = new HashSet<>();
     for (JSONObject json : records) {
       try {
@@ -673,7 +740,7 @@ public class Select extends AbstractSelector {
   }
 
   // Takes the JSON records that are returned from an NS and stuffs the into the NSSelectInfo record
-  private static void processJSONRecords(JSONArray jsonArray, NSSelectInfo info,
+  protected static void processJSONRecords(JSONArray jsonArray, NSSelectInfo info,
           GNSApplicationInterface<String> ar) throws JSONException {
     int length = jsonArray.length();
     LOGGER.log(Level.FINE,
