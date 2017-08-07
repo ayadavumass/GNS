@@ -62,7 +62,7 @@ public class RunCommand {
 			
 			
 			ProcessBuilder processBuilder = new ProcessBuilder(new String[] {
-					"bash", "-c", cmdline });
+					"/bin/bash", "-c", cmdline });
 			if (inheritIO)
 				processBuilder.inheritIO()
 				;
@@ -70,6 +70,7 @@ public class RunCommand {
 			System.out.println("Starting the process");
 			Process process = processBuilder.redirectErrorStream(true)
 					.directory(new File(directory)).start();
+			
 
 			System.out.println("Starting the process completed");
 			
