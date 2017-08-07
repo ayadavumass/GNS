@@ -394,12 +394,6 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
       this.requestHandler.getInternalClient().close();
     }
   }
-  
-  
-  @Override
-  public SSLMessenger<String, JSONObject> getSSLMessenger() {
-	  return this.messenger;
-  }
 
   /**
    * Actually creates the application. This strange way of constructing the application
@@ -630,8 +624,10 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
                     valuesMap);
             NameRecord.addNameRecord(nameRecordDB, nameRecord);
           } catch (RecordExistsException | JSONException e) {
-            GNSConfig.getLogger().log(Level.SEVERE,
-                    "Problem updating state: {0}", e.getMessage());
+        	  e.printStackTrace();
+        	  GNSConfig.getLogger().log(Level.SEVERE,
+        			  "Problem creating name {0} with state {1}: {2}",
+        			  new Object[] { name, state, e });
           }
         } else { // update the existing record
           try {
@@ -641,7 +637,7 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
                     .updateState(new ValuesMap(new JSONObject(state)));
           } catch (JSONException | FieldNotFoundException | RecordNotFoundException | FailedDBOperationException e) {
             GNSConfig.getLogger().log(Level.SEVERE,
-                    "Problem updating state: {0}", e.getMessage());
+                    "Problem updating name {0} with state {1}: {2}", new Object[]{name, state, e});
           }
         }
       return true;
@@ -727,6 +723,11 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
   @Override
   public BasicRecordMap getDB() {
     return nameRecordDB;
+  }
+  
+  @Override
+  public SSLMessenger<String, JSONObject> getSSLMessenger() {
+	  return this.messenger;
   }
 
   /**
@@ -871,5 +872,4 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
               + "If you want DNS run the server using sudo.");
     }
   }
-  
 }

@@ -101,9 +101,10 @@ public class CommandPacket extends BasicPacketWithClientAddress implements
     // We don't need to set the sender address in this constructor 
     // because this constructor is only used to construct a command.
     // This constructor is not used to get a CommandPacket object 
-    // after receiving a command from a client at a GNS server node.
+    // after receiving a command from NIO. 
   }
-
+  
+  
   /**
    * Create a CommandPacket instance.
    *
@@ -121,7 +122,7 @@ public class CommandPacket extends BasicPacketWithClientAddress implements
     // We don't need to set the sender address in this constructor 
     // because this constructor is only used to construct a command.
     // This constructor is not used to get a CommandPacket object 
-    // after receiving a command from a client at a GNS server node.
+    // after receiving a command from NIO. 
   }
 
   /**
@@ -131,10 +132,9 @@ public class CommandPacket extends BasicPacketWithClientAddress implements
    * @throws JSONException
    */
   public CommandPacket(JSONObject json) throws JSONException {
-	  // for setting client address in BasicPacketWithClientAddress
+	  // for setting the  client address in BasicPacketWithClientAddress
 	  super(json);
-	  
-	  this.type = Packet.getPacketType(json);
+    this.type = Packet.getPacketType(json);
 
     if (!SUPPORT_OLD_PROTOCOL) {
       this.clientRequestId = json.getLong(QID);
@@ -170,9 +170,7 @@ public class CommandPacket extends BasicPacketWithClientAddress implements
    * @throws RequestParseException
    */
   public CommandPacket(byte[] bytes) throws RequestParseException {
-	  
-	  ByteBuffer buf = ByteBuffer.wrap(bytes);
-
+    ByteBuffer buf = ByteBuffer.wrap(bytes);
     /**
      * We will come here only if this class implements Byteable and the
      * sender also implements Byteable. If the sender used toJSONObject(),
@@ -191,11 +189,12 @@ public class CommandPacket extends BasicPacketWithClientAddress implements
             (int) buf.get());
     // JSON command
     this.command = getJSONObject(buf, mode);
-
+    
     validateCommandType();
     
     throw new RequestParseException(new RuntimeException(
-           "This constructor doesn't set the client address, so it cannot be used for non-blocking selects."));
+    		"This constructor doesn't set the client address, which is needed for non-blocking selects. "
+    		+ "So, this constructor should not be used."));
   }
 
   /**
