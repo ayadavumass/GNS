@@ -57,8 +57,6 @@ build.number
 /nbbuild.xml
 /private.xml
 /clientKeyDB/
-/bin/gpClient.sh
-/bin/gpServer.sh
 .paxos_logs
 .gradle
 /GNS-1.19.09/
