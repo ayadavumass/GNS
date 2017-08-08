@@ -134,7 +134,7 @@ public class RunCommand {
 					break;
 			}
 		}
-		catch(IOException ioex)
+		catch(Exception | Error ioex)
 		{
 			System.out.println("gatherOutput: IOEX");
 			ioex.printStackTrace();
