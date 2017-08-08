@@ -35,7 +35,7 @@ import java.util.concurrent.TimeUnit;
  * @author westy, arun
  */
 public class RunCommand {
-	private static final int MAX_LINES = 1024;
+	private static final int MAX_LINES = 1;
 	private static final long PROCESS_WAIT_TIMEOUT = 30;
 
 	/**
