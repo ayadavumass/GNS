@@ -93,15 +93,24 @@ public class RunCommand {
 	
 	private static ArrayList<String> gatherOutput(Process process)
 			throws IOException {
-		ArrayList<String> output = new ArrayList<>();
-		BufferedReader br = new BufferedReader(new InputStreamReader(
-				process.getInputStream()));
-		String line = null;
-		while ((line = br.readLine()) != null && output.size() < MAX_LINES) {
-			System.out.println("gatherOutput "+line);
-			output.add(line);
+		try
+		{
+			ArrayList<String> output = new ArrayList<>();
+			BufferedReader br = new BufferedReader(new InputStreamReader(
+					process.getInputStream()));
+			String line = null;
+			while ((line = br.readLine()) != null && output.size() < MAX_LINES) {
+				System.out.println("gatherOutput "+line);
+				output.add(line);
+			}
+			return output;
 		}
-		return output;
+		catch(Exception | Error er)
+		{
+			System.out.println("Exception in gatherOutput "+er.getMessage());
+			er.printStackTrace();
+			return null;
+		}
 	}
 
 	/**
