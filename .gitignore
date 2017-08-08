@@ -49,6 +49,8 @@ build.number
 /scripts/singlenodetests/LNSlogfile
 /scripts/singlenodetests/derby.log
 /scripts/singlenodetests/log/
+/bin/gpServer.sh
+/bin/gpClient.sh
 /derbyDB/
 /jars/
 /paxos_logs/

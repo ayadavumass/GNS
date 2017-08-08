@@ -24,6 +24,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -57,9 +59,6 @@ public class RunCommand {
 	public static ArrayList<String> command(final String cmdline,
 			final String directory, boolean inheritIO) {
 		try {
-			System.out.println("Executing "+cmdline
-					+" directory "+directory+" inheritIO "+inheritIO);
-			
 			
 			ProcessBuilder processBuilder = new ProcessBuilder(new String[] {
 					"/bin/bash", "-c", cmdline });
@@ -67,12 +66,8 @@ public class RunCommand {
 				processBuilder.inheritIO()
 				;
 			
-			System.out.println("Starting the process");
 			Process process = processBuilder.redirectErrorStream(true)
 					.directory(new File(directory)).start();
-			
-
-			System.out.println("Starting the process completed");
 			
 			if (!inheritIO)
 				return gatherOutput(process);
@@ -90,27 +85,68 @@ public class RunCommand {
 		}
 	}
 	
-	
-	private static ArrayList<String> gatherOutput(Process process)
-			throws IOException {
+	/**
+	 * Gathers the output from the process. 
+	 * @param process
+	 * @return Returns null if unable to collect any output and most likely the
+	 * process has failed. Returns a non-null value if the process succeeded and 
+	 * returned some output.
+	 */
+	private static ArrayList<String> gatherOutput(Process process) 
+	{
+		BufferedReader[] br = new BufferedReader[1];
+		ArrayList<String> output = null;
+		br[0] = new BufferedReader(new InputStreamReader(
+				process.getInputStream()));
+		
+		Timer outputTimer = new Timer();
+		outputTimer.schedule(
+				new TimerTask()
+				{
+					public void run()
+					{
+						if(br[0] != null)
+							try {
+								br[0].close();
+							} catch (IOException e) 
+							{
+								e.printStackTrace();
+							}
+					}
+				}, PROCESS_WAIT_TIMEOUT*1000);
+		
+			
+		String line = null;
 		try
 		{
-			ArrayList<String> output = new ArrayList<>();
-			BufferedReader br = new BufferedReader(new InputStreamReader(
-					process.getInputStream()));
-			String line = null;
-			while ((line = br.readLine()) != null && output.size() < MAX_LINES) {
-				System.out.println("gatherOutput "+line);
+			while ( (line = br[0].readLine()) != null ) {
+				
+				if(output == null)
+					output = new ArrayList<String>();
+					
 				output.add(line);
+				
+				if(output.size() > MAX_LINES)
+					break;
 			}
-			return output;
 		}
-		catch(Exception | Error er)
+		catch(IOException ioex)
 		{
-			System.out.println("Exception in gatherOutput "+er.getMessage());
-			er.printStackTrace();
-			return null;
+			// do nothing, because an exception can happen if the Timer closes the BufferedReader.
+			// If it is a genuine exception then null will be returned and the caller can determine 
+			// the failure from that. 
 		}
+		finally
+		{
+			if(br[0] != null)
+				try {
+					br[0].close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+		}
+		outputTimer.cancel();
+		return output;
 	}
 
 	/**
