@@ -22,11 +22,8 @@ package edu.umass.cs.gnsserver.utils;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -60,17 +57,15 @@ public class RunCommand {
 	public static ArrayList<String> command(final String cmdline,
 			final String directory, boolean inheritIO) {
 		try {
-			
 			ProcessBuilder processBuilder = new ProcessBuilder(new String[] {
 					"/bin/bash", "-c", cmdline });
 			if (inheritIO)
-				processBuilder.inheritIO()
-				;
+				processBuilder.inheritIO();
 			
 			Process process = processBuilder.redirectErrorStream(true)
 					.directory(new File(directory)).start();
 			
-			if (!inheritIO)
+			if (inheritIO)
 				return gatherOutput(process);
 
 			// There should really be a timeout here.
@@ -86,97 +81,35 @@ public class RunCommand {
 		}
 	}
 	
-	/**
-	 * Gathers the output from the process. 
-	 * @param process
-	 * @return Returns null if unable to collect any output and most likely the
-	 * process has failed. Returns a non-null value if the process succeeded and 
-	 * returned some output.
-	 */
-	private static ArrayList<String> gatherOutput(Process process) 
+	
+	private static ArrayList<String> gatherOutput(Process process)
 	{
-		BufferedReader[] br = new BufferedReader[1];
-		InputStream[] inps = new InputStream[1];
-		InputStreamReader[] inpsr = new InputStreamReader[1];
-				
-		ArrayList<String> output = null;
-		inps[0] = process.getInputStream();
-		inpsr[0] = new InputStreamReader(inps[0]);
-		
-		br[0] = new BufferedReader(inpsr[0]);
-		
-		Timer outputTimer = new Timer();
-		System.out.println("Timer scheduled at "+System.currentTimeMillis());
-		outputTimer.schedule(
-				new TimerTask()
-				{
-					public void run()
-					{
-						System.out.println("Timer fired at "+System.currentTimeMillis());
-						try {
-							
-							if(inps[0] != null)
-								inps[0].close();
-							
-							if(inpsr[0] != null)
-								inpsr[0].close();
-								
-							if(br[0] != null)
-								br[0].close();
-							
-						} catch (IOException e) 
-						{
-							e.printStackTrace();
-						}
-					}
-				}, PROCESS_WAIT_TIMEOUT*1000);
-		
-			
+		ArrayList<String> output = new ArrayList<>();
+		BufferedReader br = new BufferedReader(new InputStreamReader(
+				process.getInputStream()));
 		String line = null;
 		try
 		{
-			while ( (line = br[0].readLine()) != null ) {
-				
-				if(output == null)
-					output = new ArrayList<String>();
-					
-				System.out.println("gatherOutput: "+line);
+			while ((line = br.readLine()) != null && output.size() < MAX_LINES) {
 				output.add(line);
-				
-				if(output.size() > MAX_LINES)
-					break;
 			}
 		}
-		catch(Exception | Error ioex)
+		catch(IOException ioex)
 		{
-			System.out.println("gatherOutput: IOEX");
 			ioex.printStackTrace();
-			// do nothing, because an exception can happen if the Timer closes the BufferedReader.
-			// If it is a genuine exception then null will be returned and the caller can determine 
-			// the failure from that. 
 		}
 		finally
 		{
-			try {
-				
-				if(inps[0] != null)
-					inps[0].close();
-				
-				if(inpsr[0] != null)
-					inpsr[0].close();
-					
-				if(br[0] != null)
-					br[0].close();
-				
-			} catch (IOException e) 
-			{
-				e.printStackTrace();
-			}
+			if(br != null)
+				try {
+					br.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
 		}
-		outputTimer.cancel();
 		return output;
 	}
-
+	
 	/**
 	 * @param args
 	 */

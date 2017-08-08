@@ -356,7 +356,6 @@ public class DefaultGNSTest extends DefaultTest {
 			if (singleJVM())
 				startServersSingleJVM();
 			else {
-				System.out.println("Starting servers in different JVMs");
 				ArrayList<String> output = RunCommand.command(startServerCmd,
 						".");
 				
@@ -366,13 +365,13 @@ public class DefaultGNSTest extends DefaultTest {
 				else
 					Util.suicide("Server command failure: ; aborting all tests.");
 				
-				System.out.println("Starting servers in different JVMs completed");
 			}
 		}
-
+		
 		serversStarted = true;
 	}
-
+	
+	
 	private static boolean explicitlySleepTillServersReady()
 			throws InterruptedException {
 		/* The waitTillAllServersReady parameter is not needed for
