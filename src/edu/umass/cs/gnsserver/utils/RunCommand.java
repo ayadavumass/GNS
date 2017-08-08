@@ -22,6 +22,7 @@ package edu.umass.cs.gnsserver.utils;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Timer;
@@ -95,9 +96,14 @@ public class RunCommand {
 	private static ArrayList<String> gatherOutput(Process process) 
 	{
 		BufferedReader[] br = new BufferedReader[1];
+		InputStream[] inps = new InputStream[1];
+		InputStreamReader[] inpsr = new InputStreamReader[1];
+				
 		ArrayList<String> output = null;
-		br[0] = new BufferedReader(new InputStreamReader(
-				process.getInputStream()));
+		inps[0] = process.getInputStream();
+		inpsr[0] = new InputStreamReader(inps[0]);
+		
+		br[0] = new BufferedReader(inpsr[0]);
 		
 		Timer outputTimer = new Timer();
 		System.out.println("Timer scheduled at "+System.currentTimeMillis());
@@ -107,14 +113,21 @@ public class RunCommand {
 					public void run()
 					{
 						System.out.println("Timer fired at "+System.currentTimeMillis());
-						if(br[0] != null)
-							try {
-								System.out.println("Closing buffered reader "+System.currentTimeMillis());
+						try {
+							
+							if(inps[0] != null)
+								inps[0].close();
+							
+							if(inpsr[0] != null)
+								inpsr[0].close();
+								
+							if(br[0] != null)
 								br[0].close();
-							} catch (IOException e) 
-							{
-								e.printStackTrace();
-							}
+							
+						} catch (IOException e) 
+						{
+							e.printStackTrace();
+						}
 					}
 				}, PROCESS_WAIT_TIMEOUT*1000);
 		
@@ -144,12 +157,21 @@ public class RunCommand {
 		}
 		finally
 		{
-			if(br[0] != null)
-				try {
+			try {
+				
+				if(inps[0] != null)
+					inps[0].close();
+				
+				if(inpsr[0] != null)
+					inpsr[0].close();
+					
+				if(br[0] != null)
 					br[0].close();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
+				
+			} catch (IOException e) 
+			{
+				e.printStackTrace();
+			}
 		}
 		outputTimer.cancel();
 		return output;
