@@ -100,13 +100,16 @@ public class RunCommand {
 				process.getInputStream()));
 		
 		Timer outputTimer = new Timer();
+		System.out.println("Timer scheduled at "+System.currentTimeMillis());
 		outputTimer.schedule(
 				new TimerTask()
 				{
 					public void run()
 					{
+						System.out.println("Timer fired at "+System.currentTimeMillis());
 						if(br[0] != null)
 							try {
+								System.out.println("Closing buffered reader "+System.currentTimeMillis());
 								br[0].close();
 							} catch (IOException e) 
 							{
@@ -124,6 +127,7 @@ public class RunCommand {
 				if(output == null)
 					output = new ArrayList<String>();
 					
+				System.out.println("gatherOutput: "+line);
 				output.add(line);
 				
 				if(output.size() > MAX_LINES)
@@ -132,6 +136,8 @@ public class RunCommand {
 		}
 		catch(IOException ioex)
 		{
+			System.out.println("gatherOutput: IOEX");
+			ioex.printStackTrace();
 			// do nothing, because an exception can happen if the Timer closes the BufferedReader.
 			// If it is a genuine exception then null will be returned and the caller can determine 
 			// the failure from that. 
