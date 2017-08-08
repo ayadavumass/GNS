@@ -98,6 +98,7 @@ public class RunCommand {
 				process.getInputStream()));
 		String line = null;
 		while ((line = br.readLine()) != null && output.size() < MAX_LINES) {
+			System.out.println("gatherOutput "+line);
 			output.add(line);
 		}
 		return output;
