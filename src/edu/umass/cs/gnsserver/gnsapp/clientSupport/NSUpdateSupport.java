@@ -180,10 +180,12 @@ public class NSUpdateSupport {
     }
     // Apply updateEntireValuesMap to record in the database
     nameRecord.updateNameRecord(field, updateValue, oldValue, argument, newValue, operation);
+    
     // This is for MOB-893 - logging updates
-    writeUpdateLog(guid, field, updateValue, newValue, operation);
+    if(Config.getGlobalBoolean(GNSConfig.GNSC.ENABLE_UPDATE_LOGGING))
+    	writeUpdateLog(guid, field, updateValue, newValue, operation);
   }
-
+  
   // This is for MOB-893 - logging updates
   private static void writeUpdateLog(String guid, String field,
           ResultValue updateValue, ValuesMap userJSON,
