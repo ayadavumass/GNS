@@ -351,11 +351,13 @@ public class Select extends AbstractSelector {
    */
   private static JSONArray aclCheckFilterReturnedRecord(SelectRequestPacket packet, JSONArray records,
           String reader, GNSApplicationInterface<String> app) {
+	  // FIXME: for debugging purpose. 
+	  return records;
     // First we filter out records
-    JSONArray filteredRecords = aclCheckFilterForRecordsArray(packet, records, reader, app);
+    /*JSONArray filteredRecords = aclCheckFilterForRecordsArray(packet, records, reader, app);
     //return filteredRecords;
     // then we filter fields
-    return aclCheckFilterFields(packet, filteredRecords, reader, app);
+    return aclCheckFilterFields(packet, filteredRecords, reader, app);*/
   }
   
   
