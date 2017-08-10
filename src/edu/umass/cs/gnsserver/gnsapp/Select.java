@@ -274,14 +274,17 @@ public class Select extends AbstractSelector {
       // grab the records
       JSONArray jsonRecords = getJSONRecordsForSelect(request, app);
       jsonRecords = aclCheckFilterReturnedRecord(request, jsonRecords, request.getReader(), app);
+      
+      JSONArray finalResult = performProjectionForUserRequestedAttributes(app, request, jsonRecords);
+      
       response = SelectResponsePacket.makeSuccessPacketForFullRecords(
               request.getId(), request.getClientAddress(),
               request.getCcpQueryId(), request.getNsQueryId(),
-              app.getNodeAddress(), jsonRecords);
+              app.getNodeAddress(), finalResult);
       LOGGER.log(
               Level.FINE,
               "NS {0} sending back {1} record(s) in response to self-select request {2}",
-              new Object[]{app.getNodeID(), jsonRecords.length(),
+              new Object[]{app.getNodeID(), finalResult.length(),
                 request.getSummary()});
     } catch (FailedDBOperationException e) {
       LOGGER.log(Level.SEVERE, "Exception while handling self-select request: {0}",
@@ -418,6 +421,8 @@ public class Select extends AbstractSelector {
 	    }
 	    return records;
   	}
+  
+  
   /**
    * This filters entire records if the query uses fields that cannot be accessed in the
    * returned record by the reader. Otherwise the user would be able to determine that
@@ -456,7 +461,7 @@ public class Select extends AbstractSelector {
     }
     return result;
   }
-
+  
   /**
    * This filters individual fields if the cannot be accessed by the reader.
    *
@@ -498,7 +503,8 @@ public class Select extends AbstractSelector {
     }
     return records;
   }
-
+  
+  
   // Returns the fields that present in a query.
   private static List<String> getFieldsForQueryType(SelectRequestPacket request) {
     switch (request.getSelectOperation()) {
