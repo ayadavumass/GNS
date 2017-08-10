@@ -351,13 +351,11 @@ public class Select extends AbstractSelector {
    */
   private static JSONArray aclCheckFilterReturnedRecord(SelectRequestPacket packet, JSONArray records,
           String reader, GNSApplicationInterface<String> app) {
-	  // FIXME: for debugging purpose. 
-	  return records;
     // First we filter out records
-    /*JSONArray filteredRecords = aclCheckFilterForRecordsArray(packet, records, reader, app);
+    JSONArray filteredRecords = aclCheckFilterForRecordsArray(packet, records, reader, app);
     //return filteredRecords;
     // then we filter fields
-    return aclCheckFilterFields(packet, filteredRecords, reader, app);*/
+    return aclCheckFilterFields(packet, filteredRecords, reader, app);
   }
   
   
@@ -730,9 +728,7 @@ public class Select extends AbstractSelector {
       case QUERY:
         LOGGER.log(Level.FINE, "NS{0} query: {1} {2}",
                 new Object[]{ar.getNodeID(), request.getQuery(), request.getProjection()});
-        // aditya: fetch full record as we need that for ACL check
-        //cursor = NameRecord.selectRecordsQuery(ar.getDB(), request.getQuery(), request.getProjection());
-        cursor = NameRecord.selectRecordsQuery(ar.getDB(), request.getQuery(), null);
+        cursor = NameRecord.selectRecordsQuery(ar.getDB(), request.getQuery(), request.getProjection());
         break;
       default:
         break;

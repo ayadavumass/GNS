@@ -349,8 +349,8 @@ public class NSAuthentication {
 		  {
 			  if( nr.getName().compareToIgnoreCase(guid) == 0 )
 			  {
-				  GuidInfo  result = new GuidInfo(new JSONObject(nr.getValuesMap().getString
-						  												(AccountAccess.GUID_INFO)));
+				  GuidInfo  result = new GuidInfo(nr.getValuesMap().getJSONObject
+						  												(AccountAccess.GUID_INFO));
 				  if(result != null)
 				  return result.getPublicKey();
 			  }

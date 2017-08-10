@@ -48,6 +48,7 @@ import edu.umass.cs.gnscommon.exceptions.server.FailedDBOperationException;
 import edu.umass.cs.gnscommon.exceptions.server.RecordExistsException;
 import edu.umass.cs.gnscommon.exceptions.server.RecordNotFoundException;
 import edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commandSupport.AccountAccess;
+import edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commandSupport.MetaDataTypeName;
 import edu.umass.cs.gnsserver.gnsapp.recordmap.NameRecord;
 import edu.umass.cs.gnsserver.main.GNSConfig;
 import edu.umass.cs.gnsserver.utils.JSONUtils;
@@ -769,6 +770,16 @@ public static String buildAndQuery(String... querys) {
     result.put(NameRecord.NAME.getName(), "true");
     // Put this in so the upstream receiver knows that it is a GUID record
     result.put(NameRecord.VALUES_MAP.getName() + "." + AccountAccess.GUID_INFO, "true");
+    
+    //aditya: We also read the ACL fields here. We only need to read read acls for 
+    // select requests. Although, by reading the prefix of READ_WHITELIST we read 
+    // the full ACL. 
+    result.put(NameRecord.VALUES_MAP.getName() + "." 
+    					+ MetaDataTypeName.READ_WHITELIST.getPrefix(), "true");
+    
+    result.put(NameRecord.VALUES_MAP.getName() + "." 
+			+ MetaDataTypeName.READ_BLACKLIST.getPrefix(), "true");
+    
     // Add all the fields in the projection
     for (String field : fields) {
       result.put(NameRecord.VALUES_MAP.getName() + "." + field, "true");
