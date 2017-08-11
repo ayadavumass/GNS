@@ -350,7 +350,9 @@ public class NSAccessSupport {
 	 try {
 			JSONArray aclOfField = metaData.getJSONObject(access.getPrefix())
 					.getJSONObject(access.name()).getJSONObject(field).getJSONArray(md);
-			if(indexOfItemInJSONArray(aclOfField, GNSProtocol.EVERYONE.toString()) >= 0){				
+			if(indexOfItemInJSONArray(aclOfField, GNSProtocol.EVERYONE.toString()) >= 0){
+				ClientSupportConfig.getLogger().log(Level.FINEST, "fieldAccessibleByEveryone guid={0}, field={1}",
+						new Object[]{guid, field});
 				return true;
 			}
 	 } catch (JSONException e) {

@@ -59,7 +59,6 @@ import edu.umass.cs.gnscommon.exceptions.server.FailedDBOperationException;
 import edu.umass.cs.gnscommon.exceptions.server.InternalRequestException;
 import edu.umass.cs.gnscommon.packets.PacketUtils;
 import edu.umass.cs.gnsserver.database.AbstractRecordCursor;
-import edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commandSupport.AccountAccess;
 import edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commandSupport.GroupAccess;
 import edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commandSupport.InternalField;
 import edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commandSupport.MetaDataTypeName;
@@ -401,7 +400,11 @@ public class Select extends AbstractSelector {
 	        		{
 	        			String valKey = valueMapIter.next();
 	        			// we want to only return GUID info or user request attributes.
-	        			if( !(valKey.equals(AccountAccess.GUID_INFO) || fieldsMap.containsKey(valKey)) )
+//	        			if( !(valKey.equals(AccountAccess.GUID_INFO) || fieldsMap.containsKey(valKey)) )
+//	        			{
+//	        				valueMapIter.remove();
+//	        			}
+	        			if( !(fieldsMap.containsKey(valKey)) )
 	        			{
 	        				valueMapIter.remove();
 	        			}
@@ -448,7 +451,7 @@ public class Select extends AbstractSelector {
         ResponseCode responseCode = NSAuthentication.signatureAndACLCheck(null, guid, null, queryFields, reader,
                 null, null, MetaDataTypeName.READ_WHITELIST, app, true, nr);
         
-        LOGGER.log(Level.FINE, "{0} ACL check for select: guid={0} queryFields={1} responsecode={2}",
+        LOGGER.log(Level.FINE, "{0} ACL check for select: guid={0} queryFields={1} responsecode={3}",
                 new Object[]{app.getNodeID(), guid, queryFields, responseCode});
         if (responseCode.isOKResult()) {
           result.put(record);
@@ -751,26 +754,28 @@ public class Select extends AbstractSelector {
             "NS{0} processing {1} records", new Object[]{ar.getNodeID(), length});
     for (int i = 0; i < length; i++) {
       JSONObject record = jsonArray.getJSONObject(i);
-      if (isGuidRecord(record)) { // Filter out any non-guids
+      //if (isGuidRecord(record)) 
+      { // Filter out any non-guids
         String name = record.getString(NameRecord.NAME.getName());
         if (info.addResponseIfNotSeenYet(name, record)) {
           LOGGER.log(Level.FINE, "NS{0} added record {1}", new Object[]{ar.getNodeID(), record});
         } else {
           LOGGER.log(Level.FINE, "NS{0} already saw record {1}", new Object[]{ar.getNodeID(), record});
         }
-      } else {
-        LOGGER.log(Level.FINE, "NS{0} not a guid record {1}", new Object[]{ar.getNodeID(), record});
       }
+//      else {
+//        LOGGER.log(Level.FINE, "NS{0} not a guid record {1}", new Object[]{ar.getNodeID(), record});
+//      }
     }
   }
 
-  private static boolean isGuidRecord(JSONObject json) {
+  /*private static boolean isGuidRecord(JSONObject json) {
     JSONObject valuesMap = json.optJSONObject(NameRecord.VALUES_MAP.getName());
     if (valuesMap != null) {
       return valuesMap.has(AccountAccess.GUID_INFO);
     }
     return false;
-  }
+  }*/
 
   /**
  * @param args
