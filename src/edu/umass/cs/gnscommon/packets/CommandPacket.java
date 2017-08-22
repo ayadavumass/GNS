@@ -69,7 +69,7 @@ public class CommandPacket extends BasicPacketWithClientAddress implements
    * Refer {@link GNSProtocol#UNKNOWN_NAME}.
    */
   public final static String BOGUS_SERVICE_NAME = GNSProtocol.UNKNOWN_NAME
-          .toString();
+         .toString();
 
   /**
    * Identifier of the request on the client. Serialized.
