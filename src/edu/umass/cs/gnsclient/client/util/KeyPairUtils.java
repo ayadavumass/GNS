@@ -167,7 +167,7 @@ public class KeyPairUtils {
     }
 
     createSingleton();
-
+    
     String publicString =  DatatypeConverter.printHexBinary(keyPair.getPublic().getEncoded());
     String privateString =  DatatypeConverter.printHexBinary(keyPair.getPrivate().getEncoded());
     //String publicString = ByteUtils.toHex(keyPair.getPublic().getEncoded());

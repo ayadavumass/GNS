@@ -16,6 +16,7 @@
 package edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commandSupport;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -24,6 +25,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.logging.Level;
 
 import javax.xml.bind.DatatypeConverter;
@@ -118,7 +120,7 @@ public class AccountAccess {
    */
   public static final String HRN_FIELD = InternalField
           .makeInternalFieldString("guid_info") + "." + GNSProtocol.NAME.toString();
-
+  
   /**
    * Obtains the account info record for the given guid if that guid was used
    * to createField an account. Only looks on the local server.
@@ -1123,12 +1125,18 @@ public class AccountAccess {
    * @param publicKey
    * - the public key to use with the new account
    * @param handler
+   * @param activesSet
+   * The initial set of actives for the HRN and the GUID record.
+   * If activesSet is null, then the initial set of actives is all actives in the GNS.
+   * 
    * @return status result
    */
   public static CommandResponse addGuid(InternalRequestHeader header,
           CommandPacket commandPacket,
           AccountInfo accountInfo, GuidInfo accountGuidInfo, String name,
-          String guid, String publicKey, ClientRequestHandlerInterface handler) {
+          String guid, String publicKey, ClientRequestHandlerInterface handler
+          , Set<InetSocketAddress> activesSet) 
+  {
     /* arun: The commented out code below checking for duplicates is
 		 * incorrect. What we need to do is to check for conflicts in HRN-GUID
 		 * bindings. If an HRN being created already exists, but the
@@ -1155,10 +1163,10 @@ public class AccountAccess {
       JSONObject jsonHRN = new JSONObject();
       jsonHRN.put(HRN_GUID, guid);
       ResponseCode code;
-
+      
       code = handler.getInternalClient().createOrExists(
-              new CreateServiceName(name, jsonHRN.toString(), activesChangePolicy));
-
+              new CreateServiceName(name, jsonHRN.toString(), activesSet, activesChangePolicy));
+      
       /* arun: Return the error if we could not createField the HRN
 			 * (alias) record and the error indicates that it is not a duplicate
 			 * ID exception because of a limbo create operation from a previous
@@ -1215,7 +1223,7 @@ public class AccountAccess {
       // The addGuid needs to be rolled back if the second step fails.
       ResponseCode guidCode;
       guidCode = handler.getInternalClient().createOrExists(
-              new CreateServiceName(guid, jsonGuid.toString(), activesChangePolicy));
+              new CreateServiceName(guid, jsonGuid.toString(), activesSet, activesChangePolicy));
 
       assert (guidCode != null);
       String boundHRN = null;
@@ -1899,7 +1907,7 @@ public class AccountAccess {
     }
     return result;
   }
-
+  
   // test code
   /**
    *
@@ -1919,5 +1927,4 @@ public class AccountAccess {
             Config.getGlobalString(GNSConfig.GNSC.SUPPORT_EMAIL), adminBody);
 
   }
-
 }
