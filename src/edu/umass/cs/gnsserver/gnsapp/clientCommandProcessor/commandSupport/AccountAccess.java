@@ -524,14 +524,14 @@ public class AccountAccess {
           CommandPacket commandPacket,
           final String hostPortString, final String name, final String guid,
           String publicKey, String password, boolean useEmailVerification,
-          ClientRequestHandlerInterface handler) throws ClientException,
+          ClientRequestHandlerInterface handler, Set<InetSocketAddress> activesSet) throws ClientException,
           IOException, JSONException, InternalRequestException {
 
     CommandResponse response;
     // make this even if we don't need it
     String verifyCode = createVerificationCode(name);
     if ((response = addAccountInternal(header, name, guid, publicKey,
-            password, useEmailVerification, verifyCode, handler))
+            password, useEmailVerification, verifyCode, handler, activesSet))
             .getExceptionOrErrorCode().isOKResult()) {
 
       // Account creation was succesful so maybe send email verification.
@@ -788,6 +788,9 @@ public class AccountAccess {
    * Create a new GNS user account.
    *
    * THIS CAN BYPASS THE EMAIL VERIFICATION if you set emailVerify to false;
+   * 
+   * The account guid and the HRN are created using the provided set of actives,
+   * {@code activesSet}. If {@code activesSet} is null then all actives are used.
    *
    * <p>
    * This adds three records to the GNS for the account:<br>
@@ -806,14 +809,19 @@ public class AccountAccess {
    * @param emailVerify
    * @param verifyCode
    * @param handler
+   * @param activesSet
+   * The set of actives for creating the account guid and the HRN record. If 
+   * activesSet is null then all actives are used. 
    * @return status result
    * @throws IOException
    */
   public static CommandResponse addAccountInternal(
           InternalRequestHeader header, String name, String guid,
           String publicKey, String password, boolean emailVerify,
-          String verifyCode, ClientRequestHandlerInterface handler)
-          throws IOException {
+          String verifyCode, ClientRequestHandlerInterface handler,
+          Set<InetSocketAddress> activesSet)
+          throws IOException 
+  {
     try {
     	
       ResponseCode returnCode;
@@ -827,7 +835,7 @@ public class AccountAccess {
       JSONObject jsonHRN = new JSONObject();
       jsonHRN.put(HRN_GUID, guid);
       returnCode = handler.getInternalClient().createOrExists(
-              new CreateServiceName(name, jsonHRN.toString(), activesChangePolicy));
+              new CreateServiceName(name, jsonHRN.toString(), activesSet, activesChangePolicy));
 
       String boundGUID = null;
       if (!returnCode.isExceptionOrError()
@@ -862,7 +870,7 @@ public class AccountAccess {
         // set up the default read access
 
         returnCode = handler.getInternalClient().createOrExists(
-                new CreateServiceName(guid, json.toString(), activesChangePolicy));
+                new CreateServiceName(guid, json.toString(), activesSet, activesChangePolicy));
 
         String boundHRN = null;
         assert (returnCode != null);
@@ -1628,7 +1636,8 @@ public class AccountAccess {
           CommandPacket commandPacket,
           AccountInfo accountInfo, String alias, String writer,
           String signature, String message, Date timestamp,
-          ClientRequestHandlerInterface handler) {
+          ClientRequestHandlerInterface handler, Set<InetSocketAddress> activesSet)
+  {
     // insure that that name does not already exist
     try {
     	ReconfigureUponActivesChange activesChangePolicy = 
@@ -1640,7 +1649,8 @@ public class AccountAccess {
       jsonHRN.put(HRN_GUID, accountInfo.getGuid());
       if ((returnCode
               = handler.getInternalClient().createOrExists(
-          new CreateServiceName(alias, jsonHRN.toString(), activesChangePolicy))).isExceptionOrError()) {
+          new CreateServiceName
+          (alias, jsonHRN.toString(), activesSet, activesChangePolicy))).isExceptionOrError()) {
         
     	// roll this back
         accountInfo.removeAlias(alias);

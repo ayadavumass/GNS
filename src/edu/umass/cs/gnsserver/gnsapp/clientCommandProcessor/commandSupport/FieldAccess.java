@@ -813,9 +813,12 @@ public class FieldAccess {
       } else {
         // The alias (HRN) of the new guid is a hash of the query.
         String name = Base64.encodeToString(ShaOneHashFunction.getInstance().hash(query), false);
+        // aditya: Passing activesSet as null. Setting up a select group at all actives.
+        // Anyways, not sure if this code is used anymore, as a group setup for select requests
+        // is slow and has problems. 
         CommandResponse groupGuidCreateresult = AccountAccess.addGuid(header, commandPacket,
                 accountInfo, accountGuidInfo,
-                name, guid, publicKey, handler);
+                name, guid, publicKey, handler, null);
         // If there was a problem adding return that error response.
         if (!groupGuidCreateresult.getExceptionOrErrorCode().isOKResult()) {
           return groupGuidCreateresult;

@@ -1431,7 +1431,37 @@ public class GNSCommand extends CommandPacket {
     return getCommand(CommandType.AddAlias, targetGUID, GNSProtocol.GUID.toString(),
             targetGUID.getGuid(), GNSProtocol.NAME.toString(), name);
   }
-
+  
+  /**
+   * Creates an alias for {@code targetGUID}. The alias can be used just like
+   * the original guid.
+   *
+   * @param targetGUID
+   * @param name
+   * - the alias
+   * @return CommandPacket
+   * @throws ClientException
+   */
+  public static final CommandPacket addAlias(GuidEntry targetGUID, String name, 
+		  		Set<InetSocketAddress> activesSet)
+          throws ClientException {
+	  if(activesSet != null)
+	  {
+		  try {
+			return getCommand(CommandType.AddAlias, targetGUID, GNSProtocol.GUID.toString(),
+			            targetGUID.getGuid(), GNSProtocol.NAME.toString(), name, 
+			            GNSProtocol.ACTIVES_SET.toString(), Util.getJSONArray(activesSet));
+		} catch (JSONException e) {
+			throw new ClientException(e);
+		}
+	  }
+	  else
+	  {
+		  return getCommand(CommandType.AddAlias, targetGUID, GNSProtocol.GUID.toString(),
+		            targetGUID.getGuid(), GNSProtocol.NAME.toString(), name);
+	  }
+  }
+  
   /**
    * Removes the alias {@code name} for {@code targetGUID}.
    *
