@@ -845,6 +845,7 @@ public enum CommandType {
             GNSProtocol.SIGNATURE.toString(),
             GNSProtocol.SIGNATUREFULLMESSAGE.toString()},
           // optional parameters
+          //new String[]{GNSProtocol.PUBLIC_KEY.toString()}),
           new String[]{GNSProtocol.PUBLIC_KEY.toString(), GNSProtocol.ACTIVES_SET.toString()}),
   /**
    *
@@ -945,6 +946,7 @@ public enum CommandType {
             GNSProtocol.PASSWORD.toString(),
             GNSProtocol.SIGNATURE.toString(),
             GNSProtocol.SIGNATUREFULLMESSAGE.toString()},
+          //new String[]{}),
           new String[]{GNSProtocol.ACTIVES_SET.toString()}),
   /**
    *

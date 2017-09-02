@@ -191,19 +191,23 @@ public class AccountAccess {
     if (allowRemoteLookup) {
       GNSConfig.getLogger().log(Level.FINE,
               "LOOKING REMOTELY for ACCOUNT_INFO for {0}", guid);
-      String value = null;
+      JSONObject accountInfoJSON = null;
       try {
-        value = handler.getInternalClient().execute(GNSCommandInternal.fieldRead(guid, ACCOUNT_INFO, header)).getResultString();
+    	  accountInfoJSON = handler.getInternalClient().execute
+    			  (GNSCommandInternal.fieldRead(guid, ACCOUNT_INFO, header)).getResultJSONObject().getJSONObject(ACCOUNT_INFO);
       } catch (IOException | JSONException | ClientException e) {
       } catch (InternalRequestException e) {
         //FIXME: This should do something other than print a stack trace
         e.printStackTrace();
       }
+      GNSConfig.getLogger().log(Level.FINE,
+              "REMOTE LOOKUP for ACCOUNT_INFO for {0} returned {1}", 
+              new Object[]{guid, accountInfoJSON});
       // Do nothing as this is a normal result when the record doesn't
       // exist.
-      if (value != null) {
+      if (accountInfoJSON != null) {
         try {
-          return new AccountInfo(new JSONObject(value));
+          return new AccountInfo(accountInfoJSON);
         } catch (JSONException | ParseException e) {
           // Do nothing as this is a normal result when the record
           // doesn't exist.
@@ -432,22 +436,25 @@ public class AccountAccess {
     if (allowRemoteLookup) {
       GNSConfig.getLogger().log(Level.FINE,
               "LOOKING REMOTELY for GUID_INFO for {0}", guid);
-      String value = null;
-      Object obj;
-      try {
-        value = (obj = handler.getInternalClient().execute(
-                GNSCommandInternal.fieldRead(guid, GUID_INFO,
-                        header)).getResultMap().get(GUID_INFO)) != null ? obj.toString() : value;
+      JSONObject guidInfoJSON = null;
+      try
+      {
+    	  guidInfoJSON = handler.getInternalClient().execute(
+    			  GNSCommandInternal.fieldRead(guid, GUID_INFO, header)).getResultJSONObject().getJSONObject(GUID_INFO);
       } catch (IOException | JSONException | ClientException | InternalRequestException e) {
         GNSConfig.getLogger().log(Level.SEVERE,
                 "Problem getting GUID_INFO for {0} from remote server: {1}",
                 new Object[]{guid, e});
       }
-      if (value != null) {
-        try {
-          result = new GuidInfo(new JSONObject(value));
-          GUID_INFO_CACHE.put(guid, result);
-          return result;
+      GNSConfig.getLogger().log(Level.FINE,
+              "Remote lookup for {0} returned {1}", new Object[]{guid, guidInfoJSON});
+      
+      if (guidInfoJSON != null) {
+        try 
+        {
+        	result = new GuidInfo(guidInfoJSON);
+        	GUID_INFO_CACHE.put(guid, result);
+        	return result;
         } catch (JSONException | ParseException e) {
           GNSConfig.getLogger().log(Level.SEVERE,
                   "Problem parsing GUID_INFO value from remote server for {0}: {1}",

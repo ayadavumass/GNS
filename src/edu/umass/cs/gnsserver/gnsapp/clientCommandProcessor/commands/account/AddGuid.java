@@ -42,6 +42,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SignatureException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.Set;
+import java.util.logging.Level;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -77,7 +78,11 @@ public class AddGuid extends AbstractCommand {
   @Override
   public CommandResponse execute(InternalRequestHeader header, CommandPacket commandPacket, ClientRequestHandlerInterface handler) throws InvalidKeyException, InvalidKeySpecException,
           JSONException, NoSuchAlgorithmException, SignatureException, UnsupportedEncodingException {
+	  
+	  
     JSONObject json = commandPacket.getCommand();
+    GNSConfig.getLogger().log(Level.FINE, "AddGuid: json={0}", new Object[]{json});
+    
     String name = json.getString(GNSProtocol.NAME.toString());
     String accountGuid = json.getString(GNSProtocol.GUID.toString());
     String publicKey = json.optString(GNSProtocol.PUBLIC_KEY.toString(), null);
