@@ -23,6 +23,10 @@ public enum SelectOperation {
   WITHIN, /**
    * General purpose query.
    */
-  QUERY
-
+  QUERY,
+  
+  /**
+   * The case when a notification is also sent to GUIDs that satisfy a query in a select request.
+   */
+  SELECT_NOTIFY,
 }

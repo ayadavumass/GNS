@@ -734,8 +734,26 @@ public enum CommandType {
           new String[]{GNSProtocol.GUID.toString(), // the reader
             GNSProtocol.FIELDS.toString(),
             GNSProtocol.SIGNATURE.toString(),
-            GNSProtocol.SIGNATUREFULLMESSAGE.toString(),
-            GNSProtocol.SELECT_NOTIFICATION.toString()}),
+            GNSProtocol.SIGNATUREFULLMESSAGE.toString(),}),
+  
+  
+  /**
+   * Select commands that also send a notification
+   */
+ SelectAndNotify(316, CommandCategory.SELECT, "edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commands.select.SelectAndNotify",
+         CommandResultType.MAP, false, false,
+         "Sends a notification to all guids that satisfy the select query."
+         + "For details see http://gns.name/wiki/index.php/Query_Syntax "
+         + "The return value is a JSONObject containing various statistics like "
+         + "total number of GUIDs to whom notifications were sent, total failed notification etc.",
+         new String[]{GNSProtocol.QUERY.toString(), GNSProtocol.SELECT_NOTIFICATION.toString()},
+         // optional parameters
+         new String[]{GNSProtocol.GUID.toString(), // the reader
+           GNSProtocol.FIELDS.toString(),
+           GNSProtocol.SIGNATURE.toString(),
+           GNSProtocol.SIGNATUREFULLMESSAGE.toString(),
+           }),
+  
   //
   // Select commands that maintain a group guid
   //

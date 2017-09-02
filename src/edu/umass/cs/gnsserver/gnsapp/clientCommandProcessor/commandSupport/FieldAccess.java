@@ -727,6 +727,51 @@ public class FieldAccess {
     }
     return new CommandResponse(ResponseCode.NO_ERROR, EMPTY_JSON_ARRAY_STRING);
   }
+  
+  
+  /**
+   * Sends a select request to servers to compute GUIDs that satisfy the 
+   * {@code query} and send the {@code notificationStr} to those GUIDs..
+   *
+   * @param header
+   * @param commandPacket
+   * @param reader
+   * @param query
+   * @param projection
+   * @param signature
+   * @param message
+   * @param notificationStr
+   * 
+   * @param handler
+   * @return a command response
+   * @throws InternalRequestException
+   */
+  public static CommandResponse selectAndNotify(InternalRequestHeader header, 
+		  CommandPacket commandPacket, String reader, String query, List<String> projection,
+          String signature, String message, String notificationStr, 
+          ClientRequestHandlerInterface handler) throws InternalRequestException {
+    if (Select.queryContainsEvil(query)) {
+      return new CommandResponse(ResponseCode.OPERATION_NOT_SUPPORTED,
+              GNSProtocol.BAD_RESPONSE.toString() + " "
+              + GNSProtocol.OPERATION_NOT_SUPPORTED.toString()
+              + " Bad query operators in " + query);
+    }
+    JSONArray result;
+    try {
+      SelectRequestPacket packet = SelectRequestPacket.makeSelectNotifyRequest(-1, reader, query, 
+    		  projection, notificationStr);
+      
+      result = executeSelectHelper(header, commandPacket, packet, reader, 
+    		  								signature, message, handler.getApp());
+      if (result != null) {
+        return new CommandResponse(ResponseCode.NO_ERROR, result.toString());
+      }
+    } catch (IOException | JSONException | FailedDBOperationException e) {
+    	ClientException cle = new ClientException(e);
+    	return new CommandResponse(cle.getCode(), "selectQuery failed. "+cle.getMessage());
+    }
+    return null;
+  }
 
   /**
    * Sends a select request to the server to retrieve all the guid matching the query.
@@ -754,7 +799,7 @@ public class FieldAccess {
     }
     JSONArray result;
     try {
-      SelectRequestPacket packet = SelectRequestPacket.MakeQueryRequest(-1, reader, query, projection);
+      SelectRequestPacket packet = SelectRequestPacket.makeQueryRequest(-1, reader, query, projection);
       result = executeSelectHelper(header, commandPacket, packet, reader, signature, message, handler.getApp());
       if (result != null) {
         return new CommandResponse(ResponseCode.NO_ERROR, result.toString());
@@ -825,7 +870,7 @@ public class FieldAccess {
     JSONArray result;
 
     try {
-      SelectRequestPacket packet = SelectRequestPacket.MakeGroupSetupRequest(-1,
+      SelectRequestPacket packet = SelectRequestPacket.makeGroupSetupRequest(-1,
               reader, query, null, guid, interval);
       result = executeSelectHelper(header, commandPacket, packet, reader, signature, message, handler.getApp());
       if (result != null) {

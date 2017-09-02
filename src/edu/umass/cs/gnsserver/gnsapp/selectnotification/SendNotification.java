@@ -17,10 +17,14 @@ public interface SendNotification
 	 * to {@code guidList}. 
 	 * 
 	 * @param guidList
+	 * The list of GUIDs that satisfy a select query and their associated information
+	 * required to send a notification to devices. 
+	 * 
 	 * @param notificationStr
+	 * The notification in string form.
 	 * @return
 	 * An object of {@link NotificationSendingStats} 
 	 * to keep track of notification sending progress.
 	 */
-	public NotificationSendingStats sendNotification(List<String> guidList, String notificationStr);
+	public NotificationSendingStats sendNotification(List<SelectGUIDInfo> guidList, String notificationStr);
 }

@@ -1529,17 +1529,69 @@ public class GNSCommand extends CommandPacket {
    *
    * There are links in the wiki page above to find the exact syntax for
    * querying spatial coordinates.
+   * 
+   * The GUIDs that have attributes queried in the query as world-readable can satisfy the query
+   * and will be notified. 
    *
    * @param query
    * The select query being issued.
+   * @param fields
+   * The GUID fields that a user wants to be passed to the notification sending 
+   * mechanism, implemented using 
+   * {@link edu.umass.cs.gnsserver.gnsapp.selectnotification.SendNotification}.
+   * For a GUID that satisfies the query, the field-value pairs are passed as a JSONObject in 
+   * {@link edu.umass.cs.gnsserver.gnsapp.selectnotification.SelectGUIDInfo}
+   * 
    * @param notification
    * The notification to send to GUIDs that satisfy query.
    * @return CommandPacket
    * @throws ClientException
    */
-  public static final CommandPacket selectAndNotify(String query, SelectNotification<?> notification)
+  public static final CommandPacket selectAndNotify(String query, List<String> fields, 
+		  												SelectNotification<?> notification)
           throws ClientException {
-    return getCommand(CommandType.SelectQuery, GNSProtocol.QUERY.toString(), query,
+    return getCommand(CommandType.SelectAndNotify, GNSProtocol.QUERY.toString(), query,
+    			GNSProtocol.SELECT_NOTIFICATION.toString(), notification.toString());
+  }
+  
+  /**
+   * Sends {@code notification} to all guid records that match {@code query}. 
+   *
+   * The query syntax is described here:
+   * https://gns.name/wiki/index.php?title=Query_Syntax
+   *
+   * There are some predefined field names such as
+   * {@link edu.umass.cs.gnscommon.GNSProtocol#LOCATION_FIELD_NAME} and
+   * {@link edu.umass.cs.gnscommon.GNSProtocol#IPADDRESS_FIELD_NAME} that are indexed by
+   * default.
+   *
+   * There are links in the wiki page above to find the exact syntax for
+   * querying spatial coordinates.
+   * 
+   * The GUIDs whose read ACLs for the attributes in the query include
+   * the issuer can satisfy the query and will be notified. 
+   *
+   * @param issuer
+   * The GuidEntry of the issuer. 
+   * @param query
+   * The select query being issued.
+   * @param fields
+   * The GUID fields that a user wants to be passed to the notification sending 
+   * mechanism, implemented using 
+   * {@link edu.umass.cs.gnsserver.gnsapp.selectnotification.SendNotification}.
+   * For a GUID that satisfies the query, the field-value pairs are passed as a JSONObject in 
+   * {@link edu.umass.cs.gnsserver.gnsapp.selectnotification.SelectGUIDInfo}
+   * 
+   * @param notification
+   * The notification to send to GUIDs that satisfy query.
+   * @return CommandPacket
+   * @throws ClientException
+   */
+  public static final CommandPacket selectAndNotify(GuidEntry issuer, String query, 
+		  List<String> fields, SelectNotification<?> notification)
+          throws ClientException 
+  {
+	  return getCommand(CommandType.SelectAndNotify, GNSProtocol.QUERY.toString(), query,
     			GNSProtocol.SELECT_NOTIFICATION.toString(), notification.toString());
   }
   
@@ -1568,6 +1620,8 @@ public class GNSCommand extends CommandPacket {
           throws ClientException {
     return getCommand(CommandType.SelectQuery, GNSProtocol.QUERY.toString(), query);
   }
+  
+  
 
   /**
    * Selects all guid records that match {@code query}. The result type of the

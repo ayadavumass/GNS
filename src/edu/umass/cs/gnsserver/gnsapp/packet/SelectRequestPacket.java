@@ -32,9 +32,12 @@ import edu.umass.cs.gnsserver.utils.JSONUtils;
 /**
  * A SelectRequestPacket is like a DNS_SUBTYPE_QUERY packet without a GUID, but with a key and value.
  * The semantics is that we want to look up all the records that have a field named key with the given value.
- * We also use this to do automatic group GUID maintenence.
+ * We also use this to do automatic group GUID maintenance.
+ * 
+ * This packet also has a field to include a notification, which needs to be sent to 
+ * all GUIDs that satisfy a query in a select request.
  *
- * @author westy
+ * @author westy, aditya
  */
 public class SelectRequestPacket extends BasicPacketWithNSReturnAddress
         implements ClientRequest {
@@ -52,6 +55,7 @@ public class SelectRequestPacket extends BasicPacketWithNSReturnAddress
   private final static String GROUP_BEHAVIOR = "group";
   private final static String GUID = "guid";
   private final static String REFRESH = "refresh";
+  private final static String NOTIFICATION_STR = "notifcationMesg";
 
   //
   private long requestId;
@@ -68,7 +72,9 @@ public class SelectRequestPacket extends BasicPacketWithNSReturnAddress
   // for group guid
   private String guid; // the group GUID we are maintaning or null for simple select
   private int minRefreshInterval; // minimum time between allowed refreshes of the guid
-
+  
+  private String notificationStr;
+  
   /**
    * Constructs a new SelectRequestPacket
    *
@@ -111,7 +117,8 @@ public class SelectRequestPacket extends BasicPacketWithNSReturnAddress
   private SelectRequestPacket(long id, SelectOperation selectOperation,
           SelectGroupBehavior groupOperation,
           String reader, String query, List<String> projection,
-          String guid, int minRefreshInterval) {
+          String guid, int minRefreshInterval, String notifcationStr) 
+  {
     super();
     this.type = Packet.PacketType.SELECT_REQUEST;
     this.requestId = id;
@@ -125,6 +132,7 @@ public class SelectRequestPacket extends BasicPacketWithNSReturnAddress
     this.otherValue = null;
     this.guid = guid;
     this.minRefreshInterval = minRefreshInterval;
+    this.notificationStr = notifcationStr;
   }
 
   /**
@@ -136,11 +144,30 @@ public class SelectRequestPacket extends BasicPacketWithNSReturnAddress
    * @param projection
    * @return a SelectRequestPacket
    */
-  public static SelectRequestPacket MakeQueryRequest(long id, String reader, String query, List<String> projection) {
+  public static SelectRequestPacket makeQueryRequest(long id, String reader, String query, List<String> projection) {
     return new SelectRequestPacket(id, SelectOperation.QUERY,
             SelectGroupBehavior.NONE, reader, query, projection,
-            null, -1);
+            null, -1, null);
   }
+  
+  
+  /**
+   * Creates a request to search name servers to compute the GUIDs that satisfy 
+   * the given query and send those the given  notification.
+   *
+   * @param id
+   * @param reader
+   * @param query
+   * @param projection
+   * @return a SelectRequestPacket
+   */
+  public static SelectRequestPacket makeSelectNotifyRequest(long id, String reader, String query, 
+		  			List<String> projection, String notificationStr) 
+  {
+	  return new SelectRequestPacket(id, SelectOperation.SELECT_NOTIFY,
+			  SelectGroupBehavior.NONE, reader, query, projection, null, -1, notificationStr);
+  }
+  
 
   /**
    * Just like a MakeQueryRequest except we're creating a new group guid to maintain results.
@@ -154,13 +181,13 @@ public class SelectRequestPacket extends BasicPacketWithNSReturnAddress
    * @param refreshInterval
    * @return a SelectRequestPacket
    */
-  public static SelectRequestPacket MakeGroupSetupRequest(long id, String reader,
+  public static SelectRequestPacket makeGroupSetupRequest(long id, String reader,
           String query, List<String> projection,
           String guid,
           int refreshInterval) {
     return new SelectRequestPacket(id, SelectOperation.QUERY, SelectGroupBehavior.GROUP_SETUP,
             reader, query, projection,
-            guid, refreshInterval);
+            guid, refreshInterval, null);
   }
 
   /**
@@ -207,6 +234,7 @@ public class SelectRequestPacket extends BasicPacketWithNSReturnAddress
     this.groupBehavior = SelectGroupBehavior.valueOf(json.getString(GROUP_BEHAVIOR));
     this.guid = json.optString(GUID, null);
     this.minRefreshInterval = json.optInt(REFRESH, -1);
+    this.notificationStr = json.optString(NOTIFICATION_STR, null);
   }
 
   /**
@@ -255,6 +283,11 @@ public class SelectRequestPacket extends BasicPacketWithNSReturnAddress
     }
     if (minRefreshInterval != -1) {
       json.put(REFRESH, minRefreshInterval);
+    }
+    
+    if(this.notificationStr != null)
+    {
+    	json.put(NOTIFICATION_STR, notificationStr);
     }
   }
 
@@ -451,6 +484,15 @@ public class SelectRequestPacket extends BasicPacketWithNSReturnAddress
     return requestId;
   }
 
+  /**
+   * Returns the notification string. 
+   * @return
+   */
+  public String getNotificationString()
+  {
+	  return this.notificationStr;
+  }
+  
   /**
    *
    * @return the summary object
