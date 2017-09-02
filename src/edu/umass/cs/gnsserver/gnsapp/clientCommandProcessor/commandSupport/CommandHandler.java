@@ -92,7 +92,6 @@ public class CommandHandler {
       CommandResponse returnValue = executeCommand(command,
               commandPacket, handler, doNotReplyToClient);
       
-      
       // returnValue can be null in case the command is handled in a non-blocking manner. 
       if(returnValue != null)
       {
@@ -136,7 +135,6 @@ public class CommandHandler {
 	        ClientCommandProcessorConfig.getLogger().log(Level.SEVERE,
 	                "Problem replying to command: {0}", e);
 	      }
-	      
       }
       
     } catch (JSONException e) {
@@ -150,6 +148,7 @@ public class CommandHandler {
     // reply to client is true, this means this is the active replica
     // that recvd the request from the gnsClient. So, let's check for
     // sending trigger to Context service here.
+    // FIXME: Old CNS code needs to be removed. 
     if (Config.getGlobalBoolean(GNSConfig.GNSC.ENABLE_CNS)) {
       if (!doNotReplyToClient) {
 
@@ -166,7 +165,7 @@ public class CommandHandler {
         }
       }
     }
-
+    
   }
 
   private static CommandPacket addMessageWithoutSignatureToCommand(

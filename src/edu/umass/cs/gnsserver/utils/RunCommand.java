@@ -32,7 +32,7 @@ import java.util.concurrent.TimeUnit;
  * @author westy, arun
  */
 public class RunCommand {
-	private static final int MAX_LINES = 1024;
+	private static final int MAX_LINES = 1;
 	private static final long PROCESS_WAIT_TIMEOUT = 30;
 
 	/**
@@ -44,7 +44,8 @@ public class RunCommand {
 			final String directory) {
 		return command(cmdline, directory, "true".equals(System.getProperty("inheritIO")));
 	}
-
+	
+	
 	/**
 	 * Returns null if it failed for some reason.
 	 *
@@ -57,15 +58,14 @@ public class RunCommand {
 			final String directory, boolean inheritIO) {
 		try {
 			ProcessBuilder processBuilder = new ProcessBuilder(new String[] {
-					"bash", "-c", cmdline });
+					"/bin/bash", "-c", cmdline });
 			if (inheritIO)
-				processBuilder.inheritIO()
-				;
-
+				processBuilder.inheritIO();
+			
 			Process process = processBuilder.redirectErrorStream(true)
 					.directory(new File(directory)).start();
-
-			if (!inheritIO)
+			
+			if (inheritIO)
 				return gatherOutput(process);
 
 			// There should really be a timeout here.
@@ -80,19 +80,36 @@ public class RunCommand {
 			return null;
 		}
 	}
-
+	
+	
 	private static ArrayList<String> gatherOutput(Process process)
-			throws IOException {
+	{
 		ArrayList<String> output = new ArrayList<>();
 		BufferedReader br = new BufferedReader(new InputStreamReader(
 				process.getInputStream()));
 		String line = null;
-		while ((line = br.readLine()) != null && output.size() < MAX_LINES) {
-			output.add(line);
+		try
+		{
+			while ((line = br.readLine()) != null && output.size() < MAX_LINES) {
+				output.add(line);
+			}
+		}
+		catch(IOException ioex)
+		{
+			ioex.printStackTrace();
+		}
+		finally
+		{
+			if(br != null)
+				try {
+					br.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
 		}
 		return output;
 	}
-
+	
 	/**
 	 * @param args
 	 */

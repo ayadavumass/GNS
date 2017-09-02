@@ -16,6 +16,7 @@
 package edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commandSupport;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -24,6 +25,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.logging.Level;
 
 import javax.xml.bind.DatatypeConverter;
@@ -118,7 +120,7 @@ public class AccountAccess {
    */
   public static final String HRN_FIELD = InternalField
           .makeInternalFieldString("guid_info") + "." + GNSProtocol.NAME.toString();
-
+  
   /**
    * Obtains the account info record for the given guid if that guid was used
    * to createField an account. Only looks on the local server.
@@ -189,19 +191,23 @@ public class AccountAccess {
     if (allowRemoteLookup) {
       GNSConfig.getLogger().log(Level.FINE,
               "LOOKING REMOTELY for ACCOUNT_INFO for {0}", guid);
-      String value = null;
+      JSONObject accountInfoJSON = null;
       try {
-        value = handler.getInternalClient().execute(GNSCommandInternal.fieldRead(guid, ACCOUNT_INFO, header)).getResultString();
+    	  accountInfoJSON = handler.getInternalClient().execute
+    			  (GNSCommandInternal.fieldRead(guid, ACCOUNT_INFO, header)).getResultJSONObject().getJSONObject(ACCOUNT_INFO);
       } catch (IOException | JSONException | ClientException e) {
       } catch (InternalRequestException e) {
         //FIXME: This should do something other than print a stack trace
         e.printStackTrace();
       }
+      GNSConfig.getLogger().log(Level.FINE,
+              "REMOTE LOOKUP for ACCOUNT_INFO for {0} returned {1}", 
+              new Object[]{guid, accountInfoJSON});
       // Do nothing as this is a normal result when the record doesn't
       // exist.
-      if (value != null) {
+      if (accountInfoJSON != null) {
         try {
-          return new AccountInfo(new JSONObject(value));
+          return new AccountInfo(accountInfoJSON);
         } catch (JSONException | ParseException e) {
           // Do nothing as this is a normal result when the record
           // doesn't exist.
@@ -430,22 +436,25 @@ public class AccountAccess {
     if (allowRemoteLookup) {
       GNSConfig.getLogger().log(Level.FINE,
               "LOOKING REMOTELY for GUID_INFO for {0}", guid);
-      String value = null;
-      Object obj;
-      try {
-        value = (obj = handler.getInternalClient().execute(
-                GNSCommandInternal.fieldRead(guid, GUID_INFO,
-                        header)).getResultMap().get(GUID_INFO)) != null ? obj.toString() : value;
+      JSONObject guidInfoJSON = null;
+      try
+      {
+    	  guidInfoJSON = handler.getInternalClient().execute(
+    			  GNSCommandInternal.fieldRead(guid, GUID_INFO, header)).getResultJSONObject().getJSONObject(GUID_INFO);
       } catch (IOException | JSONException | ClientException | InternalRequestException e) {
         GNSConfig.getLogger().log(Level.SEVERE,
                 "Problem getting GUID_INFO for {0} from remote server: {1}",
                 new Object[]{guid, e});
       }
-      if (value != null) {
-        try {
-          result = new GuidInfo(new JSONObject(value));
-          GUID_INFO_CACHE.put(guid, result);
-          return result;
+      GNSConfig.getLogger().log(Level.FINE,
+              "Remote lookup for {0} returned {1}", new Object[]{guid, guidInfoJSON});
+      
+      if (guidInfoJSON != null) {
+        try 
+        {
+        	result = new GuidInfo(guidInfoJSON);
+        	GUID_INFO_CACHE.put(guid, result);
+        	return result;
         } catch (JSONException | ParseException e) {
           GNSConfig.getLogger().log(Level.SEVERE,
                   "Problem parsing GUID_INFO value from remote server for {0}: {1}",
@@ -522,14 +531,14 @@ public class AccountAccess {
           CommandPacket commandPacket,
           final String hostPortString, final String name, final String guid,
           String publicKey, String password, boolean useEmailVerification,
-          ClientRequestHandlerInterface handler) throws ClientException,
+          ClientRequestHandlerInterface handler, Set<InetSocketAddress> activesSet) throws ClientException,
           IOException, JSONException, InternalRequestException {
 
     CommandResponse response;
     // make this even if we don't need it
     String verifyCode = createVerificationCode(name);
     if ((response = addAccountInternal(header, name, guid, publicKey,
-            password, useEmailVerification, verifyCode, handler))
+            password, useEmailVerification, verifyCode, handler, activesSet))
             .getExceptionOrErrorCode().isOKResult()) {
 
       // Account creation was succesful so maybe send email verification.
@@ -786,6 +795,9 @@ public class AccountAccess {
    * Create a new GNS user account.
    *
    * THIS CAN BYPASS THE EMAIL VERIFICATION if you set emailVerify to false;
+   * 
+   * The account guid and the HRN are created using the provided set of actives,
+   * {@code activesSet}. If {@code activesSet} is null then all actives are used.
    *
    * <p>
    * This adds three records to the GNS for the account:<br>
@@ -804,14 +816,19 @@ public class AccountAccess {
    * @param emailVerify
    * @param verifyCode
    * @param handler
+   * @param activesSet
+   * The set of actives for creating the account guid and the HRN record. If 
+   * activesSet is null then all actives are used. 
    * @return status result
    * @throws IOException
    */
   public static CommandResponse addAccountInternal(
           InternalRequestHeader header, String name, String guid,
           String publicKey, String password, boolean emailVerify,
-          String verifyCode, ClientRequestHandlerInterface handler)
-          throws IOException {
+          String verifyCode, ClientRequestHandlerInterface handler,
+          Set<InetSocketAddress> activesSet)
+          throws IOException 
+  {
     try {
     	
       ResponseCode returnCode;
@@ -825,7 +842,7 @@ public class AccountAccess {
       JSONObject jsonHRN = new JSONObject();
       jsonHRN.put(HRN_GUID, guid);
       returnCode = handler.getInternalClient().createOrExists(
-              new CreateServiceName(name, jsonHRN.toString(), activesChangePolicy));
+              new CreateServiceName(name, jsonHRN.toString(), activesSet, activesChangePolicy));
 
       String boundGUID = null;
       if (!returnCode.isExceptionOrError()
@@ -860,7 +877,7 @@ public class AccountAccess {
         // set up the default read access
 
         returnCode = handler.getInternalClient().createOrExists(
-                new CreateServiceName(guid, json.toString(), activesChangePolicy));
+                new CreateServiceName(guid, json.toString(), activesSet, activesChangePolicy));
 
         String boundHRN = null;
         assert (returnCode != null);
@@ -1123,12 +1140,18 @@ public class AccountAccess {
    * @param publicKey
    * - the public key to use with the new account
    * @param handler
+   * @param activesSet
+   * The initial set of actives for the HRN and the GUID record.
+   * If activesSet is null, then the initial set of actives is all actives in the GNS.
+   * 
    * @return status result
    */
   public static CommandResponse addGuid(InternalRequestHeader header,
           CommandPacket commandPacket,
           AccountInfo accountInfo, GuidInfo accountGuidInfo, String name,
-          String guid, String publicKey, ClientRequestHandlerInterface handler) {
+          String guid, String publicKey, ClientRequestHandlerInterface handler
+          , Set<InetSocketAddress> activesSet) 
+  {
     /* arun: The commented out code below checking for duplicates is
 		 * incorrect. What we need to do is to check for conflicts in HRN-GUID
 		 * bindings. If an HRN being created already exists, but the
@@ -1155,10 +1178,10 @@ public class AccountAccess {
       JSONObject jsonHRN = new JSONObject();
       jsonHRN.put(HRN_GUID, guid);
       ResponseCode code;
-
+      
       code = handler.getInternalClient().createOrExists(
-              new CreateServiceName(name, jsonHRN.toString(), activesChangePolicy));
-
+              new CreateServiceName(name, jsonHRN.toString(), activesSet, activesChangePolicy));
+      
       /* arun: Return the error if we could not createField the HRN
 			 * (alias) record and the error indicates that it is not a duplicate
 			 * ID exception because of a limbo create operation from a previous
@@ -1215,7 +1238,7 @@ public class AccountAccess {
       // The addGuid needs to be rolled back if the second step fails.
       ResponseCode guidCode;
       guidCode = handler.getInternalClient().createOrExists(
-              new CreateServiceName(guid, jsonGuid.toString(), activesChangePolicy));
+              new CreateServiceName(guid, jsonGuid.toString(), activesSet, activesChangePolicy));
 
       assert (guidCode != null);
       String boundHRN = null;
@@ -1620,7 +1643,8 @@ public class AccountAccess {
           CommandPacket commandPacket,
           AccountInfo accountInfo, String alias, String writer,
           String signature, String message, Date timestamp,
-          ClientRequestHandlerInterface handler) {
+          ClientRequestHandlerInterface handler, Set<InetSocketAddress> activesSet)
+  {
     // insure that that name does not already exist
     try {
     	ReconfigureUponActivesChange activesChangePolicy = 
@@ -1632,7 +1656,8 @@ public class AccountAccess {
       jsonHRN.put(HRN_GUID, accountInfo.getGuid());
       if ((returnCode
               = handler.getInternalClient().createOrExists(
-          new CreateServiceName(alias, jsonHRN.toString(), activesChangePolicy))).isExceptionOrError()) {
+          new CreateServiceName
+          (alias, jsonHRN.toString(), activesSet, activesChangePolicy))).isExceptionOrError()) {
         
     	// roll this back
         accountInfo.removeAlias(alias);
@@ -1899,7 +1924,7 @@ public class AccountAccess {
     }
     return result;
   }
-
+  
   // test code
   /**
    *
@@ -1919,5 +1944,4 @@ public class AccountAccess {
             Config.getGlobalString(GNSConfig.GNSC.SUPPORT_EMAIL), adminBody);
 
   }
-
 }

@@ -552,6 +552,11 @@ public enum GNSProtocol {
    * The select notification key field in a command.
    */
   SELECT_NOTIFICATION("select_notification"),
+  
+  /** The set of actives field in a command. This is mainly used to specify
+   *  the initial set of actives while creating an account or a guid.
+   */
+  ACTIVES_SET("activesSet"),
   ;
 
   final String label;

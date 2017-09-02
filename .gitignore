@@ -49,6 +49,8 @@ build.number
 /scripts/singlenodetests/LNSlogfile
 /scripts/singlenodetests/derby.log
 /scripts/singlenodetests/log/
+/bin/gpServer.sh
+/bin/gpClient.sh
 /derbyDB/
 /jars/
 /paxos_logs/
@@ -57,8 +59,6 @@ build.number
 /nbbuild.xml
 /private.xml
 /clientKeyDB/
-/bin/gpClient.sh
-/bin/gpServer.sh
 .paxos_logs
 .gradle
 /GNS-1.19.09/

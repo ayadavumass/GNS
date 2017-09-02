@@ -110,5 +110,4 @@ public interface GNSApplicationInterface<NodeIDType> {
    * @return returns the SSLMessenger.
    */
   public SSLMessenger<NodeIDType, JSONObject> getSSLMessenger();
-  
 }

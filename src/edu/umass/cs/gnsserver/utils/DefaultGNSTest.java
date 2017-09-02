@@ -358,17 +358,20 @@ public class DefaultGNSTest extends DefaultTest {
 			else {
 				ArrayList<String> output = RunCommand.command(startServerCmd,
 						".");
+				
 				if (output != null)
 					for (String line : output)
 						System.out.println(line);
 				else
 					Util.suicide("Server command failure: ; aborting all tests.");
+				
 			}
 		}
-
+		
 		serversStarted = true;
 	}
-
+	
+	
 	private static boolean explicitlySleepTillServersReady()
 			throws InterruptedException {
 		/* The waitTillAllServersReady parameter is not needed for

@@ -1,6 +1,7 @@
 package edu.umass.cs.gnscommon.packets;
 
 import edu.umass.cs.gnscommon.utils.JSONCommonUtils;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -71,6 +72,7 @@ public class PacketUtils {
 			}
 		};
 	}
+	
 	/**
 	 * @param commandPacket
 	 * @param doNotReplyToClient 
@@ -89,8 +91,8 @@ public class PacketUtils {
 				:
 
 				new InternalRequestHeader() {
-
-					String mostRecentQueried = null;
+					
+					//String mostRecentQueried = null;
 
 					@Override
 					public long getOriginatingRequestID() {
@@ -115,8 +117,8 @@ public class PacketUtils {
 													.toString()) ? commandPacket
 									.getCommand().getString(
 											GNSProtocol.ORIGINATING_GUID
-													.toString()) : (this.mostRecentQueried =PacketUtils
-									.getOriginatingGUID(commandPacket));
+													.toString()) : PacketUtils
+									.getOriginatingGUID(commandPacket);
 						} catch (JSONException e) {
 							return PacketUtils
 									.getOriginatingGUID(commandPacket);
@@ -125,8 +127,7 @@ public class PacketUtils {
 
 					@Override
 					public String getQueryingGUID() {
-						return this.mostRecentQueried=PacketUtils
-								.getOriginatingGUID(commandPacket);
+						return PacketUtils.getOriginatingGUID(commandPacket);
 					}
 
 					@Override
@@ -199,7 +200,6 @@ public class PacketUtils {
 					public boolean getDoNotReplyToClient(){
 						return doNotReplyToClient;
 					}
-					
 				};
 	}
 

@@ -69,7 +69,7 @@ public class CommandPacket extends BasicPacketWithClientAddress implements
    * Refer {@link GNSProtocol#UNKNOWN_NAME}.
    */
   public final static String BOGUS_SERVICE_NAME = GNSProtocol.UNKNOWN_NAME
-          .toString();
+         .toString();
 
   /**
    * Identifier of the request on the client. Serialized.
@@ -171,7 +171,6 @@ public class CommandPacket extends BasicPacketWithClientAddress implements
    */
   public CommandPacket(byte[] bytes) throws RequestParseException {
     ByteBuffer buf = ByteBuffer.wrap(bytes);
-    
     /**
      * We will come here only if this class implements Byteable and the
      * sender also implements Byteable. If the sender used toJSONObject(),
@@ -194,8 +193,8 @@ public class CommandPacket extends BasicPacketWithClientAddress implements
     validateCommandType();
     
     throw new RequestParseException(new RuntimeException(
-    		"This constructor doesn't set the client address, which is needed for non-blocking selects. So, this "
-    		+ "constructor should not be used."));
+    		"This constructor doesn't set the client address, which is needed for non-blocking selects. "
+    		+ "So, this constructor should not be used."));
   }
 
   /**

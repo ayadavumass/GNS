@@ -551,9 +551,9 @@ public enum CommandType {
   //Fixme: CREATE_INDEX should be an ADMIN_UPDATE command.
 
   /**
-   *
+   * aditya: changed the CreateIndex category from OTHER to UPDATE for performing experiments. 
    */
-  CreateIndex(230, CommandCategory.OTHER, "edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commands.data.CreateIndex",
+  CreateIndex(230, CommandCategory.UPDATE, "edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commands.data.CreateIndex",
           CommandResultType.NULL, true, false,
           "Creates an index for field. The value is a string containing the index type.",
           new String[]{GNSProtocol.GUID.toString(),
@@ -851,7 +851,7 @@ public enum CommandType {
             GNSProtocol.NAME.toString(),
             GNSProtocol.SIGNATURE.toString(),
             GNSProtocol.SIGNATUREFULLMESSAGE.toString()},
-          new String[]{}),
+          new String[]{GNSProtocol.ACTIVES_SET.toString()}),
   /**
    *
    */
@@ -864,7 +864,8 @@ public enum CommandType {
             GNSProtocol.SIGNATURE.toString(),
             GNSProtocol.SIGNATUREFULLMESSAGE.toString()},
           // optional parameters
-          new String[]{GNSProtocol.PUBLIC_KEY.toString(),}),
+          //new String[]{GNSProtocol.PUBLIC_KEY.toString()}),
+          new String[]{GNSProtocol.PUBLIC_KEY.toString(), GNSProtocol.ACTIVES_SET.toString()}),
   /**
    *
    */
@@ -877,7 +878,7 @@ public enum CommandType {
             GNSProtocol.PUBLIC_KEYS.toString(),
             GNSProtocol.SIGNATURE.toString(),
             GNSProtocol.SIGNATUREFULLMESSAGE.toString()},
-          new String[]{}),
+          new String[]{GNSProtocol.ACTIVES_SET.toString()}),
   /**
    *
    */
@@ -891,7 +892,7 @@ public enum CommandType {
             GNSProtocol.GUID.toString(),
             GNSProtocol.SIGNATURE.toString(),
             GNSProtocol.SIGNATUREFULLMESSAGE.toString()},
-          new String[]{}),
+          new String[]{GNSProtocol.ACTIVES_SET.toString()}),
   /**
    *
    */
@@ -905,7 +906,7 @@ public enum CommandType {
             GNSProtocol.GUID.toString(),
             GNSProtocol.SIGNATURE.toString(),
             GNSProtocol.SIGNATUREFULLMESSAGE.toString()},
-          new String[]{}),
+          new String[]{GNSProtocol.ACTIVES_SET.toString()}),
   /**
    *
    */
@@ -964,7 +965,8 @@ public enum CommandType {
             GNSProtocol.PASSWORD.toString(),
             GNSProtocol.SIGNATURE.toString(),
             GNSProtocol.SIGNATUREFULLMESSAGE.toString()},
-          new String[]{}),
+          //new String[]{}),
+          new String[]{GNSProtocol.ACTIVES_SET.toString()}),
   /**
    *
    */
@@ -980,7 +982,7 @@ public enum CommandType {
             GNSProtocol.PASSWORD.toString(),
             GNSProtocol.SIGNATURE.toString(),
             GNSProtocol.SIGNATUREFULLMESSAGE.toString()},
-          new String[]{},
+          new String[]{GNSProtocol.ACTIVES_SET.toString()},
           CommandFlag.MUTUAL_AUTH // This is important - without this the command isn't secure.
   ),
   /**

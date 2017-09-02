@@ -89,6 +89,10 @@ public interface InternalRequestHeader {
 	
 	/**
 	 * Returns the source port.
+<<<<<<< HEAD
+	 * 
+=======
+>>>>>>> upstream/master
 	 * {@link #getSourceAddress()} and {@link #getSourcePort()} 
 	 * methods are separate to maintain the backward compatibility, i.e.,
 	 * at many places in the GNS

@@ -57,6 +57,7 @@ import edu.umass.cs.gnscommon.utils.Base64;
 import edu.umass.cs.gnsserver.gnsapp.GNSApplicationInterface;
 import edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commandSupport.MetaDataTypeName;
 import edu.umass.cs.gnsserver.gnsapp.recordmap.BasicRecordMap;
+import edu.umass.cs.gnsserver.gnsapp.recordmap.NameRecord;
 import edu.umass.cs.gnsserver.main.GNSConfig.GNSC;
 import edu.umass.cs.utils.Config;
 import edu.umass.cs.utils.DelayProfiler;
@@ -329,16 +330,16 @@ public class NSAccessSupport {
    * @param guid
    * @param field
    * @param activeReplica
+   * @param options can be used to supply an already read GUID record, so we don't have to read it again. 
    * @return true if the field can be accessed
    * @throws FailedDBOperationException
    */
   public static boolean fieldAccessibleByEveryone(MetaDataTypeName access, String guid, String field,
-          GNSApplicationInterface<String> activeReplica) throws FailedDBOperationException {
-	  /**
-	   * retrieve the metadata for ACL check
-	   */
-	 JSONObject metaData = getMataDataForACLCheck(guid, activeReplica.getDB());
-	 if(metaData == null){
+          GNSApplicationInterface<String> activeReplica, NameRecord... readRecords) throws FailedDBOperationException {
+	  
+	  JSONObject metaData = getMataDataForACLCheck(guid, activeReplica.getDB(), readRecords);
+	  
+	  if(metaData == null){
 		 ClientSupportConfig.getLogger().log(Level.WARNING,
 	              "User {0} access problem for {1}'s {2} field: no meta data exists", 
 	              new Object[]{guid, field, access.toString()});
@@ -349,7 +350,9 @@ public class NSAccessSupport {
 	 try {
 			JSONArray aclOfField = metaData.getJSONObject(access.getPrefix())
 					.getJSONObject(access.name()).getJSONObject(field).getJSONArray(md);
-			if(indexOfItemInJSONArray(aclOfField, GNSProtocol.EVERYONE.toString()) >= 0){				
+			if(indexOfItemInJSONArray(aclOfField, GNSProtocol.EVERYONE.toString()) >= 0){
+				ClientSupportConfig.getLogger().log(Level.FINEST, "fieldAccessibleByEveryone guid={0}, field={1}",
+						new Object[]{guid, field});
 				return true;
 			}
 	 } catch (JSONException e) {
@@ -372,7 +375,16 @@ public class NSAccessSupport {
    * @param basicRecordMap
    * @return meta data
    */
-  protected static JSONObject getMataDataForACLCheck(String guid, BasicRecordMap basicRecordMap) {
+  protected static JSONObject getMataDataForACLCheck(String guid, BasicRecordMap basicRecordMap, 
+		  			NameRecord... readRecords) 
+  {
+	 // first retrieve metadata from readRecords
+	 JSONObject metaData =  getMetadataFromReadRecords(guid, readRecords);
+	 
+	 if(metaData != null)
+		 return metaData;
+	 
+	 
 	  /**
 	   *  For the rest of ACL and signature check, let's first retrieve
 	   *  the entire record, then check ACL.
@@ -401,7 +413,7 @@ public class NSAccessSupport {
 		  return null;
 	  }
 	  
-	  JSONObject metaData = null; 
+	  metaData = null; 
 	  try {
 		  metaData = json.getJSONObject(GNSProtocol.META_DATA_FIELD.toString());
 	  } catch (JSONException e) {
@@ -409,6 +421,7 @@ public class NSAccessSupport {
 	  }
 	  return metaData;
   }
+  
   
   /**
    * Looks up the public key for a guid using the acl of a field.
@@ -470,5 +483,25 @@ public class NSAccessSupport {
     ClientSupportConfig.getLogger().log(Level.FINER, "result = {0}", result);
     return result;
   }
-
+  
+  private static JSONObject getMetadataFromReadRecords(String guid, NameRecord... readRecords)
+  {
+	  if(readRecords == null)
+		  return null;
+	  
+	  
+	  for(NameRecord nr : readRecords)
+	  {
+		  try 
+		  {
+			  if( nr.getName().compareToIgnoreCase(guid) == 0 )
+			  {
+				  return nr.getValuesMap();
+			  }
+		  } catch (FieldNotFoundException e) {
+			// do nothing, the iteration will complete and return null;
+		  }
+	  }
+	  return null;
+  }
 }
