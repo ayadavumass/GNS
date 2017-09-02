@@ -734,7 +734,8 @@ public enum CommandType {
           new String[]{GNSProtocol.GUID.toString(), // the reader
             GNSProtocol.FIELDS.toString(),
             GNSProtocol.SIGNATURE.toString(),
-            GNSProtocol.SIGNATUREFULLMESSAGE.toString()}),
+            GNSProtocol.SIGNATUREFULLMESSAGE.toString(),
+            GNSProtocol.SELECT_NOTIFICATION.toString()}),
   //
   // Select commands that maintain a group guid
   //

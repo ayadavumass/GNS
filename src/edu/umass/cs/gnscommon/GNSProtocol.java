@@ -546,7 +546,13 @@ public enum GNSProtocol {
    * Indicates that sanity check failed
    * See {@link edu.umass.cs.gnscommon.ResponseCode#SANITY_CHECK_ERROR}.
    */
-  SANITY_CHECK_ERROR("+SANITY_CHECK_ERROR+"),;
+  SANITY_CHECK_ERROR("+SANITY_CHECK_ERROR+"),
+  
+  /**
+   * The select notification key field in a command.
+   */
+  SELECT_NOTIFICATION("select_notification"),
+  ;
 
   final String label;
 
