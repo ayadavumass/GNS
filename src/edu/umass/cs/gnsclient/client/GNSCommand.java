@@ -1735,7 +1735,7 @@ public class GNSCommand extends CommandPacket {
    * @param fields
    * The GUID fields that a user wants to be passed to the notification sending 
    * mechanism, implemented using 
-   * {@link edu.umass.cs.gnsserver.gnsapp.selectnotification.SendNotification}.
+   * {@link edu.umass.cs.gnsserver.gnsapp.selectnotification.SelectResponseProcessor}.
    * For a GUID that satisfies the query, the field-value pairs are passed as a JSONObject in 
    * {@link edu.umass.cs.gnsserver.gnsapp.selectnotification.SelectGUIDInfo}
    * 
@@ -1775,7 +1775,7 @@ public class GNSCommand extends CommandPacket {
    * @param fields
    * The GUID fields that a user wants to be passed to the notification sending 
    * mechanism, implemented using 
-   * {@link edu.umass.cs.gnsserver.gnsapp.selectnotification.SendNotification}.
+   * {@link edu.umass.cs.gnsserver.gnsapp.selectnotification.SelectResponseProcessor}.
    * For a GUID that satisfies the query, the field-value pairs are passed as a JSONObject in 
    * {@link edu.umass.cs.gnsserver.gnsapp.selectnotification.SelectGUIDInfo}
    * 
@@ -1913,105 +1913,6 @@ public class GNSCommand extends CommandPacket {
             GNSProtocol.QUERY.toString(), query,
             GNSProtocol.FIELDS.toString(), fields == null ? GNSProtocol.ENTIRE_RECORD : fields
     );
-  }
-
-  /**
-   * Set up a context-aware group guid corresponding to the query. Requires
-   * {@code accountGuid} and {@code publicKey} that are used to set up the new
-   * guid or look it up if it already exists. The result type of the execution
-   * result of this query is {@link CommandResultType#LIST}.
-   * Requires all fields accessed to be world readable.
-   *
-   * The query syntax is described here:
-   * https://gns.name/wiki/index.php?title=Query_Syntax
-   *
-   * @param accountGUID
-   * The guid issuing the query.
-   * @param publicKey
-   * @param query
-   * The select query.
-   * @param interval
-   * The refresh interval in seconds (default 60).
-   * @return CommandPacket
-   * @throws ClientException
-   */
-  public static final CommandPacket selectSetupGroupQuery(
-          GuidEntry accountGUID, String publicKey, String query, int interval)
-          throws ClientException {
-    return getCommand(CommandType.SelectGroupSetupQuery,
-            GNSProtocol.ACCOUNT_GUID.toString(), accountGUID.getGuid(),
-            GNSProtocol.PUBLIC_KEY.toString(), publicKey,
-            GNSProtocol.QUERY.toString(), query,
-            GNSProtocol.INTERVAL.toString(), interval);
-  }
-
-  /**
-   * Set up a context-aware group guid corresponding to the query. Requires
-   * {@code accountGuid} and {@code publicKey} that are used to set up the new
-   * guid or look it up if it already exists. The result type of the execution
-   * result of this query is {@link CommandResultType#LIST}.
-   *
-   * The query syntax is described here:
-   * https://gns.name/wiki/index.php?title=Query_Syntax
-   *
-   * @param reader
-   * @param accountGUID
-   * The guid issuing the query.
-   * @param publicKey
-   * @param query
-   * The select query.
-   * @param interval
-   * The refresh interval in seconds (default 60).
-   * @return CommandPacket
-   * @throws ClientException
-   */
-  public static final CommandPacket selectSetupGroupQuery(GuidEntry reader,
-          GuidEntry accountGUID, String publicKey, String query, int interval)
-          throws ClientException {
-    return getCommand(CommandType.SelectGroupSetupQuery, reader,
-            GNSProtocol.GUID.toString(), reader.getGuid(),
-            GNSProtocol.ACCOUNT_GUID.toString(), accountGUID.getGuid(),
-            GNSProtocol.PUBLIC_KEY.toString(), publicKey,
-            GNSProtocol.QUERY.toString(), query,
-            GNSProtocol.INTERVAL.toString(), interval);
-  }
-
-  /**
-   * Looks up the membership of a context-aware group guid created using a
-   * query. The results may be stale if the queries that happen more quickly
-   * than the refresh interval given during setup. The result type of the
-   * execution result of this query is {@link CommandResultType#LIST}.
-   * Requires all fields accessed to be world readable.
-   *
-   * @param groupGUID
-   * The group guid being queried.
-   * @return CommandPacket
-   * @throws ClientException
-   */
-  public static final CommandPacket selectLookupGroupQuery(String groupGUID)
-          throws ClientException {
-    return getCommand(CommandType.SelectGroupLookupQuery,
-            GNSProtocol.ACCOUNT_GUID.toString(), groupGUID);
-  }
-
-  /**
-   * Looks up the membership of a context-aware group guid created using a
-   * query. The results may be stale if the queries that happen more quickly
-   * than the refresh interval given during setup. The result type of the
-   * execution result of this query is {@link CommandResultType#LIST}.
-   *
-   * @param reader
-   * @param groupGUID
-   * The group guid being queried.
-   * @return CommandPacket
-   * @throws ClientException
-   */
-  public static final CommandPacket selectLookupGroupQuery(GuidEntry reader,
-          String groupGUID)
-          throws ClientException {
-    return getCommand(CommandType.SelectGroupLookupQuery, reader,
-            GNSProtocol.GUID.toString(), reader.getGuid(),
-            GNSProtocol.ACCOUNT_GUID.toString(), groupGUID);
   }
 
   /**

@@ -26,6 +26,7 @@ package edu.umass.cs.gnsserver.gnsapp;
  */
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.lang.reflect.InvocationTargetException;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.security.InvalidKeyException;
@@ -34,10 +35,10 @@ import java.security.SignatureException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
@@ -59,19 +60,21 @@ import edu.umass.cs.gnscommon.exceptions.server.FailedDBOperationException;
 import edu.umass.cs.gnscommon.exceptions.server.InternalRequestException;
 import edu.umass.cs.gnscommon.packets.PacketUtils;
 import edu.umass.cs.gnsserver.database.AbstractRecordCursor;
-import edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commandSupport.GroupAccess;
 import edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commandSupport.InternalField;
 import edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commandSupport.MetaDataTypeName;
 import edu.umass.cs.gnsserver.gnsapp.clientSupport.NSAuthentication;
-import edu.umass.cs.gnsserver.gnsapp.clientSupport.NSGroupAccess;
-import edu.umass.cs.gnsserver.gnsapp.packet.SelectGroupBehavior;
 import edu.umass.cs.gnsserver.gnsapp.packet.SelectOperation;
 import edu.umass.cs.gnsserver.gnsapp.packet.SelectRequestPacket;
 import edu.umass.cs.gnsserver.gnsapp.packet.SelectResponsePacket;
 import edu.umass.cs.gnsserver.gnsapp.recordmap.NameRecord;
+import edu.umass.cs.gnsserver.gnsapp.selectnotification.NotificationSendingStats;
+import edu.umass.cs.gnsserver.gnsapp.selectnotification.NotificationStatsToIssuer;
+import edu.umass.cs.gnsserver.gnsapp.selectnotification.PendingSelectNotifications;
+import edu.umass.cs.gnsserver.gnsapp.selectnotification.SelectGUIDInfo;
+import edu.umass.cs.gnsserver.gnsapp.selectnotification.SelectResponseProcessor;
 import edu.umass.cs.gnsserver.interfaces.InternalRequestHeader;
 import edu.umass.cs.gnsserver.main.GNSConfig;
-import edu.umass.cs.gnsserver.utils.ResultValue;
+import edu.umass.cs.gnsserver.main.GNSConfig.GNSC;
 import edu.umass.cs.reconfiguration.ReconfigurationConfig;
 import edu.umass.cs.utils.Config;
 
@@ -131,12 +134,54 @@ import edu.umass.cs.utils.Config;
  */
 public class Select extends AbstractSelector {
 	
-  private static final Random RANDOM_ID = new Random();
-  private static final ConcurrentMap<Integer, NSSelectInfo> QUERIES_IN_PROGRESS
+	protected SelectResponseProcessor notificationSender;
+	
+	private final PendingSelectNotifications pendingNotifications;
+	
+	private static final Random RANDOM_ID = new Random();
+	
+	private static final ConcurrentMap<Integer, NSSelectInfo> QUERIES_IN_PROGRESS
           = new ConcurrentHashMap<>(10, 0.75f, 3);
-  private static final ConcurrentMap<Integer, SelectResponsePacket> QUERY_RESULT
+	private static final ConcurrentMap<Integer, SelectResponsePacket> QUERY_RESULT
           = new ConcurrentHashMap<>(10, 0.75f, 3);
-
+	
+	public Select()
+	{
+		initSelectRequestProcessor();
+		pendingNotifications = new PendingSelectNotifications();
+	}
+	
+  
+	public void initSelectRequestProcessor()
+	{
+		Class<?> clazz = null;
+		try 
+		{
+			clazz = (Class.forName(Config
+					.getGlobalString(GNSConfig.GNSC.SELECT_REPONSE_PROCESSOR)));
+		} catch (ClassNotFoundException e) {
+			e.printStackTrace();
+		}
+	  
+		if (clazz != null)
+		{
+			try 
+			{
+				notificationSender = (SelectResponseProcessor) (clazz.getConstructor().newInstance());
+			} catch (InstantiationException | IllegalAccessException
+					| IllegalArgumentException | InvocationTargetException
+					| NoSuchMethodException | SecurityException e) 
+			{
+				LOGGER.log(Level.WARNING,
+					  "{0} unable to instantiate select response processor {1}.",
+								new Object[] {
+										GNSConfig.class.getName(),
+										Config.getGlobalString(GNSConfig.GNSC.SELECT_REPONSE_PROCESSOR) });
+				e.printStackTrace();
+			}
+		}
+	}
+  
   /**
    * Handles a select request that was received from a client.
    *
@@ -177,51 +222,14 @@ public class Select extends AbstractSelector {
   public  SelectResponsePacket handleSelectRequestFromClient(InternalRequestHeader header,
           SelectRequestPacket packet,
           GNSApplicationInterface<String> app) throws JSONException, UnknownHostException,
-          FailedDBOperationException, InternalRequestException {
-    // special case handling of the GROUP_LOOK operation
-    // If sufficient time hasn't passed we just send the current value back
-    if (packet.getGroupBehavior().equals(SelectGroupBehavior.GROUP_LOOKUP)) {
-      // grab the timing parameters that we squirreled away from the SETUP
-      Date lastUpdate = NSGroupAccess.getLastUpdate(header, packet.getGuid(), app.getRequestHandler());
-      int minRefreshInterval = NSGroupAccess.getMinRefresh(header, packet.getGuid(), app.getRequestHandler());
-      if (lastUpdate != null) {
-        LOGGER.log(Level.FINE,
-                "GROUP_LOOKUP Request: {0} - {1} <= {2}",
-                new Object[]{new Date().getTime(), lastUpdate.getTime(), minRefreshInterval});
-
-        // if not enough time has passed we just return the current value of the group
-        if (new Date().getTime() - lastUpdate.getTime() <= minRefreshInterval) {
-          LOGGER.log(Level.FINE,
-                  "GROUP_LOOKUP Request: Time has not elapsed. Returning current group value for {0}",
-                  packet.getGuid());
-          ResultValue result = NSGroupAccess.lookupMembers(header, packet.getGuid(), true, app.getRequestHandler());
-          return SelectResponsePacket.makeSuccessPacketForGuidsOnly(packet.getId(), null, -1, null,
-                  new JSONArray(result.toStringSet()));
-        }
-      } else {
-        LOGGER.fine("GROUP_LOOKUP Request: No Last Update Info ");
-      }
-    }
-    // the code below executes for regular selects and also for GROUP SETUP and GROUP LOOKUP but for lookup
-    // only if enough time has elapsed since last lookup (see above)
-    // OR in the anamolous situation where the update info could not be found
-    LOGGER.fine(packet.getSelectOperation().toString()
-            + " Request: Forwarding request for "
-            + packet.getGuid() != null ? packet.getGuid() : "non-guid select");
-
-    // If it's not a group lookup or is but enough time has passed we do the usual thing
-    // and send the request out to all the servers. We'll receive a response sent on the flipside.
-    Set<InetSocketAddress> serverAddresses = new HashSet<>(PaxosConfig.getActives().values());
-    //Set<String> serverIds = app.getGNSNodeConfig().getActiveReplicas();
-
-    // store the info for later
-    int queryId = addQueryInfo(serverAddresses, packet.getSelectOperation(), packet.getGroupBehavior(),
-            packet.getQuery(), packet.getProjection(), packet.getMinRefreshInterval(), packet.getGuid());
-    if (packet.getGroupBehavior().equals(SelectGroupBehavior.GROUP_LOOKUP)) {
-      // the query string is supplied with a lookup so we stuff in it there. It was saved from the SETUP operation.
-      packet.setQuery(NSGroupAccess.getQueryString(header, packet.getGuid(), app.getRequestHandler()));
-      packet.setProjection(NSGroupAccess.getProjection(header, packet.getGuid(), app.getRequestHandler()));
-    }
+          FailedDBOperationException, InternalRequestException 
+  {
+	  Set<InetSocketAddress> serverAddresses = new HashSet<>(PaxosConfig.getActives().values());
+	  
+	  // store the info for later
+	  int queryId = addQueryInfo(serverAddresses, packet.getSelectOperation(),
+            packet.getQuery(), packet.getProjection());
+	  
     InetSocketAddress returnAddress = new InetSocketAddress(app.getNodeAddress().getAddress(),
             ReconfigurationConfig.getClientFacingPort(app.getNodeAddress().getPort()));
     packet.setNSReturnAddress(returnAddress);
@@ -233,18 +241,15 @@ public class Select extends AbstractSelector {
       LOGGER.log(Level.FINER, "addresses: {0} node address: {1}",
               new Object[]{serverAddresses, app.getNodeAddress()});
       // Forward to all but self because...
-      for (InetSocketAddress address : serverAddresses) {
-        if (!address.equals(app.getNodeAddress())) {
-          InetSocketAddress offsetAddress = new InetSocketAddress(address.getAddress(),
+      for (InetSocketAddress address : serverAddresses) 
+      {
+    	  InetSocketAddress offsetAddress = new InetSocketAddress(address.getAddress(),
                   ReconfigurationConfig.getClientFacingPort(address.getPort()));
           LOGGER.log(Level.INFO, "NS {0} sending select {1} to {2} ({3})",
                   new Object[]{app.getNodeID(), outgoingJSON, offsetAddress, address});
           app.sendToAddress(offsetAddress, outgoingJSON);
-        }
       }
-
-      // we handle our self by locally getting self-select records
-      handleSelectResponse(getMySelectedRecords(packet, app), app);
+      
       // Wait for responses, otherwise you are violating Replicable.execute(.)'s semantics.
       synchronized (QUERIES_IN_PROGRESS) {
         while (QUERIES_IN_PROGRESS.containsKey(queryId)) {
@@ -259,40 +264,195 @@ public class Select extends AbstractSelector {
         return QUERY_RESULT.remove(queryId);
       }
 
-    } catch (IOException | ClientException e) {
+    } catch (IOException  e) {
       LOGGER.log(Level.SEVERE, "Exception while sending select request: {0}", e);
     }
     return null;
   }
-
-  private static SelectResponsePacket getMySelectedRecords(
-          SelectRequestPacket request,
-          GNSApplicationInterface<String> app) {
-    SelectResponsePacket response;
-    try {
-      // grab the records
-      JSONArray jsonRecords = getJSONRecordsForSelect(request, app);
-      jsonRecords = aclCheckFilterReturnedRecord(request, jsonRecords, request.getReader(), app);
-      
-      JSONArray finalResult = performProjectionForUserRequestedAttributes(app, request, jsonRecords);
-      
-      response = SelectResponsePacket.makeSuccessPacketForFullRecords(
-              request.getId(), request.getClientAddress(),
-              request.getCcpQueryId(), request.getNsQueryId(),
-              app.getNodeAddress(), finalResult);
-      LOGGER.log(
-              Level.FINE,
-              "NS {0} sending back {1} record(s) in response to self-select request {2}",
-              new Object[]{app.getNodeID(), finalResult.length(),
-                request.getSummary()});
-    } catch (FailedDBOperationException e) {
-      LOGGER.log(Level.SEVERE, "Exception while handling self-select request: {0}",
-              e.getMessage());
-      //e.printStackTrace();
-      response = SelectResponsePacket.makeFailPacket(request.getId(), request.getClientAddress(),
-              request.getNsQueryId(), app.getNodeAddress(), e.getMessage());
-    }
-    return response;
+  
+  private SelectResponsePacket processSelectRequest(
+		  SelectRequestPacket request, GNSApplicationInterface<String> app) 
+				  	throws FailedDBOperationException, JSONException
+  {
+	  AbstractRecordCursor cursor = getDBCursor(request, app);
+	  
+	  switch (request.getSelectOperation())
+	  {
+	  		case EQUALS:
+		  	case NEAR:
+		    case WITHIN:
+		    case QUERY:
+		    {
+		    	// aditya:TODO: These cases also needs to be changed to a distributed
+		    	// iterator approach. 
+		    	JSONArray resultRecords = new JSONArray();
+		    	
+				while (cursor != null && cursor.hasNext()) 
+				{
+					JSONObject record = cursor.nextJSONObject();
+					
+					record = aclCheckForRecord(request, record, app);
+					if(record!=null)
+					{
+						record = performProjectionForUserRequestedAttributes(
+							  app, request, record);
+						
+						if(record!=null)
+							resultRecords.put(record);
+					}
+				}
+				
+				return SelectResponsePacket.makeSuccessPacketForFullRecords(
+						request.getId(), request.getClientAddress(),
+						request.getCcpQueryId(), request.getNsQueryId(), 
+						app.getNodeAddress(), resultRecords);
+		    }
+		    case SELECT_NOTIFY:
+		    {
+		    	LOGGER.log(Level.FINE, "NS{0} query: {1} {2}",
+		                new Object[]{app.getNodeID(), request.getQuery(), request.getProjection()});
+		    	
+		    	String notificationStr = request.getNotificationString();
+		    	
+		    	List<SelectGUIDInfo> currList = new LinkedList<SelectGUIDInfo>();
+		    	long localhandle = -1;
+		    	while (cursor != null && cursor.hasNext()) 
+				{
+					JSONObject record = cursor.nextJSONObject();
+					
+					record = aclCheckForRecord(request, record, app);
+					if(record != null)
+					{
+						record = performProjectionForUserRequestedAttributes(
+							  app, request, record);
+						
+						if(record!=null)
+						{
+							try 
+							{
+								String guid = record.getString(NameRecord.NAME.getName());
+								SelectGUIDInfo selectGUIDInfo = new SelectGUIDInfo(guid, record);
+								currList.add(selectGUIDInfo);
+							} catch (JSONException e) 
+							{
+								// This JSON exception is because of problem in reading NameRecord.NAME.
+								// which should not happen
+								LOGGER.log(Level.INFO, "JSONException in processing a record {0}", 
+										new Object[]{e.getMessage()});
+							}
+						}
+					}
+					
+					if(currList.size() >= Config.getGlobalInt(GNSC.SELECT_FETCH_SIZE))
+					{
+						if(localhandle == -1)
+						{
+							localhandle = this.pendingNotifications.getUniqueIDAndInit();
+						}
+						
+						// Sending the actual notification.
+						// Based on the implementation, this function could block for very long.
+						// Ideally, the implementation of this function should not be blocking. 
+						// The design is such that notification function can update the progress
+						// of notification sending using InternalNotificationStats, and the GNS
+						// can get the progress using NotificationSendingStats.
+						NotificationSendingStats stats 
+								= this.notificationSender.sendNotification(currList, notificationStr);
+						
+						this.pendingNotifications.addNotificationStats(localhandle, stats);
+						
+						// Not clearing currList here, as the notification function 
+						// may be using it.
+						// So just re-initializing it. 
+						currList = new LinkedList<SelectGUIDInfo>();
+					}
+				}
+		    	
+		    	// last batch.
+		    	if(currList.size() > 0)
+		    	{
+		    		if(localhandle == -1)
+					{
+						localhandle = this.pendingNotifications.getUniqueIDAndInit();
+					}
+					
+					// Sending the actual notification.
+					// Based on the implementation, this function could block for very long.
+					// Ideally, the implementation of this function should not be blocking. 
+					// The design is such that notification function can update the progress
+					// of notification sending using InternalNotificationStats, and the GNS
+					// can get the progress using NotificationSendingStats.
+					NotificationSendingStats stats 
+							= this.notificationSender.sendNotification(currList, notificationStr);
+					
+					this.pendingNotifications.addNotificationStats(localhandle, stats);
+		    	}
+		    	
+		    	List<NotificationSendingStats> allStats = this.pendingNotifications.lookupNotificationStats(localhandle);
+		    	long totalNot = 0;
+		    	long totalFailed = 0;
+		    	long totalPending = 0;
+		    	if(allStats != null)
+		    	{
+		    		for(int i=0; i<allStats.size(); i++)
+		    		{
+		    			totalNot+=allStats.get(i).getTotalNotifications();
+		    			totalFailed+=allStats.get(i).getGUIDsFailed().size();
+		    			totalPending+=allStats.get(i).getNumberPending();
+		    		}
+		    	}
+		    	
+		    	NotificationStatsToIssuer toIssuer 
+		    			= new NotificationStatsToIssuer(totalNot, totalFailed, totalPending);
+		    	
+		    	return SelectResponsePacket.makeSuccessPacketForFullRecords(
+						request.getId(), request.getClientAddress(),
+						request.getCcpQueryId(), request.getNsQueryId(), 
+						app.getNodeAddress(), new JSONArray().put(toIssuer.toJSONObject()));
+		    }
+		    default:
+		        break;
+	  }
+	  return null;
+  }
+  
+  
+  private AbstractRecordCursor getDBCursor(SelectRequestPacket request, 
+		  											GNSApplicationInterface<String> app) 
+		  													throws FailedDBOperationException
+  {
+	  AbstractRecordCursor cursor = null;
+	  switch (request.getSelectOperation()) 
+	  {
+	  		case EQUALS:
+		  		cursor = NameRecord.selectRecords(app.getDB(), request.getKey(), request.getValue());
+		  		break;
+		  	case NEAR:
+		  		if (request.getValue() instanceof String) {
+		          cursor = NameRecord.selectRecordsNear(app.getDB(), request.getKey(), 
+		        		  (String) request.getValue(), Double.parseDouble((String) request.getOtherValue()));
+		        } else {
+		          break;
+		        }
+		        break;
+		    case WITHIN:
+		        if (request.getValue() instanceof String) {
+		          cursor = NameRecord.selectRecordsWithin(app.getDB(), request.getKey(), (String) request.getValue());
+		        } else {
+		          break;
+		        }
+		        break;
+		    case QUERY:
+		    case SELECT_NOTIFY:
+		        LOGGER.log(Level.FINE, "NS{0} query: {1} {2}",
+		                new Object[]{app.getNodeID(), request.getQuery(), request.getProjection()});
+		        cursor = NameRecord.selectRecordsQuery(app.getDB(), request.getQuery(), 
+		        														request.getProjection());
+		        break;
+		    default:
+		        break;
+	  }
+	  return cursor;
   }
 
   /**
@@ -305,211 +465,231 @@ public class Select extends AbstractSelector {
    * @param app
    * @throws JSONException
    */
-  private static void handleSelectRequestFromNS(SelectRequestPacket request,
-          GNSApplicationInterface<String> app) throws JSONException {
-    LOGGER.log(Level.FINE,
+  private void handleSelectRequestFromNS(SelectRequestPacket request,
+          GNSApplicationInterface<String> app) throws JSONException 
+  {
+	  LOGGER.log(Level.FINE,
             "NS {0} {1} received query {2}",
             new Object[]{Select.class.getSimpleName(),
               app.getNodeID(), request.getSummary()});
-    try {
-      // grab the records
-      JSONArray jsonRecords = getJSONRecordsForSelect(request, app);
-      jsonRecords = aclCheckFilterReturnedRecord(request, jsonRecords, request.getReader(), app);
-      
-      JSONArray finalResult = performProjectionForUserRequestedAttributes(app, request, jsonRecords);
-      
-      SelectResponsePacket response = SelectResponsePacket.makeSuccessPacketForFullRecords(request.getId(),
-              request.getClientAddress(),
-              request.getCcpQueryId(), request.getNsQueryId(), app.getNodeAddress(), finalResult);
-      LOGGER.log(Level.FINE,
-              "NS {0} sending back {1} record(s) in response to {2}",
-              new Object[]{app.getNodeID(), finalResult.length(), request.getSummary()});
-      // and send them back to the originating NS
-      app.sendToAddress(request.getNSReturnAddress(), response.toJSONObject());
-    } catch (FailedDBOperationException | JSONException | IOException e) {
-      LOGGER.log(Level.SEVERE, "{0} exception while handling select request {1}: {2}", new Object[]{app, request.getSummary(), e});
-      SelectResponsePacket failResponse = SelectResponsePacket.makeFailPacket(request.getId(),
+	  SelectResponsePacket response = null;
+	  try 
+	  {
+		  response = processSelectRequest(request, app);
+		  if(response == null)
+		  {
+			  response = SelectResponsePacket.makeFailPacket(request.getId(),
+                    request.getClientAddress(),
+                    request.getNsQueryId(), app.getNodeAddress(), "Unknown select operation");
+		  }
+	  } 
+	  catch (FailedDBOperationException | JSONException e) 
+	  {
+		  LOGGER.log(Level.WARNING, "{0} exception while handling select request {1}: {2}"
+    			, new Object[]{app, request.getSummary(), e});
+		  response = SelectResponsePacket.makeFailPacket(request.getId(),
               request.getClientAddress(),
               request.getNsQueryId(), app.getNodeAddress(), e.getMessage());
-      try {
-        app.sendToAddress(request.getNSReturnAddress(), failResponse.toJSONObject());
-      } catch (IOException f) {
-        LOGGER.log(Level.SEVERE, "Unable to send Failure SelectResponsePacket: {0}", f);
-      }
-    }
+	  }
+	  
+	  try 
+	  {
+		  app.sendToAddress(request.getNSReturnAddress(), response.toJSONObject());
+	  } 
+	  catch (IOException f) 
+	  {
+		  LOGGER.log(Level.SEVERE, "Unable to send Failure SelectResponsePacket: {0}", f);
+	  }
   }
-
+  
+  
   /**
-   * Filters records and fields from returned records based on ACL checks.
+   * Checks if {@code record} satisfies ACL checks. Also, removes fields from {@code record} 
+   * that the query issuer is not allowed to read. 
    *
    * @param packet
    * @param records
-   * @param reader
    * @param app
    * @return
+   * The JSONObject corresponding to the record after removing private fields. Returns null
+   * if ACL check on query fields fails or there is an exception.
    */
-  private static JSONArray aclCheckFilterReturnedRecord(SelectRequestPacket packet, JSONArray records,
-          String reader, GNSApplicationInterface<String> app) {
-    // First we filter out records
-    JSONArray filteredRecords = aclCheckFilterForRecordsArray(packet, records, reader, app);
-    //return filteredRecords;
-    // then we filter fields
-    return aclCheckFilterFields(packet, filteredRecords, reader, app);
+  private JSONObject aclCheckForRecord(SelectRequestPacket packet, JSONObject record,
+		  GNSApplicationInterface<String> app) 
+  {
+	  // First we check if the query issuer is in read ACLs for all query attributes
+	  boolean satisfy =aclCheckForQueryAttributes(packet, record, app);
+	  if(satisfy)
+	  {
+		  return aclCheckForProjectionFields(packet, record, app);
+	  }
+	  else
+	  {
+		  return null;
+	  }
   }
   
-  
-  private static JSONArray performProjectionForUserRequestedAttributes(GNSApplicationInterface<String> app, 
-		  			SelectRequestPacket packet, JSONArray records)
+  /**
+   * This function removes all the internal fields and fields that are not requested by the user.
+   * This is needed because for signature and ACL checks we read internal fields too, so after all those 
+   * checks are done, we remove internal fields and return only user requested fields.
+   * @param app
+   * @param packet
+   * @param record
+   * @return
+   * Records after removing fields or null if there is some error.
+   */
+  private JSONObject performProjectionForUserRequestedAttributes(
+		  GNSApplicationInterface<String> app, SelectRequestPacket packet, JSONObject record)
   {
 	  List<String> projection = packet.getProjection();
+	  
 	  if (projection == null
-              // this handles the special case of the user wanting all fields 
-              // in the projection
-              || (!projection.isEmpty()
-              && projection.get(0).equals(GNSProtocol.ENTIRE_RECORD.toString())))
-		  return records;
-	  
-	  
+			  // this handles the special case of the user wanting all fields 
+			  // in the projection
+			  || (!projection.isEmpty()
+					  && projection.get(0).equals(GNSProtocol.ENTIRE_RECORD.toString())))
+		  return record;
+
+
 	  HashMap<String, Boolean> fieldsMap = new HashMap<String, Boolean>();
 	  for(String field: projection)
 	  {
 		  fieldsMap.put(field, true);
 	  }
 	  
-	  for (int i = 0; i < records.length(); i++) {
-	      try {
-	        JSONObject record = records.getJSONObject(i);
-	        // JSON iterator type warning suppressed.
-	        @SuppressWarnings("unchecked")
-			Iterator<String> recordKeyIter = record.keys();
-	        
-	        while(recordKeyIter.hasNext())
-	        {
-	        	String key = recordKeyIter.next();
-	        	if(key.equals(NameRecord.NAME.getName()))
-	        	{
-	        		// do nothing, as we want to keep the name field.
-	        	}
-	        	else if(key.equals(NameRecord.VALUES_MAP.getName()))
-	        	{
-	        		JSONObject valuesMap = record.getJSONObject(NameRecord.VALUES_MAP.getName());
-	        		// JSON iterator type warning suppressed.
-	    	        @SuppressWarnings("unchecked")
-	        		Iterator<String> valueMapIter = valuesMap.keys();
-	        		while(valueMapIter.hasNext())
-	        		{
-	        			String valKey = valueMapIter.next();
-	        			// we want to only return GUID info or user request attributes.
-//	        			if( !(valKey.equals(AccountAccess.GUID_INFO) || fieldsMap.containsKey(valKey)) )
-//	        			{
-//	        				valueMapIter.remove();
-//	        			}
-	        			if( !(fieldsMap.containsKey(valKey)) )
-	        			{
-	        				valueMapIter.remove();
-	        			}
-	        		}
-	        	}
-	        	else
-	        	{
-	        		recordKeyIter.remove();
-	        	}
-	        }
-	        
-	      } catch (JSONException e) {
-	        // ignore the record on JSON error
-	        LOGGER.log(Level.FINE, "{0} Problem getting guid from json: {1}",
-	                new Object[]{app.getNodeID(), e.getMessage()});
-	      }
-	    }
-	    return records;
-  	}
-  
+	  try {
+		  // JSON iterator type warning suppressed.
+		  @SuppressWarnings("unchecked")
+		  Iterator<String> recordKeyIter = record.keys();
+		  
+		  while(recordKeyIter.hasNext())
+		  {
+			  String key = recordKeyIter.next();
+			  if(key.equals(NameRecord.NAME.getName()))
+			  {
+				  // do nothing, as we want to keep the name field.
+			  }
+			  else if(key.equals(NameRecord.VALUES_MAP.getName()))
+			  {
+				  JSONObject valuesMap = record.getJSONObject(NameRecord.VALUES_MAP.getName());
+				  // JSON iterator type warning suppressed.
+				  @SuppressWarnings("unchecked")
+				  Iterator<String> valueMapIter = valuesMap.keys();
+				  while(valueMapIter.hasNext())
+				  {
+					  String valKey = valueMapIter.next();
+					  
+					  if( !(fieldsMap.containsKey(valKey)) )
+					  {
+						  valueMapIter.remove();
+					  }
+				  }
+			  }
+			  else
+			  {
+				  recordKeyIter.remove();
+			  }
+		  }
+		} catch (JSONException e) {
+			// ignore the record on JSON error
+			LOGGER.log(Level.FINE, "{0} Problem getting guid from json: {1}",
+						  new Object[]{app.getNodeID(), e.getMessage()});
+			// there is some problem, we can't return this record in the result set.. 
+			return null;
+		}
+	  return record;
+  }
   
   /**
-   * This filters entire records if the query uses fields that cannot be accessed in the
-   * returned record by the reader. Otherwise the user would be able to determine that
-   * some GUIDS contain specific values for fields they can't access.
-   *
+   * This function checks that the query issuer has read access to all query fields for 
+   * {@code record}.
+   * 
    * @param packet
-   * @param records
-   * @param reader
+   * @param record
    * @param app
    * @return
+   * true if the acl check on query fields is satisfied. Otherwise, false.
    */
-  private static JSONArray aclCheckFilterForRecordsArray(SelectRequestPacket packet, JSONArray records,
-          String reader, GNSApplicationInterface<String> app) {
-    JSONArray result = new JSONArray();
-    for (int i = 0; i < records.length(); i++) {
-      try {
-        JSONObject record = records.getJSONObject(i);
-        String guid = record.getString(NameRecord.NAME.getName());
-        List<String> queryFields = getFieldsForQueryType(packet);
+  private boolean aclCheckForQueryAttributes(SelectRequestPacket packet, JSONObject record,
+		  	GNSApplicationInterface<String> app) 
+  {
+	  try 
+	  {
+		  String guid = record.getString(NameRecord.NAME.getName());
+		  List<String> queryFields = getFieldsForQueryType(packet);
+		  
+		  NameRecord nr = new NameRecord(app.getDB(), record);
         
-        NameRecord nr = new NameRecord(app.getDB(), record);
-        
-        ResponseCode responseCode = NSAuthentication.signatureAndACLCheck(null, guid, null, queryFields, reader,
-                null, null, MetaDataTypeName.READ_WHITELIST, app, true, nr);
-        
-        LOGGER.log(Level.FINE, "{0} ACL check for select: guid={0} queryFields={1} responsecode={3}",
+		  ResponseCode responseCode = NSAuthentication.signatureAndACLCheck(null, guid, null, 
+				queryFields, packet.getReader(), null, null, MetaDataTypeName.READ_WHITELIST, app, true, nr);
+		  
+		  LOGGER.log(Level.FINE, "{0} ACL check for select: guid={0} queryFields={1} responsecode={3}",
                 new Object[]{app.getNodeID(), guid, queryFields, responseCode});
-        if (responseCode.isOKResult()) {
-          result.put(record);
-        }
-      } catch (JSONException | InvalidKeyException | InvalidKeySpecException | SignatureException | NoSuchAlgorithmException | FailedDBOperationException | UnsupportedEncodingException e) {
+		  if (responseCode.isOKResult()) {
+			  return true;
+		  }
+      } catch (JSONException | InvalidKeyException | InvalidKeySpecException 
+    		  	| SignatureException | NoSuchAlgorithmException | FailedDBOperationException 
+    		  	| UnsupportedEncodingException e) 
+	  {
         // ignore json errros
         LOGGER.log(Level.FINE, "{0} Problem getting guid from json: {1}",
                 new Object[]{app.getNodeID(), e.getMessage()});
       }
-    }
-    return result;
+	  return false;
   }
   
   /**
    * This filters individual fields if the cannot be accessed by the reader.
    *
    * @param packet
-   * @param records
-   * @param reader
+   * @param record
    * @param app
    * @return
+   * the JSONObject after removing fields that don't satisfy ACL checks.
    */
-  private static JSONArray aclCheckFilterFields(SelectRequestPacket packet, JSONArray records,
-          String reader, GNSApplicationInterface<String> app) {
-    for (int i = 0; i < records.length(); i++) {
-      try {
-        JSONObject record = records.getJSONObject(i);
-        String guid = record.getString(NameRecord.NAME.getName());
-        // Look at the keys in the values map
-        JSONObject valuesMap = record.getJSONObject(NameRecord.VALUES_MAP.getName());
-        Iterator<?> keys = valuesMap.keys();
-        while (keys.hasNext()) {
-          String field = (String) keys.next();
-          if (!InternalField.isInternalField(field)) {
-            LOGGER.log(Level.FINE, "{0} Checking: {1}", new Object[]{app.getNodeID(), field});
-            ResponseCode responseCode = NSAuthentication.signatureAndACLCheck(null, guid, field, null, reader,
-                    null, null, MetaDataTypeName.READ_WHITELIST, app, true, 
-                    new NameRecord(app.getDB(), record));
+  private JSONObject aclCheckForProjectionFields(SelectRequestPacket packet, JSONObject record,
+		  GNSApplicationInterface<String> app) 
+  {
+	  try 
+	  {
+		  String guid = record.getString(NameRecord.NAME.getName());
+		  // Look at the keys in the values map
+		  JSONObject valuesMap = record.getJSONObject(NameRecord.VALUES_MAP.getName());
+		  Iterator<?> keys = valuesMap.keys();
+		  while (keys.hasNext()) 
+		  {
+			  String field = (String) keys.next();
+			  if (!InternalField.isInternalField(field)) 
+			  {
+				  LOGGER.log(Level.FINE, "{0} Checking: {1}", new Object[]{app.getNodeID(), field});
+				  ResponseCode responseCode = NSAuthentication.signatureAndACLCheck(null, guid, field, 
+						  null, packet.getReader(), null, null, MetaDataTypeName.READ_WHITELIST, app, true, 
+						  new NameRecord(app.getDB(), record));
             
-            if (!responseCode.isOKResult()) {
-              LOGGER.log(Level.FINE, "{0} Removing: {1}", new Object[]{app.getNodeID(), field});
-              // removing the offending field
-              keys.remove();
-            }
-          }
-        }
-      } catch (JSONException | InvalidKeyException | InvalidKeySpecException | SignatureException | NoSuchAlgorithmException | FailedDBOperationException | UnsupportedEncodingException e) {
-        // ignore json errros
-        LOGGER.log(Level.FINE, "{0} Problem getting guid from json: {1}",
+				  if (!responseCode.isOKResult()) 
+				  {
+					  LOGGER.log(Level.FINE, "{0} Removing: {1}", new Object[]{app.getNodeID(), field});
+					  // removing the offending field
+					  keys.remove();
+				  }
+			  }
+		  }
+      } catch (JSONException | InvalidKeyException | InvalidKeySpecException 
+    		  | SignatureException | NoSuchAlgorithmException | FailedDBOperationException 
+    		  | UnsupportedEncodingException e) 
+	  {
+    	  LOGGER.log(Level.FINE, "{0} Problem getting guid from json: {1}",
                 new Object[]{app.getNodeID(), e.getMessage()});
+    	  // This record has problems, so we can't return this to a user. 
+    	  return null;
       }
-    }
-    return records;
+	  return record;
   }
   
-  
   // Returns the fields that present in a query.
-  private static List<String> getFieldsForQueryType(SelectRequestPacket request) {
+  private List<String> getFieldsForQueryType(SelectRequestPacket request) {
     switch (request.getSelectOperation()) {
       case EQUALS:
       case NEAR:
@@ -523,7 +703,7 @@ public class Select extends AbstractSelector {
   }
 
   // Uses a regular expression to extract the fields from a select query.
-  private static List<String> getFieldsFromQuery(String query) {
+  private List<String> getFieldsFromQuery(String query) {
     List<String> result = new ArrayList<>();
     // Create a Pattern object
     Matcher m = Pattern.compile("~\\w+(\\.\\w+)*").matcher(query);
@@ -588,7 +768,7 @@ public class Select extends AbstractSelector {
   }
 
   // If all the servers have sent us a response we're done.
-  private static void handledAllServersResponded(InternalRequestHeader header,
+  private void handledAllServersResponded(InternalRequestHeader header,
           SelectResponsePacket packet, NSSelectInfo info,
           GNSApplicationInterface<String> replica) throws JSONException,
           ClientException, IOException, InternalRequestException {
@@ -630,30 +810,11 @@ public class Select extends AbstractSelector {
           QUERIES_IN_PROGRESS.notify();
       }
     }
-    // Now we update any group guid stuff
-    if (info.getGroupBehavior().equals(SelectGroupBehavior.GROUP_SETUP)) {
-      LOGGER.log(Level.FINE,
-              "NS{0} storing query string and other info", replica.getNodeID());
-      // for setup we need to squirrel away the query for later lookups
-      NSGroupAccess.updateQueryString(header, info.getGuid(),
-              info.getQuery(), info.getProjection(), replica.getRequestHandler());
-      NSGroupAccess.updateMinRefresh(header, info.getGuid(), info.getMinRefreshInterval(), replica.getRequestHandler());
-    }
-    if (info.getGroupBehavior().equals(SelectGroupBehavior.GROUP_SETUP)
-            || info.getGroupBehavior().equals(SelectGroupBehavior.GROUP_LOOKUP)) {
-      String guid = info.getGuid();
-      LOGGER.log(Level.FINE, "NS{0} updating group members", replica.getNodeID());
-      GroupAccess.addToGroup(header, guid, new ResultValue(guids), null, null, null, null,
-              replica.getRequestHandler());
-      //NSGroupAccess.updateMembers(header, guid, guids, replica.getRequestHandler());
-      //NSGroupAccess.updateRecords(guid, processResponsesIntoJSONArray(info.getResponsesAsMap()), replica); 
-      NSGroupAccess.updateLastUpdate(header, guid, new Date(), replica.getRequestHandler());
-    }
   }
 
   // Converts a record from the database into something we can return to 
   // the user. Adds the "_GUID" and removes internal fields.
-  protected static List<JSONObject> filterAndMassageRecords(Set<JSONObject> records) {
+  protected List<JSONObject> filterAndMassageRecords(Set<JSONObject> records) {
     List<JSONObject> result = new ArrayList<>();
     for (JSONObject record : records) {
       try {
@@ -678,7 +839,7 @@ public class Select extends AbstractSelector {
 
   // Pulls the guids out of the record to return to the user for "old-style" 
   // select calls.
-  protected static Set<String> extractGuidsFromRecords(Set<JSONObject> records) {
+  protected  Set<String> extractGuidsFromRecords(Set<JSONObject> records) {
     Set<String> result = new HashSet<>();
     for (JSONObject json : records) {
       try {
@@ -689,65 +850,23 @@ public class Select extends AbstractSelector {
     return result;
   }
 
-  private static int addQueryInfo(Set<InetSocketAddress> serverAddresses, SelectOperation selectOperation,
-          SelectGroupBehavior groupBehavior, String query, List<String> projection,
-          int minRefreshInterval, String guid) {
-    int id;
-    do {
-      id = RANDOM_ID.nextInt();
-    } while (QUERIES_IN_PROGRESS.containsKey(id));
-    //Add query info
-    NSSelectInfo info = new NSSelectInfo(id, serverAddresses, selectOperation, groupBehavior,
-            query, projection,
-            minRefreshInterval, guid);
-    QUERIES_IN_PROGRESS.put(id, info);
-    return id;
-  }
-
-  private static JSONArray getJSONRecordsForSelect(SelectRequestPacket request,
-          GNSApplicationInterface<String> ar) throws FailedDBOperationException {
-    JSONArray jsonRecords = new JSONArray();
-    // actually only need name and values map... fix this
-    AbstractRecordCursor cursor = null;
-    switch (request.getSelectOperation()) {
-      case EQUALS:
-        cursor = NameRecord.selectRecords(ar.getDB(), request.getKey(), request.getValue());
-        break;
-      case NEAR:
-        if (request.getValue() instanceof String) {
-          cursor = NameRecord.selectRecordsNear(ar.getDB(), request.getKey(), (String) request.getValue(),
-                  Double.parseDouble((String) request.getOtherValue()));
-        } else {
-          break;
-        }
-        break;
-      case WITHIN:
-        if (request.getValue() instanceof String) {
-          cursor = NameRecord.selectRecordsWithin(ar.getDB(), request.getKey(), (String) request.getValue());
-        } else {
-          break;
-        }
-        break;
-      case QUERY:
-        LOGGER.log(Level.FINE, "NS{0} query: {1} {2}",
-                new Object[]{ar.getNodeID(), request.getQuery(), request.getProjection()});
-        cursor = NameRecord.selectRecordsQuery(ar.getDB(), request.getQuery(), request.getProjection());
-        break;
-      default:
-        break;
-    }
-    // think about returning a cursor that has prefetched a limited (100 which is like mongo limit)
-    // number of records in it and the ability to fetch more
-    while (cursor != null && cursor.hasNext()) {
-      JSONObject record = cursor.nextJSONObject();
-      LOGGER.log(Level.FINE, "NS{0} record returned: {1}", new Object[]{ar.getNodeID(), record});
-      jsonRecords.put(record);
-    }
-    return jsonRecords;
+  private int addQueryInfo(Set<InetSocketAddress> serverAddresses, SelectOperation selectOperation,
+		  String query, List<String> projection) 
+  {
+	  int id;
+	  do 
+	  {
+		  id = RANDOM_ID.nextInt();
+	  } while (QUERIES_IN_PROGRESS.containsKey(id));
+	  //Add query info
+	  NSSelectInfo info = new NSSelectInfo(id, serverAddresses, selectOperation,
+            query, projection);
+	  QUERIES_IN_PROGRESS.put(id, info);
+	  return id;
   }
 
   // Takes the JSON records that are returned from an NS and stuffs the into the NSSelectInfo record
-  protected static void processJSONRecords(JSONArray jsonArray, NSSelectInfo info,
+  protected void processJSONRecords(JSONArray jsonArray, NSSelectInfo info,
           GNSApplicationInterface<String> ar) throws JSONException {
     int length = jsonArray.length();
     LOGGER.log(Level.FINE,
@@ -769,14 +888,6 @@ public class Select extends AbstractSelector {
     }
   }
 
-  /*private static boolean isGuidRecord(JSONObject json) {
-    JSONObject valuesMap = json.optJSONObject(NameRecord.VALUES_MAP.getName());
-    if (valuesMap != null) {
-      return valuesMap.has(AccountAccess.GUID_INFO);
-    }
-    return false;
-  }*/
-
   /**
  * @param args
  * @throws JSONException
@@ -795,7 +906,7 @@ public static void main(String[] args) throws JSONException, UnknownHostExceptio
             + "\"type\":$where}}}}"
             + "]";
 
-    System.out.println(getFieldsFromQuery(testQuery));
+    //System.out.println(getFieldsFromQuery(testQuery));
 
     System.out.println(queryContainsEvil(testQuery));
 
@@ -811,7 +922,7 @@ public static void main(String[] args) throws JSONException, UnknownHostExceptio
             + "\"type\":\"Polygon\"}}}}"
             + "]";
 
-    System.out.println(getFieldsFromQuery(testQueryBad));
+    //System.out.println(getFieldsFromQuery(testQueryBad));
 
     System.out.println(queryContainsEvil(testQueryBad));
 
@@ -820,5 +931,4 @@ public static void main(String[] args) throws JSONException, UnknownHostExceptio
     String testQuery4 = "$where : \"this.nr_valuesMap.secret == 'i_like_cookies'\"";
     System.out.println(queryContainsEvil(testQuery4));
   }
-
 }

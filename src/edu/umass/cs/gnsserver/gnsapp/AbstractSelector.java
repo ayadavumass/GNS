@@ -15,6 +15,7 @@ import edu.umass.cs.gnscommon.exceptions.server.InternalRequestException;
 import edu.umass.cs.gnsserver.gnsapp.packet.SelectRequestPacket;
 import edu.umass.cs.gnsserver.gnsapp.packet.SelectResponsePacket;
 import edu.umass.cs.gnsserver.gnsapp.recordmap.NameRecord;
+import edu.umass.cs.gnsserver.gnsapp.selectnotification.SelectResponseProcessor;
 import edu.umass.cs.gnsserver.interfaces.InternalRequestHeader;
 
 /**
@@ -28,7 +29,7 @@ public abstract class AbstractSelector {
 
 	protected static final Logger LOGGER = Logger.getLogger(Select.class
 			.getName());
-
+	
 	/**
 	 * Handles select request from a server.
 	 * 

@@ -10,7 +10,7 @@ package edu.umass.cs.gnsserver.gnsapp.packet;
 /**
  * The group behavior for select operations.
  */
-public enum SelectGroupBehavior {
+public enum SelectGroupBehavior1 {
   /**
    * Normal query, just returns results.
    */

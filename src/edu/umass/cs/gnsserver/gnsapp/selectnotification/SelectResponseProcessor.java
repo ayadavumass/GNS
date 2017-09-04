@@ -10,7 +10,7 @@ import java.util.List;
  * @author ayadav
  *
  */
-public interface SendNotification 
+public interface SelectResponseProcessor 
 {
 	/**
 	 * This method is used to implement the logic to send {@code notificationStr}

@@ -40,14 +40,12 @@ import org.json.JSONObject;
 
 import edu.umass.cs.gnscommon.GNSProtocol;
 import edu.umass.cs.gnscommon.ResponseCode;
-import edu.umass.cs.gnscommon.SharedGuidUtils;
 import edu.umass.cs.gnscommon.exceptions.client.ClientException;
 import edu.umass.cs.gnscommon.exceptions.server.FailedDBOperationException;
 import edu.umass.cs.gnscommon.exceptions.server.FieldNotFoundException;
 import edu.umass.cs.gnscommon.exceptions.server.InternalRequestException;
 import edu.umass.cs.gnscommon.exceptions.server.RecordNotFoundException;
 import edu.umass.cs.gnscommon.packets.CommandPacket;
-import edu.umass.cs.gnscommon.utils.Base64;
 import edu.umass.cs.gnsserver.database.ColumnFieldType;
 import edu.umass.cs.gnsserver.gnsapp.GNSApplicationInterface;
 import edu.umass.cs.gnsserver.gnsapp.Select;
@@ -57,7 +55,6 @@ import edu.umass.cs.gnsserver.gnsapp.clientSupport.NSAccessSupport;
 import edu.umass.cs.gnsserver.gnsapp.clientSupport.NSAuthentication;
 import edu.umass.cs.gnsserver.gnsapp.clientSupport.NSFieldAccess;
 import edu.umass.cs.gnsserver.gnsapp.clientSupport.NSUpdateSupport;
-import edu.umass.cs.gnsserver.gnsapp.packet.SelectGroupBehavior;
 import edu.umass.cs.gnsserver.gnsapp.packet.SelectOperation;
 import edu.umass.cs.gnsserver.gnsapp.packet.SelectRequestPacket;
 import edu.umass.cs.gnsserver.gnsapp.packet.SelectResponsePacket;
@@ -579,8 +576,8 @@ public class FieldAccess {
           String signature, String message,
           GNSApplicationInterface<String> app)
           throws FailedDBOperationException, JSONException, UnknownHostException, InternalRequestException {
-    SelectRequestPacket packet = new SelectRequestPacket(-1, operation,
-            SelectGroupBehavior.NONE, reader, key, value, otherValue);
+    SelectRequestPacket packet = new SelectRequestPacket(-1, operation, 
+    		reader, key, value, otherValue);
     return executeSelectHelper(header, commandPacket, packet, reader, signature, message, app);
   }
 
@@ -807,112 +804,6 @@ public class FieldAccess {
     } catch (IOException | JSONException | FailedDBOperationException e) {
     	ClientException cle = new ClientException(e);
     	return new CommandResponse(cle.getCode(), "selectQuery failed. "+cle.getMessage());
-    }
-    return null;
-  }
-
-  /**
-   * Sends a select request to the server to setup a context aware group guid and retrieve all the guids matching the query.
-   *
-   * @param header
-   * @param commandPacket
-   * @param reader
-   * @param accountGuid
-   * @param query
-   * @param publicKey
-   * @param interval - the refresh interval (queries made more quickly than this will get a cached value)
-   * @param signature
-   * @param message
-   * @param handler
-   * @return a command response
-   * @throws InternalRequestException
-   */
-  public static CommandResponse selectGroupSetupQuery(InternalRequestHeader header,
-          CommandPacket commandPacket,
-          String reader, String accountGuid, String query, String publicKey,
-          int interval,
-          String signature, String message,
-          ClientRequestHandlerInterface handler) throws InternalRequestException {
-    String guid = SharedGuidUtils.createGuidStringFromBase64PublicKey(publicKey);
-    //String guid = SharedGuidUtils.createGuidStringFromPublicKey(Base64.decode(publicKey));
-    // Check to see if the guid doesn't exists and if so create it...
-    if (AccountAccess.lookupGuidInfoAnywhere(header, guid, handler) == null) {
-      // This code is similar to the code in AddGuid command except that we're not checking signatures... yet.
-      // FIXME: This should probably include authentication
-      GuidInfo accountGuidInfo;
-      if ((accountGuidInfo = AccountAccess.lookupGuidInfoAnywhere(header, accountGuid, handler)) == null) {
-        return new CommandResponse(ResponseCode.BAD_GUID_ERROR, GNSProtocol.BAD_RESPONSE.toString()
-                + " " + GNSProtocol.BAD_GUID.toString() + " " + accountGuid);
-      }
-      AccountInfo accountInfo = AccountAccess.lookupAccountInfoFromGuidAnywhere(header, accountGuid, handler);
-      if (accountInfo == null) {
-        return new CommandResponse(ResponseCode.BAD_ACCOUNT_ERROR, GNSProtocol.BAD_RESPONSE.toString()
-                + " " + GNSProtocol.BAD_ACCOUNT.toString() + " " + accountGuid);
-      }
-      if (!accountInfo.isVerified()) {
-        return new CommandResponse(ResponseCode.VERIFICATION_ERROR, GNSProtocol.BAD_RESPONSE.toString()
-                + " " + GNSProtocol.VERIFICATION_ERROR.toString() + " Account not verified");
-      } else if (accountInfo.getGuids().size() > Config.getGlobalInt(GNSConfig.GNSC.ACCOUNT_GUID_MAX_SUBGUIDS)) {
-        return new CommandResponse(ResponseCode.TOO_MANY_GUIDS_EXCEPTION, GNSProtocol.BAD_RESPONSE.toString()
-                + " " + GNSProtocol.TOO_MANY_GUIDS.toString());
-      } else {
-        // The alias (HRN) of the new guid is a hash of the query.
-        String name = Base64.encodeToString(ShaOneHashFunction.getInstance().hash(query), false);
-        // aditya: Passing activesSet as null. Setting up a select group at all actives.
-        // Anyways, not sure if this code is used anymore, as a group setup for select requests
-        // is slow and has problems. 
-        CommandResponse groupGuidCreateresult = AccountAccess.addGuid(header, commandPacket,
-                accountInfo, accountGuidInfo,
-                name, guid, publicKey, handler, null);
-        // If there was a problem adding return that error response.
-        if (!groupGuidCreateresult.getExceptionOrErrorCode().isOKResult()) {
-          return groupGuidCreateresult;
-        }
-      }
-    }
-    JSONArray result;
-
-    try {
-      SelectRequestPacket packet = SelectRequestPacket.makeGroupSetupRequest(-1,
-              reader, query, null, guid, interval);
-      result = executeSelectHelper(header, commandPacket, packet, reader, signature, message, handler.getApp());
-      if (result != null) {
-        return new CommandResponse(ResponseCode.NO_ERROR, result.toString());
-      }
-    } catch (IOException | JSONException | FailedDBOperationException e) {
-    	ClientException cle = new ClientException(e);
-    	return new CommandResponse(cle.getCode(), "selectGroupSetupQuery failed. "+cle.getMessage());
-    }
-    return null;
-  }
-
-  /**
-   * Sends a select request to the server to retrieve the members of a context aware group guid.
-   *
-   * @param header
-   * @param commandPacket
-   * @param reader
-   * @param accountGuid - the guid (which should have been previously initialized using <code>selectGroupSetupQuery</code>
-   * @param signature
-   * @param message
-   * @param handler
-   * @return a command response
-   * @throws InternalRequestException
-   */
-  public static CommandResponse selectGroupLookupQuery(InternalRequestHeader header, CommandPacket commandPacket,
-          String reader, String accountGuid,
-          String signature, String message,
-          ClientRequestHandlerInterface handler) throws InternalRequestException {
-    JSONArray result;
-    try {
-      SelectRequestPacket packet = SelectRequestPacket.MakeGroupLookupRequest(-1, reader, accountGuid);
-      result = executeSelectHelper(header, commandPacket, packet, reader, signature, message, handler.getApp());
-      if (result != null) {
-        return new CommandResponse(ResponseCode.NO_ERROR, result.toString());
-      }
-    } catch (IOException | JSONException | FailedDBOperationException e) {
-    	ClientException cle = new ClientException(e);
-    	return new CommandResponse(cle.getCode(), "selectGroupLookupQuery failed. "+cle.getMessage());
     }
     return null;
   }

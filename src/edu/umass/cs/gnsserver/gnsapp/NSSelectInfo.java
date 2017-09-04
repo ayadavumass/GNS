@@ -19,7 +19,7 @@
  */
 package edu.umass.cs.gnsserver.gnsapp;
 
-import edu.umass.cs.gnsserver.gnsapp.packet.SelectGroupBehavior;
+
 import edu.umass.cs.gnsserver.gnsapp.packet.SelectOperation;
 
 import java.net.InetSocketAddress;
@@ -42,13 +42,10 @@ public class NSSelectInfo {
   private final Set<InetSocketAddress> serversToBeProcessed; // the list of servers that have yet to be processed
   private final ConcurrentHashMap<String, JSONObject> responses;
   private final SelectOperation selectOperation;
-  private final SelectGroupBehavior groupBehavior;
-  private final String guid; // the group GUID we are maintaining or null for simple select
   private final String query; // The string used to set up the query if applicable
   // The list of fields to return. 
   // Null means return GUIDS instead of whole records (old style select).
   private final List<String> projection;
-  private final int minRefreshInterval; // in seconds
 
   /**
    *
@@ -62,18 +59,15 @@ public class NSSelectInfo {
    * @param guid
    */
   public NSSelectInfo(int id, Set<InetSocketAddress> serverIds,
-          SelectOperation selectOperation, SelectGroupBehavior groupBehavior,
-          String query, List<String> projection, int minRefreshInterval, String guid) {
+          SelectOperation selectOperation, String query, List<String> projection) 
+  {
     this.queryId = id;
     this.serversToBeProcessed = Collections.newSetFromMap(new ConcurrentHashMap<InetSocketAddress, Boolean>());
     this.serversToBeProcessed.addAll(serverIds);
     this.responses = new ConcurrentHashMap<>(10, 0.75f, 3);
     this.selectOperation = selectOperation;
-    this.groupBehavior = groupBehavior;
     this.query = query;
     this.projection = projection;
-    this.guid = guid;
-    this.minRefreshInterval = minRefreshInterval;
   }
 
   /**
@@ -154,15 +148,6 @@ public class NSSelectInfo {
   }
 
   /**
-   * Return the behavior.
-   *
-   * @return a GroupBehavior
-   */
-  public SelectGroupBehavior getGroupBehavior() {
-    return groupBehavior;
-  }
-
-  /**
    * Return the query.
    *
    * @return a string
@@ -181,23 +166,4 @@ public class NSSelectInfo {
   public List<String> getProjection() {
     return projection;
   }
-
-  /**
-   * Return the guid.
-   *
-   * @return a string
-   */
-  public String getGuid() {
-    return guid;
-  }
-
-  /**
-   * Return the minimum refresh interval.
-   *
-   * @return an int
-   */
-  public int getMinRefreshInterval() {
-    return minRefreshInterval;
-  }
-
 }
