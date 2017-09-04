@@ -1791,6 +1791,7 @@ public enum CommandType {
     SelectNear.setChain();
     SelectWithin.setChain();
     SelectQuery.setChain();
+    SelectAndNotify.setChain();
     //
     AddGuid.setChain(LookupGuid, ReplaceUserJSONUnsigned, ReadUnsigned); // what else?
     RemoveGuid.setChain(ReadUnsigned);
