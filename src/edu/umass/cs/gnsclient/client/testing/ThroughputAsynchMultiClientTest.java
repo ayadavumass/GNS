@@ -21,27 +21,17 @@ package edu.umass.cs.gnsclient.client.testing;
 
 import edu.umass.cs.gnsclient.client.GNSClient;
 import edu.umass.cs.gnscommon.packets.CommandPacket;
-import edu.umass.cs.gnscommon.utils.Format;
 import edu.umass.cs.gnsclient.client.util.GuidEntry;
 import edu.umass.cs.gnsclient.client.util.GuidUtils;
-import edu.umass.cs.gnscommon.utils.ThreadUtils;
 import edu.umass.cs.gnscommon.exceptions.client.ClientException;
 import edu.umass.cs.gnscommon.utils.RandomString;
-import edu.umass.cs.utils.DelayProfiler;
 import static edu.umass.cs.gnsclient.client.CommandUtils.*;
 import edu.umass.cs.gnsclient.client.GNSClientCommands;
 import edu.umass.cs.gnscommon.CommandType;
 
-import java.net.InetSocketAddress;
 import java.awt.HeadlessException;
 import java.io.IOException;
-import java.util.Collections;
-import java.util.Date;
 import java.util.Random;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -108,11 +98,6 @@ import edu.umass.cs.gnscommon.GNSProtocol;
  Outstanding packets should be close to zero if the server is keeping up.
  */
 public class ThroughputAsynchMultiClientTest {
-
-  /**
-   * How long to collect samples for before reporting results.
-   */
-  private static final int CYCLE_TIME = 10000;
   private static final String DEFAULT_FIELD = "environment";
   private static final String DEFAULT_VALUE = "8675309";
   /**
@@ -164,22 +149,11 @@ public class ThroughputAsynchMultiClientTest {
    */
   private static String updateValue = null;
 
-  /**
-   * Expected max resolution of the millisecond clock.
-   */
-  private static final long minSleepInterval = 10;
 
   /**
    * Our command packet cache. We need a separate command packet for each client for each guid.
    */
   private static CommandPacket commmandPackets[][];
-
-  private static ExecutorService execPool;
-
-  /**
-   * Keeps track of the set of guids chosen each cycle.
-   */
-  private Set<Integer> chosen;
 
   /**
    * Creates a ThroughputStress instance with the given arguments.
@@ -187,7 +161,6 @@ public class ThroughputAsynchMultiClientTest {
    * @param alias - the alias to use to create the account guid. null uses "boo@hoo.com".
    */
   public ThroughputAsynchMultiClientTest(String alias) {
-    InetSocketAddress address;
     if (alias != null) {
       accountAlias = alias;
     }
@@ -195,8 +168,6 @@ public class ThroughputAsynchMultiClientTest {
     clients = new GNSClientCommands[numberOfClients];
     subGuids = new String[numberOfGuids];
     commmandPackets = new CommandPacket[numberOfGuids][numberOfClients];
-    execPool = Executors.newFixedThreadPool(numberOfClients);
-    chosen = Collections.newSetFromMap(new ConcurrentHashMap<Integer, Boolean>());
     try {
       for (int i = 0; i < numberOfClients; i++) {
         clients[i] = new GNSClientCommands(new GNSClient());
@@ -230,9 +201,6 @@ public class ThroughputAsynchMultiClientTest {
       }
 
       String alias = parser.getOptionValue("alias");
-      String host = parser.getOptionValue("host");
-      String port = parser.getOptionValue("port");
-      boolean disableSSL = parser.hasOption("disableSSL");
 
       if (parser.hasOption("op")
               && ("update".equals(parser.getOptionValue("op"))
@@ -422,7 +390,7 @@ public class ThroughputAsynchMultiClientTest {
    */
   private void ramp(int startRate, int increment, int requestsPerClient) {
 	  if(true) throw new RuntimeException("Disabled");
-    for (int ratePerSec = startRate;; ratePerSec = ratePerSec + increment) {
+    /*for (int ratePerSec = startRate;; ratePerSec = ratePerSec + increment) {
       for (int i = 0; i < numberOfClients; i++) {
         //clients[0].resetInstrumentation();
       }
@@ -480,7 +448,7 @@ public class ThroughputAsynchMultiClientTest {
         System.out.println("Backing off before networking freezes.");
         break;
       }
-    }
+    }*/
   }
 
   //
@@ -515,9 +483,6 @@ public class ThroughputAsynchMultiClientTest {
    * WorkerTask.
    */
   public class WorkerTask implements Runnable {
-
-    private final int clientNumber;
-    private final int requests;
     Random rand = new Random();
 
     /**
@@ -526,14 +491,15 @@ public class ThroughputAsynchMultiClientTest {
      * @param requests
      */
     public WorkerTask(int clientNumber, int requests) {
-      this.clientNumber = clientNumber;
-      this.requests = requests;
     }
 
     @Override
     public void run() {
-    	
-      try {
+        // arun: disabled
+        if (true)
+      	  throw new RuntimeException("disabled");
+        
+      /*try {
         for (int j = 0; j < requests; j++) {
           int index;
           do {
@@ -543,9 +509,7 @@ public class ThroughputAsynchMultiClientTest {
           // important to set the request id to something unique for the client
           // arun: nope, requestID is final, can not change
 
-          // arun: disabled
-          if (true)
-        	  throw new RuntimeException("disabled");
+ 
           // commmandPackets[index][clientNumber].setClientRequestId(clients[clientNumber].generateNextRequestID());
           
           //clients[clientNumber].sendCommandPacketAsynch(commmandPackets[index][clientNumber]);
@@ -556,7 +520,7 @@ public class ThroughputAsynchMultiClientTest {
         }
       } catch (Exception e) {
         System.out.println("Problem running field read: " + e);
-      }
+      }*/
     }
   }
 

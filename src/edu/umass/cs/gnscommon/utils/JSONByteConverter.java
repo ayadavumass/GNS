@@ -17,11 +17,8 @@ package edu.umass.cs.gnscommon.utils;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.math.BigInteger;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.Iterator;
-import java.util.Map.Entry;
 
 import org.json.JSONArray;
 import org.json.JSONException;

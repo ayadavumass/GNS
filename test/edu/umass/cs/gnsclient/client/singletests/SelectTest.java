@@ -718,36 +718,6 @@ public class SelectTest extends DefaultGNSTest {
   private static final List<Point2D> AREA_EXTENT = new ArrayList<>(
           Arrays.asList(UPPER_LEFT, UPPER_RIGHT, LOWER_RIGHT, LOWER_LEFT, UPPER_LEFT));
 
-  private static String buildLocationQuery(String locationField, List<Point2D> coordinates) throws JSONException {
-    return "~" + locationField + ":{"
-            + "$geoIntersects :{"
-            + "$geometry:"
-            + createGeoJSONPolygon(coordinates).toString()
-            + "}"
-            + "}";
-  }
-
-  private static String buildMultipleLocationsQuery(String locationField1, String locationField2, List<Point2D> coordinates) throws JSONException {
-    return buildOrQuery(buildLocationQuery(locationField1, coordinates),
-            buildLocationQuery(locationField2, coordinates)
-    );
-  }
-
-  private static String buildOrQuery(String... clauses) {
-    StringBuilder result = new StringBuilder();
-    String prefix = "";
-    result.append("$or: [");
-    for (String clause : clauses) {
-      result.append(prefix);
-      result.append("{");
-      result.append(clause);
-      result.append("}");
-      prefix = ",";
-    }
-    result.append("]");
-    return result.toString();
-  }
-
   private static void waitSettle(long wait) {
     try {
       if (wait > 0) {

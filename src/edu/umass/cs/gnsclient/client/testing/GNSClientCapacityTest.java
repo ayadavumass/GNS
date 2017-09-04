@@ -298,24 +298,6 @@ public class GNSClientCapacityTest extends DefaultTest {
 		});
 	}
 	
-	
-	private void blockingWriteWithACL(int clientIndex, GuidEntry accessorGuid, String targetGuid) {
-		executor.submit(new Runnable() {
-			@Override
-			public void run() {
-				try {
-					clients[clientIndex].execute(GNSCommand.fieldUpdate(targetGuid, someField, someValue, accessorGuid));
-				} catch (ClientException | IOException e) {
-					log.severe("Client " + clientIndex + " failed to write "
-							+ targetGuid+ " with accessor "+accessor.getGuid());
-					e.printStackTrace();
-				}
-				incrFinishedOps();
-			}			
-		});
-	}
-	
-	
 	private void blockingRemove(int clientIndex, GuidEntry guid, int reqID) {
 		executor.submit(new Runnable() {
 
