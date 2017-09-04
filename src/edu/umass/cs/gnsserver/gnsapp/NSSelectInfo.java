@@ -21,6 +21,7 @@ package edu.umass.cs.gnsserver.gnsapp;
 
 
 import edu.umass.cs.gnsserver.gnsapp.packet.SelectOperation;
+import edu.umass.cs.gnsserver.gnsapp.selectnotification.NotificationStatsToIssuer;
 
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
@@ -28,6 +29,7 @@ import org.json.JSONObject;
 
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -39,8 +41,11 @@ import java.util.concurrent.ConcurrentHashMap;
 public class NSSelectInfo {
 
   private final int queryId;
-  private final Set<InetSocketAddress> serversToBeProcessed; // the list of servers that have yet to be processed
-  private final ConcurrentHashMap<String, JSONObject> responses;
+  
+//the list of servers that have yet to be processed
+  private final Set<InetSocketAddress> serversToBeProcessed; 
+  private final ConcurrentHashMap<String, JSONObject> recordResponses;
+  private final List<NotificationStatsToIssuer> notificationStatusList;
   private final SelectOperation selectOperation;
   private final String query; // The string used to set up the query if applicable
   // The list of fields to return. 
@@ -64,7 +69,8 @@ public class NSSelectInfo {
     this.queryId = id;
     this.serversToBeProcessed = Collections.newSetFromMap(new ConcurrentHashMap<InetSocketAddress, Boolean>());
     this.serversToBeProcessed.addAll(serverIds);
-    this.responses = new ConcurrentHashMap<>(10, 0.75f, 3);
+    this.recordResponses = new ConcurrentHashMap<>(10, 0.75f, 3);
+    this.notificationStatusList = new LinkedList<NotificationStatsToIssuer>();
     this.selectOperation = selectOperation;
     this.query = query;
     this.projection = projection;
@@ -74,8 +80,9 @@ public class NSSelectInfo {
    *
    * @return the queryId
    */
-  public int getId() {
-    return queryId;
+  public int getId() 
+  {
+	  return queryId;
   }
 
   /**
@@ -111,13 +118,29 @@ public class NSSelectInfo {
    * @param json
    * @return true if the response was not seen yet, false otherwise
    */
-  public boolean addResponseIfNotSeenYet(String name, JSONObject json) {
-    if (!responses.containsKey(name)) {
-      responses.put(name, json);
+  public boolean addRecordResponseIfNotSeenYet(String name, JSONObject json) {
+    if (!recordResponses.containsKey(name)) {
+    	recordResponses.put(name, json);
       return true;
     } else {
       return false;
     }
+  }
+  
+  public void addNotificationStat(NotificationStatsToIssuer notificationStats)
+  {
+	  synchronized(notificationStatusList)
+	  {
+		  if(notificationStats != null)
+		  {
+			  notificationStatusList.add(notificationStats);
+		  }
+	  }
+  }
+  
+  public List<NotificationStatsToIssuer> getAllNotificationStats()
+  {
+	  return this.notificationStatusList;
   }
 
   /**
@@ -126,7 +149,7 @@ public class NSSelectInfo {
    * @return a set of JSONObjects
    */
   public Set<JSONObject> getResponsesAsSet() {
-    return new HashSet<>(responses.values());
+    return new HashSet<>(recordResponses.values());
   }
 
   /**
@@ -135,7 +158,7 @@ public class NSSelectInfo {
    * @return a set of JSONObjects
    */
   public List<JSONObject> getResponsesAsList() {
-    return new ArrayList<>(responses.values());
+    return new ArrayList<>(recordResponses.values());
   }
 
   /**

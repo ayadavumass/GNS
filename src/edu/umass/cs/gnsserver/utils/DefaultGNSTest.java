@@ -253,7 +253,7 @@ public class DefaultGNSTest extends DefaultTest {
 
 	private static void startClients() throws IOException {
 		System.out.print("Starting client ");
-		int numRetries = 2;
+		int numRetries = 4;
 		boolean forceCoordinated = true;
 		client = new GNSClient().setNumRetriesUponTimeout(numRetries)
 				.setForceCoordinatedReads(forceCoordinated)

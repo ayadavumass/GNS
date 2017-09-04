@@ -96,12 +96,6 @@ import edu.umass.cs.utils.Config;
  * Select, SelectNear, SelectWithin all handle specific types of queries.
  * They remove the need for the user to understand mongo syntax, but are really not necessary.
  *
- * SelectGroupSetupQuery and SelectGroupLookupQuery were implemented as
- * prototypes of a full-fledged Context Notification Service. They use the
- * underlying select architecture, but add on to it the notion that the
- * results of the query are stored in a group guid. Lookups return the
- * current value of the group guid as determined by executing the query
- * with the optimization that lookups done more often than user specified interval simply return the last value.
  *
  * The idea is that we want to look up all the records with a given value or whose
  * value falls in a given range or that more generally match a query.
@@ -111,29 +105,11 @@ import edu.umass.cs.utils.Config;
  * from all these queries back to the collecting NS. The collecting NS then extracts the GUIDS
  * from all the results removing duplicates and then sends back JUST THE GUIDs, not the full
  * records.
- *
- * Here's the special handling the NS does for guid GROUPs:
- *
- * On the request side when we receive a GROUP_SETUP request we do the regular broadcast thing.
- *
- * On the response side for a GROUP_SETUP we do the regular collate thing and return the results,
- * plus we set the value of the group guid and the values of last_refreshed_time.
- * We need a GROUP info structure to hold these things.
- *
- * On the request side when we receive a GROUP_LOOKUP request we need to
- * 1) Check to see if enough time has passed since the last update
- * (current time greater than last_refreshed_time + min_refresh_interval). If it has we
- * do the usual query broadcast.
- * If not enough time has elapsed we send back the response with the current value of the group guid.
- *
- * On the response when see a GROUP_LOOKUP it means that enough time has passed since the last update
- * (in the other case the response is sent back on request side of things).
- * We handle this exactly the same as we do GROUP_SETUP (set group, return results, time bookkeeping).
- *
+ *  *
  * @author westy
  */
-public class Select extends AbstractSelector {
-	
+public class Select extends AbstractSelector 
+{	
 	protected SelectResponseProcessor notificationSender;
 	
 	private final PendingSelectNotifications pendingNotifications;
@@ -147,12 +123,12 @@ public class Select extends AbstractSelector {
 	
 	public Select()
 	{
-		initSelectRequestProcessor();
+		initSelectResponseProcessor();
 		pendingNotifications = new PendingSelectNotifications();
 	}
 	
   
-	public void initSelectRequestProcessor()
+	public void initSelectResponseProcessor()
 	{
 		Class<?> clazz = null;
 		try 
@@ -304,8 +280,7 @@ public class Select extends AbstractSelector {
 				
 				return SelectResponsePacket.makeSuccessPacketForFullRecords(
 						request.getId(), request.getClientAddress(),
-						request.getCcpQueryId(), request.getNsQueryId(), 
-						app.getNodeAddress(), resultRecords);
+						request.getNsQueryId(), app.getNodeAddress(), resultRecords);
 		    }
 		    case SELECT_NOTIFY:
 		    {
@@ -405,10 +380,12 @@ public class Select extends AbstractSelector {
 		    	NotificationStatsToIssuer toIssuer 
 		    			= new NotificationStatsToIssuer(totalNot, totalFailed, totalPending);
 		    	
-		    	return SelectResponsePacket.makeSuccessPacketForFullRecords(
-						request.getId(), request.getClientAddress(),
-						request.getCcpQueryId(), request.getNsQueryId(), 
-						app.getNodeAddress(), new JSONArray().put(toIssuer.toJSONObject()));
+		    	//clearing the state
+		    	this.pendingNotifications.removeNotificationInfo(localhandle);
+		    	
+		    	return SelectResponsePacket.makeSuccessPacketForNotificationStatsOnly
+		    			(request.getId(), request.getClientAddress(),
+								request.getNsQueryId(), app.getNodeAddress(), toIssuer);
 		    }
 		    default:
 		        break;
@@ -696,6 +673,7 @@ public class Select extends AbstractSelector {
       case WITHIN:
         return new ArrayList<>(Arrays.asList(request.getKey()));
       case QUERY:
+      case SELECT_NOTIFY:
         return getFieldsFromQuery(request.getQuery());
       default:
         return new ArrayList<>();
@@ -740,9 +718,9 @@ public class Select extends AbstractSelector {
       return;
     }
     // if there is no error update our results list
-    if (SelectResponsePacket.ResponseCode.NOERROR.equals(packet.getResponseCode())) {
-      // stuff all the unique records into the info structure
-      processJSONRecords(packet.getRecords(), info, replica);
+    if (ResponseCode.NO_ERROR.equals(packet.getResponseCode())) 
+    {
+    	storeReply(packet, info, replica);
     } else {
       // error response
       LOGGER.log(Level.FINE,
@@ -753,15 +731,18 @@ public class Select extends AbstractSelector {
     boolean allServersResponded;
     /* synchronization needed, otherwise assertion in app.sendToClient
      * implying that an outstanding request is always found gets violated. */
-    synchronized (info) {
-      // Remove the NS Address from the list to keep track of who has responded
-      info.removeServerAddress(packet.getNSAddress());
-      allServersResponded = info.allServersResponded();
+    synchronized (info) 
+    {
+    	// Remove the NS Address from the list to keep track of who has responded
+    	info.removeServerAddress(packet.getNSAddress());
+    	allServersResponded = info.allServersResponded();
     }
-    if (allServersResponded) {
-      handledAllServersResponded(PacketUtils.getInternalRequestHeader(packet), packet, info, replica);
-    } else {
-      LOGGER.log(Level.FINE,
+    if (allServersResponded) 
+    {
+    	handledAllServersResponded(PacketUtils.getInternalRequestHeader(packet), packet, info, replica);
+    } else 
+    {
+    	LOGGER.log(Level.FINE,
               "NS{0} servers yet to respond:{1}",
               new Object[]{replica.getNodeID(), info.serversYetToRespond()});
     }
@@ -771,35 +752,68 @@ public class Select extends AbstractSelector {
   private void handledAllServersResponded(InternalRequestHeader header,
           SelectResponsePacket packet, NSSelectInfo info,
           GNSApplicationInterface<String> replica) throws JSONException,
-          ClientException, IOException, InternalRequestException {
+          ClientException, IOException, InternalRequestException 
+  {
+	  SelectResponsePacket response = null; 
+	  switch(info.getSelectOperation())
+	  {
+	  	case EQUALS:
+	  	case NEAR:
+	  	case WITHIN:
+	  	case QUERY:
+	  	{
+	  		Set<JSONObject> allRecords = info.getResponsesAsSet();
+	  		Set<String> guids = extractGuidsFromRecords(allRecords);
+	  		LOGGER.log(Level.FINE,
+	              "NS{0} guids:{1}",
+	              new Object[]{replica.getNodeID(), guids});
+	  		
+	  		// If projection is null we return guids (old-style).
+	  		if (info.getProjection() == null) 
+	  		{
+	  			response = SelectResponsePacket.makeSuccessPacketForFullRecords(
+	  				  packet.getId(), null, -1, null, new JSONArray(guids));
+	  			// Otherwise we return a list of records.
+	  		}
+	  		else 
+	  		{
+	  			List<JSONObject> records = filterAndMassageRecords(allRecords);
+	  			LOGGER.log(Level.FINE,
+	                "NS{0} record:{1}",
+	                new Object[]{replica.getNodeID(), records});
+	  			response = SelectResponsePacket.makeSuccessPacketForFullRecords(packet.getId(),
+	                null, -1, null, new JSONArray(records));
+	  		}
+	  		break;
+	  	}
+	  	case SELECT_NOTIFY:
+	  	{
+	  		List<NotificationStatsToIssuer> statsList = info.getAllNotificationStats();
+	  		long totalNot = 0;
+	  		long failedNot = 0;
+	  		long pendingNot = 0;
+	  		
+	  		for(int i=0; i<statsList.size(); i++)
+	  		{
+	  			totalNot+=statsList.get(i).getTotalNotifications();
+	  			failedNot+=statsList.get(i).getFailedNotifications();
+	  			pendingNot+=statsList.get(i).getPendingNotifications();
+	  		}
+	  		NotificationStatsToIssuer mergedStats = new NotificationStatsToIssuer
+	  							(totalNot, failedNot, pendingNot);
+	  		
+	  		response = SelectResponsePacket.makeSuccessPacketForNotificationStatsOnly
+	  				(packet.getId(), null, -1, null, mergedStats);
+	  		break;
+	  	}
+	  }
 	  
-    Set<JSONObject> allRecords = info.getResponsesAsSet();
-    // Todo - clean up this use of guids further below in the group code
-    Set<String> guids = extractGuidsFromRecords(allRecords);
-    LOGGER.log(Level.FINE,
-            "NS{0} guids:{1}",
-            new Object[]{replica.getNodeID(), guids});
 
-    SelectResponsePacket response;
-    // If projection is null we return guids (old-style).
-    if (info.getProjection() == null) {
-      response = SelectResponsePacket.makeSuccessPacketForGuidsOnly(packet.getId(),
-              null, -1, null, new JSONArray(guids));
-      // Otherwise we return a list of records.
-    } else {
-      List<JSONObject> records = filterAndMassageRecords(allRecords);
-      LOGGER.log(Level.FINE,
-              "NS{0} record:{1}",
-              new Object[]{replica.getNodeID(), records});
-      response = SelectResponsePacket.makeSuccessPacketForFullRecords(packet.getId(),
-              null, -1, -1, null, new JSONArray(records));
-    }
-
-    // Put the result where the coordinator can see it.
-    QUERY_RESULT.put(packet.getNsQueryId(), response);
-    // and let the coordinator know the value is there
-    if (GNSApp.DELEGATE_CLIENT_MESSAGING) {
-      synchronized (QUERIES_IN_PROGRESS) {
+	  // Put the result where the coordinator can see it.
+	  QUERY_RESULT.put(packet.getNsQueryId(), response);
+	  // and let the coordinator know the value is there
+	  if (GNSApp.DELEGATE_CLIENT_MESSAGING) {
+		  synchronized (QUERIES_IN_PROGRESS) {
     	  // Must be done after setting result in QUERY_RESULT,
     	  // Otherwise, the waiting thread will wake up and 
     	  // find the query is not in progress but will not find any result
@@ -808,8 +822,8 @@ public class Select extends AbstractSelector {
     	  // in the documentation of these functions.
     	  QUERIES_IN_PROGRESS.remove(packet.getNsQueryId());
           QUERIES_IN_PROGRESS.notify();
-      }
-    }
+		  }
+	  }
   }
 
   // Converts a record from the database into something we can return to 
@@ -866,27 +880,38 @@ public class Select extends AbstractSelector {
   }
 
   // Takes the JSON records that are returned from an NS and stuffs the into the NSSelectInfo record
-  protected void processJSONRecords(JSONArray jsonArray, NSSelectInfo info,
-          GNSApplicationInterface<String> ar) throws JSONException {
-    int length = jsonArray.length();
-    LOGGER.log(Level.FINE,
-            "NS{0} processing {1} records", new Object[]{ar.getNodeID(), length});
-    for (int i = 0; i < length; i++) {
-      JSONObject record = jsonArray.getJSONObject(i);
-      //if (isGuidRecord(record)) 
-      { // Filter out any non-guids
-        String name = record.getString(NameRecord.NAME.getName());
-        if (info.addResponseIfNotSeenYet(name, record)) {
-          LOGGER.log(Level.FINE, "NS{0} added record {1}", new Object[]{ar.getNodeID(), record});
-        } else {
-          LOGGER.log(Level.FINE, "NS{0} already saw record {1}", new Object[]{ar.getNodeID(), record});
-        }
-      }
-//      else {
-//        LOGGER.log(Level.FINE, "NS{0} not a guid record {1}", new Object[]{ar.getNodeID(), record});
-//      }
-    }
+  protected void storeReply(SelectResponsePacket packet, NSSelectInfo info, 
+		  GNSApplicationInterface<String> ar) throws JSONException 
+  {  
+	  switch(info.getSelectOperation())
+	  {
+		  case EQUALS:
+		  case NEAR:
+		  case WITHIN:
+		  case QUERY:
+		  {
+			  JSONArray jsonArray = packet.getRecords();
+			  int length = jsonArray.length();
+			  for (int i = 0; i < length; i++) 
+			  {
+				  JSONObject record = jsonArray.getJSONObject(i);
+				  String name = record.getString(NameRecord.NAME.getName());
+				  info.addRecordResponseIfNotSeenYet(name, record);
+			  }
+			  break;
+		  }
+		  case SELECT_NOTIFY:
+		  {
+			  info.addNotificationStat(packet.getNotificationStats());
+			  break;
+		  }
+		  default:
+			  LOGGER.log(Level.WARNING, "{0} No matching case in select response {1}"
+					  	, new Object[]{ar.getNodeID(), packet});
+			  break;
+	  }
   }
+  
 
   /**
  * @param args
