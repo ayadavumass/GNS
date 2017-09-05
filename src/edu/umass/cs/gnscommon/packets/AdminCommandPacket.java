@@ -18,7 +18,7 @@ public class AdminCommandPacket extends CommandPacket {
    * @param command
    */
   public AdminCommandPacket(long requestId, JSONObject command) {
-    super(requestId, command);
+    super(requestId, command, null);
     this.setType(PacketType.ADMIN_COMMAND);
     assert (this.getCommandType().isMutualAuth());
   }

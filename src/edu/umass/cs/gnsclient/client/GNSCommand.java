@@ -55,15 +55,16 @@ public class GNSCommand extends CommandPacket {
    *
    * @param command
    */
-  protected GNSCommand(JSONObject command) {
-    this(
+  protected GNSCommand(JSONObject command, InetSocketAddress serverAddress) 
+  {
+	  this(
             /**
              * Generate a random value here because it is not easy (or
              * worth trying) to guarantee non-conflicting IDs here. Conflicts will
              * either result in an IOException further down or the query will be
              * transformed to carry a different ID if
              */
-            randomLong(), command);
+            randomLong(), command, serverAddress);
   }
 
   /**
@@ -71,8 +72,9 @@ public class GNSCommand extends CommandPacket {
    * @param id
    * @param command
    */
-  protected GNSCommand(long id, JSONObject command) {
-    super(id, command);
+  protected GNSCommand(long id, JSONObject command, InetSocketAddress serverAddress) 
+  {
+	  super(id, command, serverAddress);
   }
 
   /**
@@ -100,7 +102,7 @@ public class GNSCommand extends CommandPacket {
     if (CommandPacket.getJSONCommandType(command).isMutualAuth()) {
       return new AdminCommandPacket(randomLong(), command);
     }
-    return new GNSCommand(command);
+    return new GNSCommand(command, null);
   }
 
   /**
