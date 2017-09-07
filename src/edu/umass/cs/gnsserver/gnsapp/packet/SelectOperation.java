@@ -29,4 +29,15 @@ public enum SelectOperation {
    * The case when a notification is also sent to GUIDs that satisfy a query in a select request.
    */
   SELECT_NOTIFY,
+  
+  /**
+   * The case for querying a notification status from an entry-point name servers to 
+   * other name servers.
+   */
+  NOTIFICATION_STATUS,
+  
+  /**
+   * The notification status reply from name servers to an entry-point name server.
+   */
+  NOTIFICATION_STATUS_REPLY,
 }

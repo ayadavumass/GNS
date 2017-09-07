@@ -67,10 +67,12 @@ import edu.umass.cs.gnsserver.gnsapp.packet.SelectOperation;
 import edu.umass.cs.gnsserver.gnsapp.packet.SelectRequestPacket;
 import edu.umass.cs.gnsserver.gnsapp.packet.SelectResponsePacket;
 import edu.umass.cs.gnsserver.gnsapp.recordmap.NameRecord;
+import edu.umass.cs.gnsserver.gnsapp.selectnotification.EntryPointSelectNotificationState;
 import edu.umass.cs.gnsserver.gnsapp.selectnotification.NotificationSendingStats;
 import edu.umass.cs.gnsserver.gnsapp.selectnotification.NotificationStatsToIssuer;
 import edu.umass.cs.gnsserver.gnsapp.selectnotification.PendingSelectNotifications;
 import edu.umass.cs.gnsserver.gnsapp.selectnotification.SelectGUIDInfo;
+import edu.umass.cs.gnsserver.gnsapp.selectnotification.SelectHandleInfo;
 import edu.umass.cs.gnsserver.gnsapp.selectnotification.SelectResponseProcessor;
 import edu.umass.cs.gnsserver.interfaces.InternalRequestHeader;
 import edu.umass.cs.gnsserver.main.GNSConfig;
@@ -112,7 +114,14 @@ public class Select extends AbstractSelector
 {	
 	protected SelectResponseProcessor notificationSender;
 	
+	// for entry-point name server
+	private final EntryPointSelectNotificationState entryPointState;
+	
+	// for any name server.
 	private final PendingSelectNotifications pendingNotifications;
+	
+	
+	
 	
 	private static final Random RANDOM_ID = new Random();
 	
@@ -124,6 +133,8 @@ public class Select extends AbstractSelector
 	public Select()
 	{
 		initSelectResponseProcessor();
+		entryPointState = new EntryPointSelectNotificationState();
+		
 		pendingNotifications = new PendingSelectNotifications();
 	}
 	
@@ -377,8 +388,12 @@ public class Select extends AbstractSelector
 		    		}
 		    	}
 		    	
+		    	SelectHandleInfo selectHandle 
+		    				= new SelectHandleInfo(localhandle, app.getNodeAddress());
+		    	
 		    	NotificationStatsToIssuer toIssuer 
-		    			= new NotificationStatsToIssuer(totalNot, totalFailed, totalPending);
+		    			= new NotificationStatsToIssuer(selectHandle, totalNot, 
+		    												totalFailed, totalPending);
 		    	
 		    	//clearing the state
 		    	this.pendingNotifications.removeNotificationInfo(localhandle);
@@ -799,8 +814,20 @@ public class Select extends AbstractSelector
 	  			failedNot+=statsList.get(i).getFailedNotifications();
 	  			pendingNot+=statsList.get(i).getPendingNotifications();
 	  		}
+	  		
+	  		// FIXME: Need to add the removal of state here, if all notifications
+	  		// are sent, no pending notifications, then we can remove notifications. 
+	  		// Entry-point name server sends out removal request to other name servers. 
+	  		long localHandle 
+	  					= entryPointState.addNotificationState(info.getAllServers());
+	  		
+	  		SelectHandleInfo selectHandle 
+	  					= new SelectHandleInfo(localHandle, replica.getNodeAddress());
+	  		
+	  		
 	  		NotificationStatsToIssuer mergedStats = new NotificationStatsToIssuer
-	  							(totalNot, failedNot, pendingNot);
+	  							(selectHandle, totalNot, failedNot, pendingNot);
+	  		
 	  		
 	  		response = SelectResponsePacket.makeSuccessPacketForNotificationStatsOnly
 	  				(packet.getId(), null, -1, null, mergedStats);

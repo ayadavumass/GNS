@@ -40,6 +40,7 @@ import edu.umass.cs.gnscommon.exceptions.client.EncryptionException;
 import edu.umass.cs.gnscommon.packets.AdminCommandPacket;
 import edu.umass.cs.gnscommon.packets.CommandPacket;
 import edu.umass.cs.gnscommon.utils.Base64;
+import edu.umass.cs.gnsserver.gnsapp.selectnotification.SelectHandleInfo;
 import edu.umass.cs.gnsserver.gnsapp.selectnotification.SelectNotification;
 import edu.umass.cs.utils.Util;
 
@@ -55,7 +56,7 @@ public class GNSCommand extends CommandPacket {
    *
    * @param command
    */
-  protected GNSCommand(JSONObject command, InetSocketAddress serverAddress) 
+  protected GNSCommand(JSONObject command) 
   {
 	  this(
             /**
@@ -64,7 +65,7 @@ public class GNSCommand extends CommandPacket {
              * either result in an IOException further down or the query will be
              * transformed to carry a different ID if
              */
-            randomLong(), command, serverAddress);
+            randomLong(), command);
   }
 
   /**
@@ -72,9 +73,9 @@ public class GNSCommand extends CommandPacket {
    * @param id
    * @param command
    */
-  protected GNSCommand(long id, JSONObject command, InetSocketAddress serverAddress) 
+  protected GNSCommand(long id, JSONObject command) 
   {
-	  super(id, command, serverAddress);
+	  super(id, command);
   }
 
   /**
@@ -102,7 +103,7 @@ public class GNSCommand extends CommandPacket {
     if (CommandPacket.getJSONCommandType(command).isMutualAuth()) {
       return new AdminCommandPacket(randomLong(), command);
     }
-    return new GNSCommand(command, null);
+    return new GNSCommand(command);
   }
 
   /**
@@ -1731,6 +1732,9 @@ public class GNSCommand extends CommandPacket {
    * 
    * The GUIDs that have attributes queried in the query as world-readable can satisfy the query
    * and will be notified. 
+   * 
+   * The command returns notification stats, which is a 
+   * JSONObject representation of {@link NotificationStatsToIssuer}
    *
    * @param query
    * The select query being issued.
@@ -1744,6 +1748,8 @@ public class GNSCommand extends CommandPacket {
    * @param notification
    * The notification to send to GUIDs that satisfy query.
    * @return CommandPacket
+   * CommandPacket contains a JSONObject representation of {@link NotificationStatsToIssuer}.
+   *  
    * @throws ClientException
    */
   public static final CommandPacket selectAndNotify(String query, List<String> fields, 
@@ -1769,6 +1775,9 @@ public class GNSCommand extends CommandPacket {
    * 
    * The GUIDs whose read ACLs for the attributes in the query include
    * the issuer can satisfy the query and will be notified. 
+   * 
+   * The command returns notification stats, which is a 
+   * JSONObject representation of {@link NotificationStatsToIssuer}
    *
    * @param issuer
    * The GuidEntry of the issuer. 
@@ -1784,15 +1793,79 @@ public class GNSCommand extends CommandPacket {
    * @param notification
    * The notification to send to GUIDs that satisfy query.
    * @return CommandPacket
+   * CommandPacket contains a JSONObject representation of {@link NotificationStatsToIssuer}.
    * @throws ClientException
    */
   public static final CommandPacket selectAndNotify(GuidEntry issuer, String query, 
 		  List<String> fields, SelectNotification<?> notification)
           throws ClientException 
   {
-	  return getCommand(CommandType.SelectAndNotify, GNSProtocol.QUERY.toString(), query,
-    			GNSProtocol.SELECT_NOTIFICATION.toString(), notification.toString());
+	  return getCommand(CommandType.SelectAndNotify, 
+			  issuer, GNSProtocol.QUERY.toString(), query,
+    		  GNSProtocol.SELECT_NOTIFICATION.toString(), notification.toString());
   }
+  
+  
+  /**
+   * The command to request the select notification status for an earlier 
+   * issued selectAndNotify request. The command takes as input the 
+   * {@link SelectHandleInfo}, which a caller gets in reply after issuing a
+   * selectAndNotify request. The command returns notification stats, which is a 
+   * JSONObject representation of {@link NotificationStatsToIssuer}.
+   * 
+   * @param selectHandle
+   * @return 
+   * CommandPacket contains a JSONObject representation of {@link NotificationStatsToIssuer}.
+   * @throws ClientException
+   */
+  public static final CommandPacket selectNotificationStatus(SelectHandleInfo selectHandle) 
+  										throws ClientException
+  {
+	  try 
+	  {
+		  return getCommand(CommandType.SelectNotificationStatus, 
+				  GNSProtocol.SELECT_NOTIFICATION_HANDLE.toString(), 
+				  selectHandle.toJSONObject().toString());
+	  } catch (JSONException e) 
+	  {
+		  throw new ClientException(e);
+	  }
+  }
+  
+  
+  /**
+   * The command to request the select notification status for an earlier 
+   * issued selectAndNotify request. The command takes as input the 
+   * {@link SelectHandleInfo}, which a caller gets in reply after issuing a
+   * selectAndNotify request. 
+   * 
+   * This command requires that the issuer of the earlier selectAndNotify request 
+   * and the issuer of this command is same. If the issuer is not same, then 
+   * this command returns an error response. 
+   * 
+   * If the command is successful, then the command returns notification stats, which is a 
+   * JSONObject representation of {@link NotificationStatsToIssuer}.
+   * 
+   * @param selectHandle
+   * @return 
+   * CommandPacket contains a JSONObject representation of {@link NotificationStatsToIssuer}.
+   * @throws ClientException
+   */
+  public static final CommandPacket selectNotificationStatus
+  			(GuidEntry issuer, SelectHandleInfo selectHandle) throws ClientException
+  {
+	  try
+	  {
+		  return getCommand(CommandType.SelectNotificationStatus, 
+				  issuer, 
+				  GNSProtocol.SELECT_NOTIFICATION_HANDLE.toString(), 
+				  selectHandle.toJSONObject().toString());
+	  } catch (JSONException e) 
+	  {
+		  throw new ClientException(e);
+	  }
+  }
+  
   
   /**
    * Selects all guid records that match {@code query}. The result type of the
@@ -2791,7 +2864,7 @@ public static final CommandPacket selectNear(GuidEntry reader, String field, JSO
             accessType, GNSProtocol.GUID.toString(), guid.getGuid(), GNSProtocol.FIELD.toString(), field, GNSProtocol.ACCESSER.toString(),
             accesserGuid == null ? GNSProtocol.ALL_GUIDS.toString() : accesserGuid);
   }
-
+  
   private static CommandPacket aclGet(String accessType,
           GuidEntry guid, String field, String readerGuid)
           throws ClientException {

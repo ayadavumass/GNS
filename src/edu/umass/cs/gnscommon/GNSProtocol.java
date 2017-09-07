@@ -557,6 +557,11 @@ public enum GNSProtocol {
    *  the initial set of actives while creating an account or a guid.
    */
   ACTIVES_SET("activesSet"),
+  
+  /**
+   * The key field for the select notification handle. 
+   */
+  SELECT_NOTIFICATION_HANDLE("select_notification_handle"),
   ;
 
   final String label;

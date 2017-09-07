@@ -740,7 +740,7 @@ public enum CommandType {
   /**
    * Select commands that also send a notification
    */
- SelectAndNotify(316, CommandCategory.SELECT, "edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commands.select.SelectAndNotify",
+  SelectAndNotify(316, CommandCategory.SELECT, "edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commands.select.SelectAndNotify",
          CommandResultType.MAP, false, false,
          "Sends a notification to all guids that satisfy the select query."
          + "For details see http://gns.name/wiki/index.php/Query_Syntax "
@@ -753,6 +753,25 @@ public enum CommandType {
            GNSProtocol.SIGNATURE.toString(),
            GNSProtocol.SIGNATUREFULLMESSAGE.toString(),
            }),
+ 
+  /**
+   * The command to request the status of notifications for 
+   * an earlier issued select request.
+   */
+  SelectNotificationStatus(317, CommandCategory.SELECT, 
+		"edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commands.select.SelectNotificationStatus",
+        CommandResultType.MAP, false, false,
+        " The command is used to request the status of notifications for an "
+        + "earlier issued select request by using the corresponding select notification handle. "
+        + "The return value is a JSONObject containing various statistics like "
+        + "total number of GUIDs to whom notifications were sent, total failed notification, "
+        + "total pending notifications  etc.",
+        new String[]{GNSProtocol.SELECT_NOTIFICATION_HANDLE.toString()},
+        // optional parameters
+        new String[]{GNSProtocol.GUID.toString(), // the reader
+          GNSProtocol.SIGNATURE.toString(),
+          GNSProtocol.SIGNATUREFULLMESSAGE.toString(),
+          }),
   
   //
   // Select commands that maintain a group guid

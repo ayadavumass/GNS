@@ -27,7 +27,6 @@ import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import org.json.JSONObject;
 
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -38,19 +37,20 @@ import java.util.concurrent.ConcurrentHashMap;
  * This class represents a data structure to store information
  * about Select operations performed on the GNS.
  */
-public class NSSelectInfo {
-
-  private final int queryId;
+public class NSSelectInfo 
+{
+	private final int queryId;
   
-//the list of servers that have yet to be processed
-  private final Set<InetSocketAddress> serversToBeProcessed; 
-  private final ConcurrentHashMap<String, JSONObject> recordResponses;
-  private final List<NotificationStatsToIssuer> notificationStatusList;
-  private final SelectOperation selectOperation;
-  private final String query; // The string used to set up the query if applicable
-  // The list of fields to return. 
-  // Null means return GUIDS instead of whole records (old style select).
-  private final List<String> projection;
+	//the list of servers that have yet to be processed
+	private final Set<InetSocketAddress> allServers;
+	private final Set<InetSocketAddress> serversToBeProcessed; 
+	private final ConcurrentHashMap<String, JSONObject> recordResponses;
+	private final List<NotificationStatsToIssuer> notificationStatusList;
+	private final SelectOperation selectOperation;
+	private final String query; // The string used to set up the query if applicable
+	// The list of fields to return. 
+	// Null means return GUIDS instead of whole records (old style select).
+	private final List<String> projection;
 
   /**
    *
@@ -66,14 +66,18 @@ public class NSSelectInfo {
   public NSSelectInfo(int id, Set<InetSocketAddress> serverIds,
           SelectOperation selectOperation, String query, List<String> projection) 
   {
-    this.queryId = id;
-    this.serversToBeProcessed = Collections.newSetFromMap(new ConcurrentHashMap<InetSocketAddress, Boolean>());
-    this.serversToBeProcessed.addAll(serverIds);
-    this.recordResponses = new ConcurrentHashMap<>(10, 0.75f, 3);
-    this.notificationStatusList = new LinkedList<NotificationStatsToIssuer>();
-    this.selectOperation = selectOperation;
-    this.query = query;
-    this.projection = projection;
+	  this.queryId = id;
+	  this.serversToBeProcessed = new HashSet<InetSocketAddress>();
+	  this.serversToBeProcessed.addAll(serverIds);
+    
+	  this.allServers = new HashSet<InetSocketAddress>();
+	  this.allServers.addAll(serverIds);
+    
+	  this.recordResponses = new ConcurrentHashMap<>(10, 0.75f, 3);
+	  this.notificationStatusList = new LinkedList<NotificationStatsToIssuer>();
+	  this.selectOperation = selectOperation;
+	  this.query = query;
+	  this.projection = projection;
   }
 
   /**
@@ -188,5 +192,14 @@ public class NSSelectInfo {
    */
   public List<String> getProjection() {
     return projection;
+  }
+  
+  /**
+   * Returns all name servers to which this select request was sent to.
+   * @return
+   */
+  public Set<InetSocketAddress> getAllServers()
+  {
+	  return this.allServers;
   }
 }

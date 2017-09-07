@@ -78,7 +78,7 @@ public class GNSClient {
 	protected AsyncClient asyncClient;
 	// local name server
 	private InetSocketAddress GNSProxy = null;
-
+	
 	protected String getLabel() {
 		return GNSClient.class.getSimpleName();
 	}
@@ -156,22 +156,24 @@ public class GNSClient {
 			return new HashSet<>(Arrays.asList(DEFAULT_LOCAL_RECONFIGURATOR));
 		}
 	}
-
+	
 	private GNSClient(Set<InetSocketAddress> reconfigurators)
 			throws IOException {
 		this(reconfigurators, false);
 	}
 	
 	private GNSClient(Set<InetSocketAddress> reconfigurators, boolean checkConnectivity)
-			throws IOException {
+			throws IOException 
+	{	
 		this.asyncClient = new AsyncClient(reconfigurators,
 				ReconfigurationConfig.getClientSSLMode(),
-				ReconfigurationConfig.getClientPortOffset(), checkConnectivity) {
+				ReconfigurationConfig.getClientPortOffset(), checkConnectivity) 
+		{
 			@Override
 			protected String getLabel() {
 				return GNSClient.this.getLabel();
 			}
-
+			
 			@Override
 			public Set<IntegerPacketType> getRequestTypes() {
 				return GNSClient.this.getRequestTypes();
