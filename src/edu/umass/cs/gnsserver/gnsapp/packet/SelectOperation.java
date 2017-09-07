@@ -10,17 +10,21 @@ package edu.umass.cs.gnsserver.gnsapp.packet;
 /**
  * The select operation.
  */
-public enum SelectOperation {
+public enum SelectOperation 
+{
   /**
    * Special case query for field with value.
    */
-  EQUALS, /**
+  EQUALS, 
+  /**
    * Special case query for location field near point.
    */
-  NEAR, /**
+  NEAR, 
+  /**
    * Special case query for location field within bounding box.
    */
-  WITHIN, /**
+  WITHIN, 
+  /**
    * General purpose query.
    */
   QUERY,
