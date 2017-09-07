@@ -1,4 +1,4 @@
-package edu.umass.cs.gnsserver.gnsapp.selectnotification;
+package edu.umass.cs.gnscommon.packets.commandreply;
 
 
 import org.json.JSONException;

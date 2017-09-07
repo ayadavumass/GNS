@@ -31,7 +31,7 @@ public enum SelectOperation {
   SELECT_NOTIFY,
   
   /**
-   * The case for querying a notification status from an entry-point name servers to 
+   * The operation for querying a notification status from an entry-point name servers to 
    * other name servers.
    */
   NOTIFICATION_STATUS,

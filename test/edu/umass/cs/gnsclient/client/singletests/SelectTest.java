@@ -25,10 +25,10 @@ import edu.umass.cs.gnsclient.client.util.GuidUtils;
 import edu.umass.cs.gnscommon.AclAccessType;
 import edu.umass.cs.gnscommon.GNSProtocol;
 import edu.umass.cs.gnscommon.exceptions.client.ClientException;
+import edu.umass.cs.gnscommon.packets.commandreply.NotificationStatsToIssuer;
 import edu.umass.cs.gnscommon.utils.RandomString;
 
 import edu.umass.cs.gnscommon.utils.StringUtil;
-import edu.umass.cs.gnsserver.gnsapp.selectnotification.NotificationStatsToIssuer;
 import edu.umass.cs.gnsserver.gnsapp.selectnotification.TestSelectNotification;
 import edu.umass.cs.gnsserver.utils.DefaultGNSTest;
 import edu.umass.cs.utils.Utils;

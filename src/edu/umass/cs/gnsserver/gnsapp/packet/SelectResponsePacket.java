@@ -21,7 +21,7 @@ package edu.umass.cs.gnsserver.gnsapp.packet;
 
 import edu.umass.cs.gigapaxos.interfaces.ClientRequest;
 import edu.umass.cs.gnscommon.ResponseCode;
-import edu.umass.cs.gnsserver.gnsapp.selectnotification.NotificationStatsToIssuer;
+import edu.umass.cs.gnscommon.packets.commandreply.NotificationStatsToIssuer;
 
 import java.net.InetSocketAddress;
 

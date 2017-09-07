@@ -39,8 +39,8 @@ import edu.umass.cs.gnscommon.exceptions.client.ClientException;
 import edu.umass.cs.gnscommon.exceptions.client.EncryptionException;
 import edu.umass.cs.gnscommon.packets.AdminCommandPacket;
 import edu.umass.cs.gnscommon.packets.CommandPacket;
+import edu.umass.cs.gnscommon.packets.commandreply.SelectHandleInfo;
 import edu.umass.cs.gnscommon.utils.Base64;
-import edu.umass.cs.gnsserver.gnsapp.selectnotification.SelectHandleInfo;
 import edu.umass.cs.gnsserver.gnsapp.selectnotification.SelectNotification;
 import edu.umass.cs.utils.Util;
 
@@ -1801,7 +1801,9 @@ public class GNSCommand extends CommandPacket {
           throws ClientException 
   {
 	  return getCommand(CommandType.SelectAndNotify, 
-			  issuer, GNSProtocol.QUERY.toString(), query,
+			  issuer, 
+			  GNSProtocol.GUID.toString(), issuer.getGuid(),
+			  GNSProtocol.QUERY.toString(), query,
     		  GNSProtocol.SELECT_NOTIFICATION.toString(), notification.toString());
   }
   
@@ -1858,14 +1860,15 @@ public class GNSCommand extends CommandPacket {
 	  {
 		  return getCommand(CommandType.SelectNotificationStatus, 
 				  issuer, 
+				  GNSProtocol.GUID.toString(), issuer.getGuid(),
 				  GNSProtocol.SELECT_NOTIFICATION_HANDLE.toString(), 
-				  selectHandle.toJSONObject().toString());
+				  selectHandle.toJSONObject().toString()
+				  );
 	  } catch (JSONException e) 
 	  {
 		  throw new ClientException(e);
 	  }
   }
-  
   
   /**
    * Selects all guid records that match {@code query}. The result type of the
@@ -1889,11 +1892,10 @@ public class GNSCommand extends CommandPacket {
    * @throws ClientException
    */
   public static final CommandPacket selectQuery(String query)
-          throws ClientException {
-    return getCommand(CommandType.SelectQuery, GNSProtocol.QUERY.toString(), query);
+          throws ClientException 
+  {
+	  return getCommand(CommandType.SelectQuery, GNSProtocol.QUERY.toString(), query);
   }
-  
-  
 
   /**
    * Selects all guid records that match {@code query}. The result type of the

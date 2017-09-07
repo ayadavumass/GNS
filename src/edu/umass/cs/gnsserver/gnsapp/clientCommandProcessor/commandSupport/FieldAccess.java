@@ -45,6 +45,7 @@ import edu.umass.cs.gnscommon.exceptions.server.FieldNotFoundException;
 import edu.umass.cs.gnscommon.exceptions.server.InternalRequestException;
 import edu.umass.cs.gnscommon.exceptions.server.RecordNotFoundException;
 import edu.umass.cs.gnscommon.packets.CommandPacket;
+import edu.umass.cs.gnscommon.packets.commandreply.SelectHandleInfo;
 import edu.umass.cs.gnsserver.database.ColumnFieldType;
 import edu.umass.cs.gnsserver.gnsapp.GNSApplicationInterface;
 import edu.umass.cs.gnsserver.gnsapp.Select;
@@ -586,7 +587,8 @@ public class FieldAccess {
           throws FailedDBOperationException, JSONException, UnknownHostException, InternalRequestException 
   {
 	  // First do a signature check 
-	  if (!signatureCheckForSelect(reader, signature, message, app)) {
+	  if (!signatureCheckForSelect(reader, signature, message, app)) 
+	  {
 		  return null;
 	  }
 	  
@@ -609,25 +611,30 @@ public class FieldAccess {
 
   private static boolean signatureCheckForSelect(String reader, String signature,
           String message, GNSApplicationInterface<String> app) {
-    try {
-      if (signature == null || reader == null) {
-        // Return true... later check will catch fields that aren't world readable
-        LOGGER.log(Level.FINE, "Signature check for select: reader={0} signature={1}",
+    try 
+    {
+    	if (signature == null || reader == null) 
+    	{
+    		// Return true... later check will catch fields that aren't world readable
+    		LOGGER.log(Level.FINE, "Signature check for select: reader={0} signature={1}",
                 new Object[]{reader, signature});
-        return true;
-      }
-      boolean result = NSAccessSupport.verifySignature(
+    		return true;
+    	}
+    	boolean result = NSAccessSupport.verifySignature(
               NSAuthentication.lookupPublicKeyLocallyWithCacheing(reader, app), signature, message);
-      LOGGER.log(Level.FINE, "Signature check for select: reader={0} result={1}",
+      
+    	LOGGER.log(Level.FINE, "Signature check for select: reader={0} result={1}",
               new Object[]{reader, result});
-      return result;
-    } catch (FailedDBOperationException | InvalidKeyException | SignatureException | UnsupportedEncodingException | InvalidKeySpecException e) {
-      LOGGER.log(Level.FINE, "Signature check for select: reader={0} error={1}",
+    	return result;
+    } catch (FailedDBOperationException | InvalidKeyException | SignatureException | 
+    		UnsupportedEncodingException | InvalidKeySpecException e) 
+    {
+    	LOGGER.log(Level.FINE, "Signature check for select: reader={0} error={1}",
               new Object[]{reader, e.getMessage()});
-      return false;
+    	return false;
     }
   }
-
+  
   /**
    * Sends a select request to the server to retrieve all the guids matching the request.
    *
@@ -786,7 +793,65 @@ public class FieldAccess {
     }
     return new CommandResponse(ResponseCode.UNSPECIFIED_ERROR, "selectAndNotify failed. ");
   }
-
+  
+  
+  /**
+   * This function processes the select notification request at an entry-point name server.
+   * This function first checks that this name server was the entry-point name server for the 
+   * earlier selectAndNotify request whose notification status is being requested, 
+   * if this is not the case then we return an error to the client. 
+   * 
+   * If reader is not null, then this function first checks the signature and also checks if the 
+   * reader GUID matches to the reader GUID that issued the earlier selectAndNotify request. If 
+   * there is a mismatch in the reader GUID then we send an error back to the client. 
+   * 
+   * After the above two checks succeed, this function fetches the state for the 
+   * earlier selectAndNotify request, and send the notification status request to 
+   * the earlier contacted name servers. 
+   * 
+   * @param header
+   * @param commandPacket
+   * @param reader
+   * @param selectHandle
+   * @param signature
+   * @param message
+   * @param handler
+   * @return
+   * @throws InternalRequestException
+   */
+  public static CommandResponse selectNotificationStatus(InternalRequestHeader header, 
+		  CommandPacket commandPacket, String reader, SelectHandleInfo selectHandle,
+          String signature, String message, ClientRequestHandlerInterface handler) 
+        		  throws InternalRequestException 
+  {
+	  if (Select.queryContainsEvil(query)) 
+	  {
+		  return new CommandResponse(ResponseCode.OPERATION_NOT_SUPPORTED,
+              GNSProtocol.BAD_RESPONSE.toString() + " "
+              + GNSProtocol.OPERATION_NOT_SUPPORTED.toString()
+              + " Bad query operators in " + query);
+	  }
+	  SelectResponsePacket selectResp;
+	  try 
+	  {
+		  SelectRequestPacket packet = SelectRequestPacket.makeSelectNotifyRequest(-1, reader, query, 
+    		  projection, notificationStr);
+		  
+		  selectResp = executeSelectHelper(header, commandPacket, packet, reader, 
+    		  								signature, message, handler.getApp());
+	      if (selectResp != null && selectResp.getResponseCode().equals(ResponseCode.NO_ERROR))
+	      {
+	    	  return new CommandResponse(ResponseCode.NO_ERROR, 
+	    			  	selectResp.getNotificationStats().toJSONObject().toString());
+	      }
+	  } catch (IOException | JSONException | FailedDBOperationException e) {
+		  ClientException cle = new ClientException(e);
+		  return new CommandResponse(cle.getCode(), "selectAndNotify failed: "+cle.getMessage());
+	  }
+	  return new CommandResponse(ResponseCode.UNSPECIFIED_ERROR, "selectAndNotify failed. ");
+  }
+  
+  
   /**
    * Sends a select request to the server to retrieve all the guid matching the query.
    *

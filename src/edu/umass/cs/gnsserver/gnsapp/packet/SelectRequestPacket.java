@@ -124,8 +124,10 @@ public class SelectRequestPacket extends BasicPacketWithNSReturnAddress implemen
    * @param projection
    * @return a SelectRequestPacket
    */
-  public static SelectRequestPacket makeQueryRequest(long id, String reader, String query, List<String> projection) {
-    return new SelectRequestPacket(id, SelectOperation.QUERY, 
+  public static SelectRequestPacket makeQueryRequest(long id, String reader, 
+		  String query, List<String> projection) 
+  {
+	  return new SelectRequestPacket(id, SelectOperation.QUERY, 
     		reader, query, projection, null);
   }
   
@@ -146,7 +148,7 @@ public class SelectRequestPacket extends BasicPacketWithNSReturnAddress implemen
 	  return new SelectRequestPacket(id, SelectOperation.SELECT_NOTIFY,
 			   reader, query, projection, notificationStr);
   }
-
+  
   /**
    * Constructs new SelectRequestPacket from a JSONObject
    *

@@ -98,30 +98,32 @@ public class NSAccessSupport {
    * @throws UnsupportedEncodingException
    * @throws InvalidKeySpecException
    */
-  public static boolean verifySignature(String accessorPublicKey, String signature, String message) throws
-          InvalidKeyException, SignatureException, UnsupportedEncodingException, InvalidKeySpecException {
-    byte[] publickeyBytes = Base64.decode(accessorPublicKey);
-    if (publickeyBytes == null) { // bogus public key
-      ClientSupportConfig.getLogger().log(Level.FINE, "&&&&Base 64 decoding is bogus!!!");
-      return false;
-    }
-    ClientSupportConfig.getLogger().log(Level.FINER,
+  public static boolean verifySignature(String accessorPublicKey, String signature, 
+		  String message) throws InvalidKeyException, SignatureException, 
+  						  UnsupportedEncodingException, InvalidKeySpecException 
+  {
+	  byte[] publickeyBytes = Base64.decode(accessorPublicKey);
+	  if (publickeyBytes == null) { // bogus public key
+		  ClientSupportConfig.getLogger().log(Level.FINE, "&&&&Base 64 decoding is bogus!!!");
+		  return false;
+	  }
+	  ClientSupportConfig.getLogger().log(Level.FINER,
             "public_key:{0}, signature:{1}, message:{2}",
             new Object[]{Util.truncate(accessorPublicKey, 16, 16),
               Util.truncate(signature, 16, 16),
               Util.truncate(message, 16, 16)});
-    long t = System.nanoTime();
-    boolean result = verifySignatureInternal(publickeyBytes, signature, message);
-    if (Util.oneIn(100)) {
-      DelayProfiler.updateDelayNano("verification", t);
-    }
+	  long t = System.nanoTime();
+	  boolean result = verifySignatureInternal(publickeyBytes, signature, message);
+	  if (Util.oneIn(100)) {
+		  DelayProfiler.updateDelayNano("verification", t);
+	  }
 
-    ClientSupportConfig.getLogger().log(Level.FINE,
+	  ClientSupportConfig.getLogger().log(Level.FINE,
             "public_key:{0} {1} as author of message:{2}",
             new Object[]{accessorPublicKey,
               (result ? " verified " : " NOT verified "),
               message});
-    return result;
+	  return result;
   }
 
   private static int sigIndex = 0;

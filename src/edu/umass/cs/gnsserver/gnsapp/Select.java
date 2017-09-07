@@ -59,6 +59,8 @@ import edu.umass.cs.gnscommon.exceptions.client.ClientException;
 import edu.umass.cs.gnscommon.exceptions.server.FailedDBOperationException;
 import edu.umass.cs.gnscommon.exceptions.server.InternalRequestException;
 import edu.umass.cs.gnscommon.packets.PacketUtils;
+import edu.umass.cs.gnscommon.packets.commandreply.NotificationStatsToIssuer;
+import edu.umass.cs.gnscommon.packets.commandreply.SelectHandleInfo;
 import edu.umass.cs.gnsserver.database.AbstractRecordCursor;
 import edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commandSupport.InternalField;
 import edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commandSupport.MetaDataTypeName;
@@ -69,10 +71,8 @@ import edu.umass.cs.gnsserver.gnsapp.packet.SelectResponsePacket;
 import edu.umass.cs.gnsserver.gnsapp.recordmap.NameRecord;
 import edu.umass.cs.gnsserver.gnsapp.selectnotification.EntryPointSelectNotificationState;
 import edu.umass.cs.gnsserver.gnsapp.selectnotification.NotificationSendingStats;
-import edu.umass.cs.gnsserver.gnsapp.selectnotification.NotificationStatsToIssuer;
 import edu.umass.cs.gnsserver.gnsapp.selectnotification.PendingSelectNotifications;
 import edu.umass.cs.gnsserver.gnsapp.selectnotification.SelectGUIDInfo;
-import edu.umass.cs.gnsserver.gnsapp.selectnotification.SelectHandleInfo;
 import edu.umass.cs.gnsserver.gnsapp.selectnotification.SelectResponseProcessor;
 import edu.umass.cs.gnsserver.interfaces.InternalRequestHeader;
 import edu.umass.cs.gnsserver.main.GNSConfig;
@@ -119,8 +119,6 @@ public class Select extends AbstractSelector
 	
 	// for any name server.
 	private final PendingSelectNotifications pendingNotifications;
-	
-	
 	
 	
 	private static final Random RANDOM_ID = new Random();
@@ -217,44 +215,48 @@ public class Select extends AbstractSelector
 	  int queryId = addQueryInfo(serverAddresses, packet.getSelectOperation(),
             packet.getQuery(), packet.getProjection());
 	  
-    InetSocketAddress returnAddress = new InetSocketAddress(app.getNodeAddress().getAddress(),
+	  InetSocketAddress returnAddress = new InetSocketAddress(app.getNodeAddress().getAddress(),
             ReconfigurationConfig.getClientFacingPort(app.getNodeAddress().getPort()));
-    packet.setNSReturnAddress(returnAddress);
-    //packet.setNameServerID(app.getNodeID());
-    packet.setNsQueryId(queryId); // Note: this also tells handleSelectRequest that it should go to NS now
-    JSONObject outgoingJSON = packet.toJSONObject();
-    try {
-
-      LOGGER.log(Level.FINER, "addresses: {0} node address: {1}",
+	  packet.setNSReturnAddress(returnAddress);
+	  //packet.setNameServerID(app.getNodeID());
+	  packet.setNsQueryId(queryId); // Note: this also tells handleSelectRequest that it should go to NS now
+	  JSONObject outgoingJSON = packet.toJSONObject();
+	  try 
+	  {
+		  LOGGER.log(Level.FINER, "addresses: {0} node address: {1}",
               new Object[]{serverAddresses, app.getNodeAddress()});
-      // Forward to all but self because...
-      for (InetSocketAddress address : serverAddresses) 
-      {
-    	  InetSocketAddress offsetAddress = new InetSocketAddress(address.getAddress(),
+		  // Forward to all but self because...
+		  for (InetSocketAddress address : serverAddresses) 
+		  {
+			  InetSocketAddress offsetAddress = new InetSocketAddress(address.getAddress(),
                   ReconfigurationConfig.getClientFacingPort(address.getPort()));
-          LOGGER.log(Level.INFO, "NS {0} sending select {1} to {2} ({3})",
+			  LOGGER.log(Level.INFO, "NS {0} sending select {1} to {2} ({3})",
                   new Object[]{app.getNodeID(), outgoingJSON, offsetAddress, address});
-          app.sendToAddress(offsetAddress, outgoingJSON);
-      }
+			  app.sendToAddress(offsetAddress, outgoingJSON);
+		  }
       
-      // Wait for responses, otherwise you are violating Replicable.execute(.)'s semantics.
-      synchronized (QUERIES_IN_PROGRESS) {
-        while (QUERIES_IN_PROGRESS.containsKey(queryId)) {
-          try {
-            QUERIES_IN_PROGRESS.wait(SELECT_REQUEST_TIMEOUT);
-          } catch (InterruptedException e) {
-            e.printStackTrace();
-          }
-        }
-      }
-      if (QUERY_RESULT.containsKey(queryId)) {
-        return QUERY_RESULT.remove(queryId);
-      }
-
-    } catch (IOException  e) {
-      LOGGER.log(Level.SEVERE, "Exception while sending select request: {0}", e);
-    }
-    return null;
+		  // Wait for responses, otherwise you are violating Replicable.execute(.)'s semantics.
+		  synchronized (QUERIES_IN_PROGRESS) 
+		  {
+			  while (QUERIES_IN_PROGRESS.containsKey(queryId)) 
+			  {
+				  try 
+				  {
+					  QUERIES_IN_PROGRESS.wait(SELECT_REQUEST_TIMEOUT);
+				  } catch (InterruptedException e) {
+					  e.printStackTrace();
+				  }
+			  }
+		  }
+		  if (QUERY_RESULT.containsKey(queryId)) {
+			  return QUERY_RESULT.remove(queryId);
+		  }
+		  
+	  } catch (IOException  e) 
+	  {
+		  LOGGER.log(Level.SEVERE, "Exception while sending select request: {0}", e);
+	  }
+	  return null;
   }
   
   private SelectResponsePacket processSelectRequest(

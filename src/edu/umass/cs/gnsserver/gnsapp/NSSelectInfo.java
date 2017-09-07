@@ -20,8 +20,8 @@
 package edu.umass.cs.gnsserver.gnsapp;
 
 
+import edu.umass.cs.gnscommon.packets.commandreply.NotificationStatsToIssuer;
 import edu.umass.cs.gnsserver.gnsapp.packet.SelectOperation;
-import edu.umass.cs.gnsserver.gnsapp.selectnotification.NotificationStatsToIssuer;
 
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
