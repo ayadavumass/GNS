@@ -1100,6 +1100,9 @@ public class Select extends AbstractSelector
   		(SelectResponsePacket packet, NSSelectInfo info, 
   				GNSApplicationInterface<String> app)
   {
+	  LOGGER.log(Level.FINE, "{0} processSelectResponseForSelectNotify called response={1} selectInfo={2}",
+			  new Object[] {app, packet, info});
+	  
 	  // Aggregating the notification stats.
 	  info.addNotificationStat(packet.getNotificationStats());
 	  
