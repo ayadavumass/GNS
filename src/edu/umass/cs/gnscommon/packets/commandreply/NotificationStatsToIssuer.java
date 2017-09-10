@@ -75,6 +75,11 @@ public class NotificationStatsToIssuer
 		return this.pendingNotifications;
 	}
 	
+	public SelectHandleInfo getSelectHandleInfo()
+	{
+		return this.selectHandle;
+	}
+	
 	
 	public JSONObject toJSONObject() throws JSONException
 	{
@@ -96,4 +101,6 @@ public class NotificationStatsToIssuer
 		
 		return new NotificationStatsToIssuer(selecthandle, totalNot, failedNot, pendingNot);
 	}
+	
+	
 }

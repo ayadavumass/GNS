@@ -25,6 +25,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import edu.umass.cs.gigapaxos.interfaces.ClientRequest;
+import edu.umass.cs.gnscommon.packets.commandreply.SelectHandleInfo;
 import edu.umass.cs.gnsserver.utils.JSONUtils;
 
 /**
@@ -39,31 +40,34 @@ import edu.umass.cs.gnsserver.utils.JSONUtils;
  */
 public class SelectRequestPacket extends BasicPacketWithNSReturnAddress implements ClientRequest 
 {
-  private final static String ID = "id";
-  private final static String KEY = "key";
-  private final static String READER = "reader";
-  private final static String VALUE = "value";
-  private final static String OTHERVALUE = "otherValue";
-  private final static String QUERY = "query";
-  private final static String PROJECTION = "projection";
-  private final static String CCPQUERYID = "ccpQueryId";
-  private final static String NSQUERYID = "nsQueryId";
-  private final static String SELECT_OPERATION = "operation";
-  private final static String NOTIFICATION_STR = "notifcationMesg";
-
-  //
-  private long requestId;
-  private String reader;
-  private String key;
-  private Object value;
-  private Object otherValue;
-  private String query;
-  private List<String> projection;
-  private int ccpQueryId = -1; // used by the command processor to maintain state
-  private int nsQueryId = -1; // used by the name server to maintain state
-  private SelectOperation selectOperation;
+	private final static String KEY 					= "key";
+	private final static String READER 					= "reader";
+	private final static String VALUE 					= "value";
+	private final static String OTHERVALUE 				= "otherValue";
+	private final static String QUERY 					= "query";
+	private final static String PROJECTION 				= "projection";
+	private final static String NSQUERYID 				= "nsQueryId";
+	private final static String SELECT_OPERATION 		= "operation";
+	private final static String NOTIFICATION_STR 		= "notifcationMesg";
+	private final static String SELECT_HANDLE 			= "selectHandle";
   
-  private String notificationStr;
+  
+	private SelectOperation selectOperation;
+  
+	//
+	private String reader;
+	private String key;
+	private Object value;
+	private Object otherValue;
+	private String query;
+	private List<String> projection;
+	private int nsQueryId = -1; // used by the name server to maintain state
+  
+  
+	private String notificationStr = null;
+  
+	// used for notification status select operation. 
+	private SelectHandleInfo selectHandle = null;  
   
   /**
    * Constructs a new SelectRequestPacket
@@ -75,11 +79,10 @@ public class SelectRequestPacket extends BasicPacketWithNSReturnAddress implemen
    * @param value
    * @param otherValue
    */
-  public SelectRequestPacket(long id, SelectOperation selectOperation,
+  public SelectRequestPacket(SelectOperation selectOperation,
           String reader, String key, Object value, Object otherValue) {
     super();
     this.type = Packet.PacketType.SELECT_REQUEST;
-    this.requestId = id;
     this.reader = reader;
     this.key = key;
     this.value = value;
@@ -98,13 +101,12 @@ public class SelectRequestPacket extends BasicPacketWithNSReturnAddress implemen
    * @param query
    * @param guid
    */
-  private SelectRequestPacket(long id, SelectOperation selectOperation,
+  private SelectRequestPacket(SelectOperation selectOperation,
           String reader, String query, List<String> projection, 
-          String notifcationStr) 
+          String notifcationStr, SelectHandleInfo selectHandle)
   {
     super();
     this.type = Packet.PacketType.SELECT_REQUEST;
-    this.requestId = id;
     this.reader = reader;
     this.query = query;
     this.projection = projection;
@@ -113,6 +115,7 @@ public class SelectRequestPacket extends BasicPacketWithNSReturnAddress implemen
     this.value = null;
     this.otherValue = null;
     this.notificationStr = notifcationStr;
+    this.selectHandle = selectHandle;
   }
 
   /**
@@ -124,11 +127,11 @@ public class SelectRequestPacket extends BasicPacketWithNSReturnAddress implemen
    * @param projection
    * @return a SelectRequestPacket
    */
-  public static SelectRequestPacket makeQueryRequest(long id, String reader, 
+  public static SelectRequestPacket makeQueryRequest( String reader, 
 		  String query, List<String> projection) 
   {
-	  return new SelectRequestPacket(id, SelectOperation.QUERY, 
-    		reader, query, projection, null);
+	  return new SelectRequestPacket(SelectOperation.QUERY, 
+    		reader, query, projection, null, null);
   }
   
   
@@ -142,11 +145,28 @@ public class SelectRequestPacket extends BasicPacketWithNSReturnAddress implemen
    * @param projection
    * @return a SelectRequestPacket
    */
-  public static SelectRequestPacket makeSelectNotifyRequest(long id, String reader, String query, 
+  public static SelectRequestPacket makeSelectNotifyRequest(String reader, String query, 
 		  			List<String> projection, String notificationStr) 
   {
-	  return new SelectRequestPacket(id, SelectOperation.SELECT_NOTIFY,
-			   reader, query, projection, notificationStr);
+	  return new SelectRequestPacket(SelectOperation.SELECT_NOTIFY,
+			  reader, query, projection, notificationStr, null);
+  }
+  
+  
+  /**
+   * Creates a SelectRequestPacket for a NOTIFICATION_STATUS select operation. 
+   *
+   * @param id
+   * @param reader
+   * @param selectHandle
+   * 
+   * @return a SelectRequestPacket
+   */
+  public static SelectRequestPacket makeSelectNotificationStatusRequest
+  					(String reader, SelectHandleInfo selectHandle)
+  {
+	  return new SelectRequestPacket(SelectOperation.NOTIFICATION_STATUS,
+			  reader, null, null, null, selectHandle);
   }
   
   /**
@@ -155,28 +175,33 @@ public class SelectRequestPacket extends BasicPacketWithNSReturnAddress implemen
    * @param json JSONObject representing this packet
    * @throws org.json.JSONException
    */
-  public SelectRequestPacket(JSONObject json) throws JSONException {
-    super(json);
-    if (Packet.getPacketType(json) != Packet.PacketType.SELECT_REQUEST) {
-      throw new JSONException("SelectRequestPacket: wrong packet type " + Packet.getPacketType(json));
-    }
-    this.type = Packet.getPacketType(json);
-    this.requestId = json.getLong(ID);
-    this.reader = json.has(READER) ? json.getString(READER) : null;
-    this.key = json.has(KEY) ? json.getString(KEY) : null;
-    this.value = json.optString(VALUE, null);
-    this.otherValue = json.optString(OTHERVALUE, null);
-    this.query = json.optString(QUERY, null);
-    if (json.has(PROJECTION)) {
-      this.projection = JSONUtils.JSONArrayToArrayListString(json.getJSONArray(PROJECTION));
-    } else {
-      this.projection = null;
-    }
-    this.ccpQueryId = json.getInt(CCPQUERYID);
-    //this.nsID = new NodeIDType(json.getString(NSID));
-    this.nsQueryId = json.getInt(NSQUERYID);
-    this.selectOperation = SelectOperation.valueOf(json.getString(SELECT_OPERATION));
-    this.notificationStr = json.optString(NOTIFICATION_STR, null);
+  public SelectRequestPacket(JSONObject json) throws JSONException 
+  {
+	  super(json);
+	  if (Packet.getPacketType(json) != Packet.PacketType.SELECT_REQUEST) {
+		  throw new JSONException("SelectRequestPacket: wrong packet type " + Packet.getPacketType(json));
+	  }
+	  this.type = Packet.getPacketType(json);
+	  //this.requestId = json.getLong(ID);
+	  this.selectOperation = SelectOperation.valueOf(json.getString(SELECT_OPERATION));
+	  
+	  this.reader = json.optString(READER, null);
+	  this.key = json.optString(KEY, null);
+	  this.value = json.optString(VALUE, null);
+	  this.otherValue = json.optString(OTHERVALUE, null);
+	  this.query = json.optString(QUERY, null);
+	  if (json.has(PROJECTION)) 
+	  {
+		  this.projection = JSONUtils.JSONArrayToArrayListString(json.getJSONArray(PROJECTION));
+	  } else 
+	  {
+		  this.projection = null;
+	  }
+	  this.nsQueryId = json.getInt(NSQUERYID);
+	  
+	  this.notificationStr = json.optString(NOTIFICATION_STR, null);
+	  this.selectHandle = json.has(SELECT_HANDLE) ? 
+			  	SelectHandleInfo.fromJSONObject(json.getJSONObject(SELECT_HANDLE)):null;
   }
 
   /**
@@ -193,46 +218,42 @@ public class SelectRequestPacket extends BasicPacketWithNSReturnAddress implemen
   }
 
   @Override
-  public void addToJSONObject(JSONObject json) throws JSONException {
-    Packet.putPacketType(json, getType());
-    super.addToJSONObject(json);
-    json.put(ID, requestId);
-    if (reader != null) {
-      json.put(READER, reader);
-    }
-    if (key != null) {
-      json.put(KEY, key);
-    }
-    if (value != null) {
-      json.put(VALUE, value);
-    }
-    if (otherValue != null) {
-      json.put(OTHERVALUE, otherValue);
-    }
-    if (query != null) {
-      json.put(QUERY, query);
-    }
-    if (projection != null) {
-      json.put(PROJECTION, projection);
-    }
-    json.put(CCPQUERYID, ccpQueryId);
-    //json.put(NSID, nsID.toString());
-    json.put(NSQUERYID, nsQueryId);
-    json.put(SELECT_OPERATION, selectOperation.name());
+  public void addToJSONObject(JSONObject json) throws JSONException 
+  {
+	  Packet.putPacketType(json, getType());
+	  super.addToJSONObject(json);
+	  json.put(NSQUERYID, nsQueryId);
+	  json.put(SELECT_OPERATION, selectOperation.name());
     
-    if(this.notificationStr != null)
-    {
-    	json.put(NOTIFICATION_STR, notificationStr);
-    }
-  }
-
-  /**
-   * Set the CCP Query ID.
-   *
-   * @param ccpQueryId
-   */
-  public void setCCPQueryId(int ccpQueryId) {
-    this.ccpQueryId = ccpQueryId;
+	  if (reader != null) 
+	  {
+		  json.put(READER, reader);
+	  }
+	  if (key != null) {
+		  json.put(KEY, key);
+	  }
+	  if (value != null) {
+		  json.put(VALUE, value);
+	  }
+	  if (otherValue != null) {
+		  json.put(OTHERVALUE, otherValue);
+	  }
+	  if (query != null) {
+		  json.put(QUERY, query);
+	  }
+	  if (projection != null) {
+		  json.put(PROJECTION, projection);
+	  }
+    
+	  if(this.notificationStr != null)
+	  {
+		  json.put(NOTIFICATION_STR, notificationStr);
+	  }
+	  
+	  if(this.selectHandle != null)
+	  {
+		  json.put(SELECT_HANDLE, selectHandle.toJSONObject());
+	  }
   }
 
   /**
@@ -245,22 +266,13 @@ public class SelectRequestPacket extends BasicPacketWithNSReturnAddress implemen
   }
 
   /**
-   * Return the ID.
-   *
-   * @return the ID
-   */
-  public long getId() {
-    return requestId;
-  }
-
-  /**
    * Sets the request id.
    *
    * @param requestId
    */
-  public void setRequestId(long requestId) {
-    this.requestId = requestId;
-  }
+//  public void setRequestId(long requestId) {
+//    this.requestId = requestId;
+//  }
 
   /**
    * Return the reader.
@@ -287,15 +299,6 @@ public class SelectRequestPacket extends BasicPacketWithNSReturnAddress implemen
    */
   public Object getValue() {
     return value;
-  }
-
-  /**
-   * Return the CCP query requestId.
-   *
-   * @return the CCP query requestId
-   */
-  public int getCcpQueryId() {
-    return ccpQueryId;
   }
 
   /**
@@ -387,10 +390,10 @@ public class SelectRequestPacket extends BasicPacketWithNSReturnAddress implemen
    *
    * @return the request id
    */
-  @Override
-  public long getRequestID() {
-    return requestId;
-  }
+//  @Override
+//  public long getRequestID() {
+//    return requestId;
+//  }
 
   /**
    * Returns the notification string. 
@@ -402,20 +405,37 @@ public class SelectRequestPacket extends BasicPacketWithNSReturnAddress implemen
   }
   
   /**
+   * Returns the select handle.
+   * @return
+   */
+  public SelectHandleInfo getSelectHandleInfo()
+  {
+	  return this.selectHandle;
+  }
+  
+  /**
    *
    * @return the summary object
    */
   @Override
-  public Object getSummary() {
-    return new Object() {
-      @Override
-      public String toString() {
-        return getType() + ":"
-                + requestId + ":"
+  public Object getSummary() 
+  {
+	  return new Object() 
+	  {
+		  @Override
+		  public String toString() {
+			  return getType() + ":"
                 + getQuery() 
                 + getProjection()
                 + "[" + SelectRequestPacket.this.getClientAddress() + "]";
-      }
-    };
+		  }
+	  };
   }
+  
+  @Override
+  public long getRequestID() 
+  {
+	  return -1;
+  }
+  
 }

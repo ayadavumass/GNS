@@ -60,4 +60,27 @@ public class SelectHandleInfo
 		
 		return new SelectHandleInfo(handle, serverAdd);
 	}
+	
+	
+	/**
+	 * Returns the socket address of the name server that stores the select handle specified 
+	 * by the object of this class.
+	 * 
+	 * @return
+	 */
+	public InetSocketAddress getResponderAddress()
+	{
+		return this.serverAddress;
+	}
+	
+	/**
+	 * Returns the handleId corresponding to the select handle specified  
+	 * by the object of this class.
+	 * 
+	 * @return
+	 */
+	public long getHandleId()
+	{
+		return this.handleId;
+	}
 }

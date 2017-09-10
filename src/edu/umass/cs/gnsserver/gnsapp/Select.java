@@ -58,14 +58,12 @@ import edu.umass.cs.gnscommon.ResponseCode;
 import edu.umass.cs.gnscommon.exceptions.client.ClientException;
 import edu.umass.cs.gnscommon.exceptions.server.FailedDBOperationException;
 import edu.umass.cs.gnscommon.exceptions.server.InternalRequestException;
-import edu.umass.cs.gnscommon.packets.PacketUtils;
 import edu.umass.cs.gnscommon.packets.commandreply.NotificationStatsToIssuer;
 import edu.umass.cs.gnscommon.packets.commandreply.SelectHandleInfo;
 import edu.umass.cs.gnsserver.database.AbstractRecordCursor;
 import edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commandSupport.InternalField;
 import edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commandSupport.MetaDataTypeName;
 import edu.umass.cs.gnsserver.gnsapp.clientSupport.NSAuthentication;
-import edu.umass.cs.gnsserver.gnsapp.packet.SelectOperation;
 import edu.umass.cs.gnsserver.gnsapp.packet.SelectRequestPacket;
 import edu.umass.cs.gnsserver.gnsapp.packet.SelectResponsePacket;
 import edu.umass.cs.gnsserver.gnsapp.recordmap.NameRecord;
@@ -111,7 +109,7 @@ import edu.umass.cs.utils.Config;
  * @author westy
  */
 public class Select extends AbstractSelector 
-{	
+{
 	protected SelectResponseProcessor notificationSender;
 	
 	// for entry-point name server
@@ -121,12 +119,12 @@ public class Select extends AbstractSelector
 	private final PendingSelectNotifications pendingNotifications;
 	
 	
-	private static final Random RANDOM_ID = new Random();
+	private final Random randomIdGen = new Random();
 	
-	private static final ConcurrentMap<Integer, NSSelectInfo> QUERIES_IN_PROGRESS
-          = new ConcurrentHashMap<>(10, 0.75f, 3);
-	private static final ConcurrentMap<Integer, SelectResponsePacket> QUERY_RESULT
-          = new ConcurrentHashMap<>(10, 0.75f, 3);
+	private final ConcurrentMap<Integer, NSSelectInfo> pendingQueries
+          = new ConcurrentHashMap<Integer, NSSelectInfo>();
+	private final ConcurrentMap<Integer, SelectResponsePacket> queryResult
+          = new ConcurrentHashMap<Integer, SelectResponsePacket>();
 	
 	public Select()
 	{
@@ -136,7 +134,7 @@ public class Select extends AbstractSelector
 		pendingNotifications = new PendingSelectNotifications();
 	}
 	
-  
+	
 	public void initSelectResponseProcessor()
 	{
 		Class<?> clazz = null;
@@ -166,7 +164,8 @@ public class Select extends AbstractSelector
 			}
 		}
 	}
-  
+	
+	
   /**
    * Handles a select request that was received from a client.
    *
@@ -179,17 +178,22 @@ public class Select extends AbstractSelector
    */
   @Override
   public void handleSelectRequest(SelectRequestPacket packet,
-          GNSApplicationInterface<String> replica) throws JSONException, UnknownHostException, FailedDBOperationException {
-    if (packet.getNsQueryId() != -1) { // this is how we tell if it has been processed by the NS
-      handleSelectRequestFromNS(packet, replica);
-    } else {
-      throw new UnsupportedOperationException("SelectRequestPacket from client should not be coming here.");
-    }
+          GNSApplicationInterface<String> replica) throws JSONException, 
+  			UnknownHostException, FailedDBOperationException 
+  {
+	  if (packet.getNsQueryId() != -1) { // this is how we tell if it has been processed by the NS
+		  handleSelectRequestFromNS(packet, replica);
+	  } 
+	  else 
+	  {
+		  throw new UnsupportedOperationException("SelectRequestPacket from client should not be coming here.");
+	  }
   }
-
+  
+  
   //FIXME: We need to determine this timeout systematically, not an ad hoc constant.
   private static final long SELECT_REQUEST_TIMEOUT = Config.getGlobalInt(GNSConfig.GNSC.SELECT_REQUEST_TIMEOUT);
-
+  
   /**
    * Handle a select request from a client.
    * This node is the broadcaster and selector.
@@ -203,11 +207,10 @@ public class Select extends AbstractSelector
    * @throws FailedDBOperationException
    * @throws InternalRequestException
    */
-//  @Override
   public  SelectResponsePacket handleSelectRequestFromClient(InternalRequestHeader header,
-          SelectRequestPacket packet,
-          GNSApplicationInterface<String> app) throws JSONException, UnknownHostException,
-          FailedDBOperationException, InternalRequestException 
+          SelectRequestPacket packet, GNSApplicationInterface<String> app) 
+        		  throws JSONException, UnknownHostException, FailedDBOperationException, 
+        		  InternalRequestException
   {
 	  switch(packet.getSelectOperation())
 	  {
@@ -216,40 +219,47 @@ public class Select extends AbstractSelector
 	  		case WITHIN:
 	  		case QUERY:
 	  		{
-	  			return processSelectRequestFromClient();
+	  			return processSelectRequestFromClient(header, packet, app);
 	  			//break;
 	  		}
 	  		case SELECT_NOTIFY:
 	  		{
-	  			return processSelectRequestFromClient();
+	  			return processSelectRequestFromClient(header, packet, app);
 	  			//break;
 	  		}
 	  		case NOTIFICATION_STATUS:
 	  		{
-	  			return processNotificationStatusFromClient();
+	  			return processNotificationStatusFromClient(header, packet, app);
 	  			//break;
 	  		}
 	  		default:
 	  			break;
 	  }
-	  //TODO: The code needs to be moved to the appropriate function.
-	  
+	  return null;
+  }
+  
+  
+  private SelectResponsePacket processSelectRequestFromClient(InternalRequestHeader header,
+          SelectRequestPacket packet, GNSApplicationInterface<String> app)
+  {
 	  Set<InetSocketAddress> serverAddresses = new HashSet<>(PaxosConfig.getActives().values());
 	  
 	  // store the info for later
-	  int queryId = addQueryInfo(serverAddresses, packet.getSelectOperation(),
-            packet.getQuery(), packet.getProjection());
+	  int queryId = addQueryInfo(serverAddresses, packet);
 	  
 	  InetSocketAddress returnAddress = new InetSocketAddress(app.getNodeAddress().getAddress(),
             ReconfigurationConfig.getClientFacingPort(app.getNodeAddress().getPort()));
 	  packet.setNSReturnAddress(returnAddress);
 	  //packet.setNameServerID(app.getNodeID());
 	  packet.setNsQueryId(queryId); // Note: this also tells handleSelectRequest that it should go to NS now
-	  JSONObject outgoingJSON = packet.toJSONObject();
+	  
 	  try 
 	  {
+		  JSONObject outgoingJSON = packet.toJSONObject();
+		  
 		  LOGGER.log(Level.FINER, "addresses: {0} node address: {1}",
-              new Object[]{serverAddresses, app.getNodeAddress()});
+				  new Object[]{serverAddresses, app.getNodeAddress()});
+		  
 		  // Forward to all but self because...
 		  for (InetSocketAddress address : serverAddresses) 
 		  {
@@ -259,32 +269,447 @@ public class Select extends AbstractSelector
                   new Object[]{app.getNodeID(), outgoingJSON, offsetAddress, address});
 			  app.sendToAddress(offsetAddress, outgoingJSON);
 		  }
-      
+		  
 		  // Wait for responses, otherwise you are violating Replicable.execute(.)'s semantics.
-		  synchronized (QUERIES_IN_PROGRESS) 
+		  synchronized (pendingQueries) 
 		  {
-			  while (QUERIES_IN_PROGRESS.containsKey(queryId)) 
+			  while (pendingQueries.containsKey(queryId)) 
 			  {
-				  try 
+				  try
 				  {
-					  QUERIES_IN_PROGRESS.wait(SELECT_REQUEST_TIMEOUT);
+					  pendingQueries.wait(SELECT_REQUEST_TIMEOUT);
 				  } catch (InterruptedException e) {
 					  e.printStackTrace();
 				  }
 			  }
 		  }
-		  if (QUERY_RESULT.containsKey(queryId)) 
+		  if (queryResult.containsKey(queryId)) 
 		  {
-			  return QUERY_RESULT.remove(queryId);
+			  
+			  return queryResult.remove(queryId);
 		  }
-	  } catch (IOException  e) 
+	  }
+	  catch (IOException | JSONException  e) 
 	  {
 		  LOGGER.log(Level.SEVERE, "Exception while sending select request: {0}", e);
 	  }
 	  return null;
   }
   
-  private SelectResponsePacket processSelectRequest(
+  
+  private SelectResponsePacket processNotificationStatusFromClient
+  					(InternalRequestHeader header, 
+  							SelectRequestPacket packet, GNSApplicationInterface<String> app)
+  {
+	  SelectHandleInfo selectHandle = packet.getSelectHandleInfo();
+	  assert(selectHandle != null);
+	  // Also check if the entry-point address in the select handle is this node's address.
+	  InetSocketAddress addressFromHandle = selectHandle.getResponderAddress();
+	  
+	  // this should be server-server ip address and port. 
+	  assert(addressFromHandle.getAddress().getHostAddress().equals
+			  (app.getNodeAddress().getAddress().getHostAddress()));
+	  // this should be server-server ip address and port. 
+	  assert(addressFromHandle.getPort() == 
+			  app.getNodeAddress().getPort());
+	  
+	  // FIXME: pending implementation.
+	  List<SelectHandleInfo> handlesList = 
+			  		this.entryPointState.getListOfHandles(selectHandle.getHandleId());
+	  
+	  assert(handlesList != null);
+	  
+	  // These should be server-to-server addresses
+	  Set<InetSocketAddress> serverAddresses = getServerAddressFromHandles(handlesList);
+	  
+	  // store the info for later
+	  int queryId = addQueryInfo(serverAddresses, packet);
+	  
+	  //FIXME: aditya: COMMENT: not sure why we are not sending here on server-server port. s
+	  InetSocketAddress returnAddress = new InetSocketAddress(
+			  app.getNodeAddress().getAddress(), 
+			  ReconfigurationConfig.getClientFacingPort(app.getNodeAddress().getPort()));
+	  
+	  for(int i=0; i<handlesList.size(); i++)
+	  {
+		  // This is the select handle at a node where an earlier 
+		  // selectAndNotify was forwarded to.
+		  SelectHandleInfo currSelectHandle =  handlesList.get(i);
+		  SelectRequestPacket currPacket = 
+				  SelectRequestPacket.makeSelectNotificationStatusRequest
+				  	(packet.getReader(), currSelectHandle);
+		  
+		  currPacket.setNSReturnAddress(returnAddress);
+		  currPacket.setNsQueryId(queryId);
+		  
+		  
+		  // Not sure why we are sending to client-facing port and not server-server port.
+		  InetSocketAddress offsetAddress = new InetSocketAddress(
+				  currSelectHandle.getResponderAddress().getAddress(),
+                  ReconfigurationConfig.getClientFacingPort
+                  (currSelectHandle.getResponderAddress().getPort()));
+		  
+		  JSONObject messageJSON = null;
+		  
+		  try 
+		  {
+			  messageJSON = currPacket.toJSONObject();
+			  app.sendToAddress(offsetAddress, messageJSON);
+		  } catch (IOException | JSONException e) 
+		  {
+			  LOGGER.log(Level.WARNING, "{0} processNotificationStatusFromClient: "
+			  			+ "Sending message {1} to node {2} failed."
+			  			, new Object[]{app , messageJSON, 
+			  					offsetAddress});
+		  }
+	  }
+	  
+	  // Wait for responses, otherwise you are violating Replicable.execute(.)'s semantics.
+	  synchronized (pendingQueries)
+	  {
+		  while (pendingQueries.containsKey(queryId)) 
+		  {
+			  try
+			  {
+				  pendingQueries.wait(SELECT_REQUEST_TIMEOUT);
+			  } catch (InterruptedException e) {
+				  e.printStackTrace();
+			  }
+		  }
+	  }
+	  if (queryResult.containsKey(queryId)) 
+	  {
+		  return queryResult.remove(queryId);
+	  }
+	  return null;
+  }
+  
+  
+  private Set<InetSocketAddress> getServerAddressFromHandles(List<SelectHandleInfo> handlesList)
+  {
+	  Set<InetSocketAddress> serverAddreses = new HashSet<InetSocketAddress>();
+	  
+	  for(int i=0; i<handlesList.size(); i++)
+	  {
+		  serverAddreses.add(handlesList.get(i).getResponderAddress());
+	  }
+	  return serverAddreses;
+  }
+  
+  
+  private AbstractRecordCursor getDBCursor(SelectRequestPacket request, 
+		  											GNSApplicationInterface<String> app) 
+		  													throws FailedDBOperationException
+  {
+	  AbstractRecordCursor cursor = null;
+	  switch (request.getSelectOperation()) 
+	  {
+	  		case EQUALS:
+		  		cursor = NameRecord.selectRecords(app.getDB(), request.getKey(), request.getValue());
+		  		break;
+		  	case NEAR:
+		  		if (request.getValue() instanceof String) {
+		          cursor = NameRecord.selectRecordsNear(app.getDB(), request.getKey(), 
+		        		  (String) request.getValue(), Double.parseDouble((String) request.getOtherValue()));
+		        } else 
+		        {
+		        	break;
+		        }
+		        break;
+		    case WITHIN:
+		        if (request.getValue() instanceof String) {
+		          cursor = NameRecord.selectRecordsWithin(app.getDB(), request.getKey(), 
+		        		  (String) request.getValue());
+		        } else {
+		          break;
+		        }
+		        break;
+		    case QUERY:
+		    case SELECT_NOTIFY:
+		        LOGGER.log(Level.FINE, "NS{0} query: {1} {2}",
+		                new Object[]{app.getNodeID(), request.getQuery(), request.getProjection()});
+		        cursor = NameRecord.selectRecordsQuery(app.getDB(), request.getQuery(), 
+		        														request.getProjection());
+		        break;
+		    default:
+		        break;
+	  }
+	  return cursor;
+  }
+  
+  
+  /**
+   * Handle a select request from the collecting NS. This is what other NSs do when they
+   * get a SelectRequestPacket from the NS that originally received the packet 
+   * (the one that is collecting all the records).
+   * 
+   * This NS looks up the records and returns them.
+   *
+   * @param incomingJSON
+   * @param app
+   * @throws JSONException
+   */
+  private void handleSelectRequestFromNS(SelectRequestPacket request,
+          GNSApplicationInterface<String> app) throws JSONException
+  {
+	  LOGGER.log(Level.FINE,
+            "NS {0} {1} received query {2}",
+            new Object[]{Select.class.getSimpleName(),
+              app.getNodeID(), request.getSummary()});
+	  
+	  SelectResponsePacket response = null;
+	  try
+	  {
+		  switch(request.getSelectOperation())
+		  {
+		  	  case EQUALS:
+			  case NEAR:
+			  case WITHIN:
+			  case QUERY:
+			  {
+				  response = processSelectRequestFromNSForReturningGUIDs(request, app);
+				  break;
+			  }
+			  case SELECT_NOTIFY:
+			  {
+				  response = processSelectRequestFromNSForSelectNotify(request, app);
+				  break;
+			  }
+			  case NOTIFICATION_STATUS:
+			  {
+				  response = processSelectRequestFromNSForNotificationStatus(request, app);
+				  break;
+			  }
+			  default:
+				  break;
+		  }
+	  }
+	  catch(FailedDBOperationException  e)
+	  {
+		  LOGGER.log(Level.WARNING, "{0} exception while handling select request {1}: {2}"
+	    			, new Object[]{app, request.getSummary(), e});
+		  
+		  response = SelectResponsePacket.makeFailPacket(request.getRequestID(),
+	              request.getClientAddress(),
+	              request.getNsQueryId(), app.getNodeAddress(), e.getMessage());
+	  }
+	  
+	  try
+	  {
+		  assert(response != null);
+		  app.sendToAddress(request.getNSReturnAddress(), response.toJSONObject());
+	  } 
+	  catch (IOException f) 
+	  {
+		  LOGGER.log(Level.SEVERE, "Unable to send Failure SelectResponsePacket: {0}", f);
+	  }
+	  
+	  /*
+	  try
+	  {
+		  response = processSelectRequest(request, app);
+		  if(response == null)
+		  {
+			  response = SelectResponsePacket.makeFailPacket(request.getRequestID(),
+                    request.getClientAddress(),
+                    request.getNsQueryId(), app.getNodeAddress(), "Unknown select operation");
+		  }
+	  }
+	  catch (FailedDBOperationException | JSONException e) 
+	  {
+		  LOGGER.log(Level.WARNING, "{0} exception while handling select request {1}: {2}"
+    			, new Object[]{app, request.getSummary(), e});
+		  
+		  response = SelectResponsePacket.makeFailPacket(request.getRequestID(),
+              request.getClientAddress(),
+              request.getNsQueryId(), app.getNodeAddress(), e.getMessage());
+	  }*/
+  }
+  
+  
+  private SelectResponsePacket processSelectRequestFromNSForReturningGUIDs
+  			(SelectRequestPacket request, GNSApplicationInterface<String> app) 
+  					throws FailedDBOperationException
+  {
+	  AbstractRecordCursor cursor = getDBCursor(request, app);
+	  
+	  // aditya:TODO: These cases also needs to be changed to a distributed
+  	  // iterator approach. 
+	  
+	  JSONArray resultRecords = new JSONArray();
+	  
+	  while (cursor != null && cursor.hasNext()) 
+	  {
+		  JSONObject record = cursor.nextJSONObject();
+		  
+		  record = aclCheckForRecord(request, record, app);
+		  if(record!=null)
+		  {
+			  record = performProjectionForUserRequestedAttributes(
+					  app, request, record);
+			  
+			  if(record!=null)
+				  resultRecords.put(record);
+			  
+		  }
+	  }
+	  
+	  return SelectResponsePacket.makeSuccessPacketForFullRecords(
+			  request.getRequestID(), request.getClientAddress(),
+			  request.getNsQueryId(), app.getNodeAddress(), resultRecords);
+  }
+  
+  
+  private SelectResponsePacket processSelectRequestFromNSForSelectNotify(
+		  		SelectRequestPacket request, GNSApplicationInterface<String> app) 
+		  				throws FailedDBOperationException
+  {
+	  AbstractRecordCursor cursor = getDBCursor(request, app);
+	  
+	  LOGGER.log(Level.FINE, "NS{0} query: {1} {2}",
+              new Object[]{app.getNodeID(), request.getQuery(), request.getProjection()});
+  	
+  	  String notificationStr = request.getNotificationString();
+  	
+  	  List<SelectGUIDInfo> currList = new LinkedList<SelectGUIDInfo>();
+  	  long localhandle = -1;
+  	  while (cursor != null && cursor.hasNext()) 
+  	  {
+  		  JSONObject record = cursor.nextJSONObject();
+  		  
+  		  record = aclCheckForRecord(request, record, app);
+  		  if(record != null)
+  		  {
+  			  record = performProjectionForUserRequestedAttributes(
+					  app, request, record);
+  			  
+  			  if(record!=null)
+  			  {
+  				  try
+  				  {
+  					  String guid = record.getString(NameRecord.NAME.getName());
+  					  SelectGUIDInfo selectGUIDInfo = new SelectGUIDInfo(guid, record);
+  					  currList.add(selectGUIDInfo);
+  				  } catch (JSONException e) 
+  				  {
+  					  // This JSON exception is because of problem in reading NameRecord.NAME.
+  					  // which should not happen
+  					  LOGGER.log(Level.INFO, "JSONException in processing a record {0}", 
+								new Object[]{e.getMessage()});
+  				  }
+  			  }
+  		  }
+  		  
+  		  if(currList.size() >= Config.getGlobalInt(GNSC.SELECT_FETCH_SIZE))
+  		  {
+  			  if(localhandle == -1)
+  			  {
+  				  localhandle = this.pendingNotifications.getUniqueIDAndInit();
+  			  }
+  			  
+  			  // Sending the actual notification.
+  			  // Based on the implementation, this function could block for very long.
+  			  // Ideally, the implementation of this function should not be blocking. 
+  			  // The design is such that notification function can update the progress
+  			  // of notification sending using InternalNotificationStats, and the GNS
+  			  // can get the progress using NotificationSendingStats.
+  			  
+  			  NotificationSendingStats stats 
+						= this.notificationSender.sendNotification(currList, notificationStr);
+  			  
+  			  this.pendingNotifications.addNotificationStats(localhandle, stats);
+  			  
+  			  // Not clearing currList here, as the notification function 
+  			  // may be using it.
+  			  // So just re-initializing it. 
+  			  currList = new LinkedList<SelectGUIDInfo>();
+  		  }
+  	  }
+  	  
+  	  // last batch.
+  	  if(currList.size() > 0)
+  	  {
+  		  if(localhandle == -1)
+  		  {
+  			  localhandle = this.pendingNotifications.getUniqueIDAndInit();
+  		  }
+  		  
+  		  // Sending the actual notification.
+  		  // Based on the implementation, this function could block for very long.
+  		  // Ideally, the implementation of this function should not be blocking. 
+  		  // The design is such that notification function can update the progress
+  		  // of notification sending using InternalNotificationStats, and the GNS
+  		  // can get the progress using NotificationSendingStats.
+  		  NotificationSendingStats stats 
+					= this.notificationSender.sendNotification(currList, notificationStr);
+  		  
+  		  this.pendingNotifications.addNotificationStats(localhandle, stats);
+  	  }
+  	  SelectHandleInfo selectHandle 
+			= new SelectHandleInfo(localhandle, app.getNodeAddress());
+  	  
+  	  
+  	  NotificationStatsToIssuer statsToIssuer 
+									= collectNotificationStats(selectHandle);
+  	  
+  	  // clearing the state
+  	  // FIXME: clearing the state.
+  	  // Mostly a timeout based clearing. 
+  	  // A separate background thread that removes the state separately.
+  	  //this.pendingNotifications.removeNotificationInfo(localhandle);
+  	
+  	  return SelectResponsePacket.makeSuccessPacketForNotificationStatsOnly
+  			(request.getRequestID(), request.getClientAddress(),
+						request.getNsQueryId(), app.getNodeAddress(), statsToIssuer);
+  }
+  
+  
+  private SelectResponsePacket processSelectRequestFromNSForNotificationStatus(
+		  SelectRequestPacket request, GNSApplicationInterface<String> app)
+  {
+	  SelectHandleInfo selectHandle = request.getSelectHandleInfo();
+	  assert(selectHandle != null);
+	  // Also check if the entry-point address in the select handle is this node's address.
+	  InetSocketAddress addressFromHandle = selectHandle.getResponderAddress();
+	  
+	  // this should be server-server ip address and port. 
+	  assert(addressFromHandle.getAddress().getHostAddress().equals
+			  (app.getNodeAddress().getAddress().getHostAddress()));
+	  // this should be server-server ip address and port. 
+	  assert(addressFromHandle.getPort() == app.getNodeAddress().getPort());
+	  
+	  NotificationStatsToIssuer statsToIssuer 
+	  					= collectNotificationStats(selectHandle);
+	  
+	  return SelectResponsePacket.makeSuccessPacketForNotificationStatsOnly
+	  			(request.getRequestID(), request.getClientAddress(),
+							request.getNsQueryId(), app.getNodeAddress(), statsToIssuer);
+  }
+  
+  
+  private NotificationStatsToIssuer collectNotificationStats(SelectHandleInfo selectHandle)
+  {
+	  List<NotificationSendingStats> allStats 
+	  		= this.pendingNotifications.lookupNotificationStats(selectHandle.getHandleId());
+	  long totalNot = 0;
+  	  long totalFailed = 0;
+  	  long totalPending = 0;
+  	  if(allStats != null)
+  	  {
+  		  for(int i=0; i<allStats.size(); i++)
+  		  {
+  			  totalNot+=allStats.get(i).getTotalNotifications();
+  			  totalFailed+=allStats.get(i).getGUIDsFailed().size();
+  			  totalPending+=allStats.get(i).getNumberPending();
+  		  }
+  	  }
+  	  
+  	  return new NotificationStatsToIssuer(selectHandle, totalNot, 
+				totalFailed, totalPending);
+  }
+  
+  
+  /*private SelectResponsePacket processSelectRequest(
 		  SelectRequestPacket request, GNSApplicationInterface<String> app) 
 				  	throws FailedDBOperationException, JSONException
   {
@@ -314,10 +739,9 @@ public class Select extends AbstractSelector
 						if(record!=null)
 							resultRecords.put(record);
 					}
-				}
-				
+				}	
 				return SelectResponsePacket.makeSuccessPacketForFullRecords(
-						request.getId(), request.getClientAddress(),
+						request.getRequestID(), request.getClientAddress(),
 						request.getNsQueryId(), app.getNodeAddress(), resultRecords);
 		    }
 		    case SELECT_NOTIFY:
@@ -341,7 +765,7 @@ public class Select extends AbstractSelector
 						
 						if(record!=null)
 						{
-							try 
+							try
 							{
 								String guid = record.getString(NameRecord.NAME.getName());
 								SelectGUIDInfo selectGUIDInfo = new SelectGUIDInfo(guid, record);
@@ -426,125 +850,14 @@ public class Select extends AbstractSelector
 		    	this.pendingNotifications.removeNotificationInfo(localhandle);
 		    	
 		    	return SelectResponsePacket.makeSuccessPacketForNotificationStatsOnly
-		    			(request.getId(), request.getClientAddress(),
+		    			(request.getRequestID(), request.getClientAddress(),
 								request.getNsQueryId(), app.getNodeAddress(), toIssuer);
 		    }
 		    default:
 		        break;
 	  }
 	  return null;
-  }
-  
-  
-  private AbstractRecordCursor getDBCursor(SelectRequestPacket request, 
-		  											GNSApplicationInterface<String> app) 
-		  													throws FailedDBOperationException
-  {
-	  AbstractRecordCursor cursor = null;
-	  switch (request.getSelectOperation()) 
-	  {
-	  		case EQUALS:
-		  		cursor = NameRecord.selectRecords(app.getDB(), request.getKey(), request.getValue());
-		  		break;
-		  	case NEAR:
-		  		if (request.getValue() instanceof String) {
-		          cursor = NameRecord.selectRecordsNear(app.getDB(), request.getKey(), 
-		        		  (String) request.getValue(), Double.parseDouble((String) request.getOtherValue()));
-		        } else {
-		          break;
-		        }
-		        break;
-		    case WITHIN:
-		        if (request.getValue() instanceof String) {
-		          cursor = NameRecord.selectRecordsWithin(app.getDB(), request.getKey(), (String) request.getValue());
-		        } else {
-		          break;
-		        }
-		        break;
-		    case QUERY:
-		    case SELECT_NOTIFY:
-		        LOGGER.log(Level.FINE, "NS{0} query: {1} {2}",
-		                new Object[]{app.getNodeID(), request.getQuery(), request.getProjection()});
-		        cursor = NameRecord.selectRecordsQuery(app.getDB(), request.getQuery(), 
-		        														request.getProjection());
-		        break;
-		    default:
-		        break;
-	  }
-	  return cursor;
-  }
-
-  /**
-   * Handle a select request from the collecting NS. This is what other NSs do when they
-   * get a SelectRequestPacket from the NS that originally received the packet (the one that is collecting
-   * all the records).
-   * This NS looks up the records and returns them.
-   *
-   * @param incomingJSON
-   * @param app
-   * @throws JSONException
-   */
-  private void handleSelectRequestFromNS(SelectRequestPacket request,
-          GNSApplicationInterface<String> app) throws JSONException 
-  {
-	  LOGGER.log(Level.FINE,
-            "NS {0} {1} received query {2}",
-            new Object[]{Select.class.getSimpleName(),
-              app.getNodeID(), request.getSummary()});
-	  
-	  switch(request.getSelectOperation())
-	  {
-		  case EQUALS:
-		  case NEAR:
-		  case WITHIN:
-		  case QUERY:
-		  {
-			  processSelectRequestFromNSForReturningGUIDs();
-			  break;
-		  }
-		  case SELECT_NOTIFY:
-		  {
-			  processSelectRequestFromNSForSelectNotify();
-			  break;
-		  }
-		  case NOTIFICATION_STATUS:
-		  {
-			  processSelectRequestFromNSForNotificationStatus();
-			  break;
-		  }
-		  default:
-			  break;
-	  }
-	  
-	  SelectResponsePacket response = null;
-	  try 
-	  {
-		  response = processSelectRequest(request, app);
-		  if(response == null)
-		  {
-			  response = SelectResponsePacket.makeFailPacket(request.getId(),
-                    request.getClientAddress(),
-                    request.getNsQueryId(), app.getNodeAddress(), "Unknown select operation");
-		  }
-	  } 
-	  catch (FailedDBOperationException | JSONException e) 
-	  {
-		  LOGGER.log(Level.WARNING, "{0} exception while handling select request {1}: {2}"
-    			, new Object[]{app, request.getSummary(), e});
-		  response = SelectResponsePacket.makeFailPacket(request.getId(),
-              request.getClientAddress(),
-              request.getNsQueryId(), app.getNodeAddress(), e.getMessage());
-	  }
-	  
-	  try 
-	  {
-		  app.sendToAddress(request.getNSReturnAddress(), response.toJSONObject());
-	  } 
-	  catch (IOException f) 
-	  {
-		  LOGGER.log(Level.SEVERE, "Unable to send Failure SelectResponsePacket: {0}", f);
-	  }
-  }
+  }*/
   
   
   /**
@@ -733,20 +1046,23 @@ public class Select extends AbstractSelector
   }
   
   // Returns the fields that present in a query.
-  private List<String> getFieldsForQueryType(SelectRequestPacket request) {
-    switch (request.getSelectOperation()) {
-      case EQUALS:
-      case NEAR:
-      case WITHIN:
-        return new ArrayList<>(Arrays.asList(request.getKey()));
-      case QUERY:
-      case SELECT_NOTIFY:
-        return getFieldsFromQuery(request.getQuery());
-      default:
-        return new ArrayList<>();
-    }
+  private List<String> getFieldsForQueryType(SelectRequestPacket request) 
+  {
+	  switch (request.getSelectOperation()) 
+	  {
+	  	case EQUALS:
+      	case NEAR:
+      	case WITHIN:
+      		return new ArrayList<>(Arrays.asList(request.getKey()));
+      	case QUERY:
+      	case SELECT_NOTIFY:
+      		return getFieldsFromQuery(request.getQuery());
+      	default:
+      		return new ArrayList<>();
+	  }
   }
-
+  
+  
   // Uses a regular expression to extract the fields from a select query.
   private List<String> getFieldsFromQuery(String query) {
     List<String> result = new ArrayList<>();
@@ -758,7 +1074,8 @@ public class Select extends AbstractSelector
     }
     return result;
   }
-
+  
+  
   /**
    * Handles a select response.
    * This code runs in the collecting NS.
@@ -774,12 +1091,13 @@ public class Select extends AbstractSelector
   public void handleSelectResponse(SelectResponsePacket packet,
           GNSApplicationInterface<String> replica) throws JSONException, ClientException, 
   			IOException, InternalRequestException 
-  {  
+  {
 	  LOGGER.log(Level.FINE,
-            "NS {0} recvd from NS {1}",
+            "NS {0} recvd handleSelectResponse from NS {1}",
             new Object[]{replica.getNodeID(),
               packet.getNSAddress()});
-	  NSSelectInfo info = QUERIES_IN_PROGRESS.get(packet.getNsQueryId());
+	  
+	  NSSelectInfo info = pendingQueries.get(packet.getNsQueryId());
 	  if (info == null) 
 	  {
 		  LOGGER.log(Level.WARNING,
@@ -787,9 +1105,11 @@ public class Select extends AbstractSelector
               new Object[]{replica.getNodeID(), packet.getNsQueryId()});
 		  return;
 	  }
+	  
 	  // if there is no error update our results list
 	  if (ResponseCode.NO_ERROR.equals(packet.getResponseCode())) 
 	  {
+		  SelectResponsePacket response = null;
 		  switch(info.getSelectOperation())
 		  {
 		  	case EQUALS:
@@ -797,17 +1117,17 @@ public class Select extends AbstractSelector
 		  	case WITHIN:
 		  	case QUERY:
 		  	{
-		  		processSelectResponseForReturningGUIDs();
+		  		response = processSelectResponseForReturningGUIDs(packet, info, replica);
 		  		break;
 		  	}
 		  	case SELECT_NOTIFY:
 		  	{
-		  		processSelectResponseForSelectNotify();
+		  		response = processSelectResponseForSelectNotify(packet, info, replica);
 		  		break;
 		  	}
 		  	case NOTIFICATION_STATUS:
 		  	{
-		  		processSelectResponseForNotificationStatus();
+		  		response = processSelectResponseForNotificationStatus(packet, info, replica);
 		  		break;
 		  	}
 		  	default:
@@ -815,13 +1135,89 @@ public class Select extends AbstractSelector
 		  		break;
 		  	}
 		  }
-		  storeReply(packet, info, replica);
-	  } else 
+		  // FIXME: reply sending is pending.
+		  //storeReply(packet, info, replica);
+		  
+		  // aditya: Message sending part needs to be made configurable, so that it can be easily made blocking
+		  // or non-blocking.
+		  
+		  // If response is non-null, the all responses have been received.
+		  // and this is the non-null response that needs to go to the client.
+		  if(response != null)
+		  {
+			  // Put the result where the coordinator can see it.
+			  queryResult.put(packet.getNsQueryId(), response);
+			  // and let the coordinator know the value is there
+			  if (GNSApp.DELEGATE_CLIENT_MESSAGING) 
+			  {
+				  synchronized (pendingQueries) 
+				  {
+					  // Must be done after setting result in QUERY_RESULT,
+					  // Otherwise, the waiting thread will wake up and 
+					  // find the query is not in progress but will not find any result
+					  // so will return a wrong response. A wait()
+					  // can wake spuriously without the notify() as mentioned
+					  // in the documentation of these functions.
+					  pendingQueries.remove(packet.getNsQueryId());
+					  pendingQueries.notify();
+				  }
+			  }
+		  }
+	  } 
+	  else 
 	  {
 		  // error response
 		  LOGGER.log(Level.FINE,
-              "NS {0} processing error response: {1}",
-              new Object[]{replica.getNodeID(), packet.getErrorMessage()});
+				  "NS {0} processing error response: {1}",
+				  	new Object[]{replica.getNodeID(), packet.getErrorMessage()});
+	  }
+	  
+	  
+	  // Remove the NS Address from the list to keep track of who has responded
+	  // boolean allServersResponded;
+	  /* synchronization needed, otherwise assertion in app.sendToClient
+	   * implying that an outstanding request is always found gets violated. 
+	   */
+	  /*synchronized (info) 
+	  {
+	  	  // Remove the NS Address from the list to keep track of who has responded
+		  info.removeServerAddress(packet.getNSAddress());
+		  allServersResponded = info.allServersResponded();
+	  }
+	  if (allServersResponded) 
+	  {
+		  handledAllServersResponded(PacketUtils.getInternalRequestHeader(packet), packet, info, replica);
+	  } else 
+	  {
+		  LOGGER.log(Level.FINE,
+              "NS{0} servers yet to respond:{1}",
+              new Object[]{replica.getNodeID(), info.serversYetToRespond()});
+	  }*/
+  }
+  
+  
+  /**
+   * Returns a SelectResponsePacket if all name servers have responded. 
+   * Otherwise, returns null for pending requests. 
+   * 
+   * @param packet
+   * @param info
+   * @param ar
+   * @return
+   * @throws JSONException 
+   */
+  private SelectResponsePacket processSelectResponseForReturningGUIDs(
+		  SelectResponsePacket packet, NSSelectInfo info, GNSApplicationInterface<String> app) 
+				  	throws JSONException
+  {
+	  
+	  JSONArray jsonArray = packet.getRecords();
+	  int length = jsonArray.length();
+	  for (int i = 0; i < length; i++)
+	  {
+		  JSONObject record = jsonArray.getJSONObject(i);
+		  String name = record.getString(NameRecord.NAME.getName());
+		  info.addRecordResponseIfNotSeenYet(name, record);  
 	  }
 	  
 	  // Remove the NS Address from the list to keep track of who has responded
@@ -836,18 +1232,187 @@ public class Select extends AbstractSelector
 		  allServersResponded = info.allServersResponded();
 	  }
 	  if (allServersResponded) 
-	  {
-		  handledAllServersResponded(PacketUtils.getInternalRequestHeader(packet), packet, info, replica);
+	  {  
+		  Set<JSONObject> allRecords = info.getResponsesAsSet();
+		  Set<String> guids = extractGuidsFromRecords(allRecords);
+		  LOGGER.log(Level.FINE,
+	              "NS{0} guids:{1} All servers responded",
+	              new Object[]{app.getNodeID(), guids});
+		  
+		  SelectResponsePacket response = null;
+		  
+		  // If projection is null we return guids (old-style).
+		  if (info.getProjection() == null) 
+		  {
+			  response = SelectResponsePacket.makeSuccessPacketForFullRecords(
+	  				  packet.getRequestID(), null, -1, null, new JSONArray(guids));
+	  			// Otherwise we return a list of records.
+		  }
+		  else 
+		  {
+			  List<JSONObject> records = filterAndMassageRecords(allRecords);
+			  LOGGER.log(Level.FINE,
+	                "NS{0} record:{1}",
+	                new Object[]{app.getNodeID(), records});
+			  response = SelectResponsePacket.makeSuccessPacketForFullRecords(
+					  packet.getRequestID(), null, 
+					  -1, null, new JSONArray(records));
+		  }
+		  return response;
 	  } else 
 	  {
 		  LOGGER.log(Level.FINE,
-              "NS{0} servers yet to respond:{1}",
-              new Object[]{replica.getNodeID(), info.serversYetToRespond()});
+				  "NS{0} servers yet to respond:{1}",
+				  new Object[]{app.getNodeID(), info.serversYetToRespond()});
 	  }
+	  return null;
+  }
+  
+  
+  private SelectResponsePacket processSelectResponseForSelectNotify
+  		(SelectResponsePacket packet, NSSelectInfo info, 
+  				GNSApplicationInterface<String> app)
+  {
+	  // Aggregating the notification stats.
+	  info.addNotificationStat(packet.getNotificationStats());
+	  
+	  // Remove the NS Address from the list to keep track of who has responded
+	  boolean allServersResponded;
+	  /* synchronization needed, otherwise assertion in app.sendToClient
+	   * implying that an outstanding request is always found gets violated. 
+	   */
+	  synchronized (info) 
+	  {
+		  // Remove the NS Address from the list to keep track of who has responded
+		  info.removeServerAddress(packet.getNSAddress());
+		  allServersResponded = info.allServersResponded();
+	  }
+	  
+	  
+	  if (allServersResponded) 
+	  {
+		  SelectResponsePacket response = null;
+		  List<NotificationStatsToIssuer> statsList = info.getAllNotificationStats();
+		  long totalNot = 0;
+		  long failedNot = 0;
+		  long pendingNot = 0;
+		  
+		  for(int i=0; i<statsList.size(); i++)
+		  {
+			  totalNot+=statsList.get(i).getTotalNotifications();
+			  failedNot+=statsList.get(i).getFailedNotifications();
+			  pendingNot+=statsList.get(i).getPendingNotifications();
+		  }
+		  
+		  // FIXME: Need to add the removal of state here, if all notifications
+		  // are sent, no pending notifications, then we can remove notifications. 
+		  // Entry-point name server sends out removal request to other name servers. 
+		  
+		  List<SelectHandleInfo> handleList = getSelectHandleList(statsList);
+		  
+		  long localHandleId 
+	  					= entryPointState.addNotificationState(handleList);
+		  
+		  SelectHandleInfo selectHandle 
+	  					= new SelectHandleInfo(localHandleId, app.getNodeAddress());
+		  
+		  NotificationStatsToIssuer mergedStats = new NotificationStatsToIssuer
+	  							(selectHandle, totalNot, failedNot, pendingNot);
+		  
+		  response = SelectResponsePacket.makeSuccessPacketForNotificationStatsOnly
+				  	(packet.getRequestID(), null, -1, null, mergedStats);
+		  
+		  return response;
+	  }
+	  else 
+	  {
+		  LOGGER.log(Level.FINE,
+				  "NS{0} servers yet to respond:{1}",
+				  	new Object[]{app.getNodeID(), info.serversYetToRespond()});
+	  }
+	  return null;
+  }
+  
+  private List<SelectHandleInfo> getSelectHandleList(
+		  					List<NotificationStatsToIssuer> statsList)
+  {
+	  List<SelectHandleInfo> handleList = new LinkedList<SelectHandleInfo>();
+	  
+	  for(int i=0; i<statsList.size(); i++)
+	  {
+		  handleList.add(statsList.get(i).getSelectHandleInfo());
+	  }
+	  return handleList;
+  }
+  
+  
+  private SelectResponsePacket processSelectResponseForNotificationStatus
+  			(SelectResponsePacket packet, NSSelectInfo info, 
+			GNSApplicationInterface<String> app)
+  {
+	  // Aggregating the notification stats.
+	  info.addNotificationStat(packet.getNotificationStats());
+	  
+	  // Remove the NS Address from the list to keep track of who has responded
+	  boolean allServersResponded;
+	  /* synchronization needed, otherwise assertion in app.sendToClient
+	   * implying that an outstanding request is always found gets violated. 
+	   */
+	  synchronized (info) 
+	  {
+		  // Remove the NS Address from the list to keep track of who has responded
+		  info.removeServerAddress(packet.getNSAddress());
+		  allServersResponded = info.allServersResponded();
+	  }
+		  
+		  
+		  if (allServersResponded) 
+		  {
+			  SelectResponsePacket response = null;
+			  List<NotificationStatsToIssuer> statsList = info.getAllNotificationStats();
+			  long totalNot = 0;
+			  long failedNot = 0;
+			  long pendingNot = 0;
+			  
+			  for(int i=0; i<statsList.size(); i++)
+			  {
+				  totalNot+=statsList.get(i).getTotalNotifications();
+				  failedNot+=statsList.get(i).getFailedNotifications();
+				  pendingNot+=statsList.get(i).getPendingNotifications();
+			  }
+			  
+			  // FIXME: Need to add the removal of state here, if all notifications
+			  // are sent, no pending notifications, then we can remove notifications. 
+			  // Entry-point name server sends out removal request to other name servers. 
+			  
+			  List<SelectHandleInfo> handleList = getSelectHandleList(statsList);
+			  
+			  long localHandleId 
+		  					= entryPointState.addNotificationState(handleList);
+			  
+			  SelectHandleInfo selectHandle 
+		  					= new SelectHandleInfo(localHandleId, app.getNodeAddress());
+			  
+			  NotificationStatsToIssuer mergedStats = new NotificationStatsToIssuer
+		  							(selectHandle, totalNot, failedNot, pendingNot);
+			  
+			  response = SelectResponsePacket.makeSuccessPacketForNotificationStatsOnly
+		  				(packet.getRequestID(), null, -1, null, mergedStats);
+			  
+			  return response;
+		  }
+		  else 
+		  {
+			  LOGGER.log(Level.FINE,
+					  "NS{0} servers yet to respond:{1}",
+					  	new Object[]{app.getNodeID(), info.serversYetToRespond()});
+		  }
+		  return null;
+	  
   }
   
   // If all the servers have sent us a response we're done.
-  private void handledAllServersResponded(InternalRequestHeader header,
+  /*private void handledAllServersResponded(InternalRequestHeader header,
           SelectResponsePacket packet, NSSelectInfo info,
           GNSApplicationInterface<String> replica) throws JSONException,
           ClientException, IOException, InternalRequestException 
@@ -934,8 +1499,8 @@ public class Select extends AbstractSelector
           QUERIES_IN_PROGRESS.notify();
 		  }
 	  }
-  }
-
+  }*/
+  
   // Converts a record from the database into something we can return to 
   // the user. Adds the "_GUID" and removes internal fields.
   protected List<JSONObject> filterAndMassageRecords(Set<JSONObject> records) {
@@ -974,24 +1539,29 @@ public class Select extends AbstractSelector
     return result;
   }
 
-  private int addQueryInfo(Set<InetSocketAddress> serverAddresses, SelectOperation selectOperation,
-		  String query, List<String> projection) 
+  private int addQueryInfo(Set<InetSocketAddress> serverAddresses, 
+		  								SelectRequestPacket selectPacket) 
   {
 	  int id;
-	  do 
+	  
+	  synchronized(pendingQueries)
 	  {
-		  id = RANDOM_ID.nextInt();
-	  } while (QUERIES_IN_PROGRESS.containsKey(id));
-	  //Add query info
-	  NSSelectInfo info = new NSSelectInfo(id, serverAddresses, selectOperation,
-            query, projection);
-	  QUERIES_IN_PROGRESS.put(id, info);
+		  do 
+		  {
+			  id = randomIdGen.nextInt();
+		  }
+		  while (pendingQueries.containsKey(id));
+		  //Add query info
+		  NSSelectInfo info = new NSSelectInfo(id, serverAddresses, selectPacket);
+		  pendingQueries.put(id, info);
+	  }
 	  return id;
   }
-
+  
+  
   // Takes the JSON records that are returned from an NS and stuffs the into the NSSelectInfo record
-  protected void storeReply(SelectResponsePacket packet, NSSelectInfo info, 
-		  GNSApplicationInterface<String> ar) throws JSONException 
+  protected void storeReply(SelectResponsePacket packet, 
+		  NSSelectInfo info, GNSApplicationInterface<String> ar) throws JSONException 
   {  
 	  switch(info.getSelectOperation())
 	  {

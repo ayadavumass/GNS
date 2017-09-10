@@ -22,6 +22,7 @@ package edu.umass.cs.gnsserver.gnsapp;
 
 import edu.umass.cs.gnscommon.packets.commandreply.NotificationStatsToIssuer;
 import edu.umass.cs.gnsserver.gnsapp.packet.SelectOperation;
+import edu.umass.cs.gnsserver.gnsapp.packet.SelectRequestPacket;
 
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
@@ -40,71 +41,71 @@ import java.util.concurrent.ConcurrentHashMap;
 public class NSSelectInfo 
 {
 	private final int queryId;
-  
+	// Select request packet that was created after receiving a select COMMAND from a client.
+	private final SelectRequestPacket selectPacket;
+	
 	//the list of servers that have yet to be processed
 	private final Set<InetSocketAddress> allServers;
 	private final Set<InetSocketAddress> serversToBeProcessed; 
 	private final ConcurrentHashMap<String, JSONObject> recordResponses;
 	private final List<NotificationStatsToIssuer> notificationStatusList;
-	private final SelectOperation selectOperation;
-	private final String query; // The string used to set up the query if applicable
+	
+	
+	
+	//private final SelectOperation selectOperation;
+	//private final String query; // The string used to set up the query if applicable
 	// The list of fields to return. 
 	// Null means return GUIDS instead of whole records (old style select).
-	private final List<String> projection;
-
-  /**
-   *
-   * @param id
-   * @param serverIds
-   * @param selectOperation
-   * @param groupBehavior
-   * @param query
-   * @param projection
-   * @param minRefreshInterval
-   * @param guid
-   */
-  public NSSelectInfo(int id, Set<InetSocketAddress> serverIds,
-          SelectOperation selectOperation, String query, List<String> projection) 
-  {
-	  this.queryId = id;
-	  this.serversToBeProcessed = new HashSet<InetSocketAddress>();
-	  this.serversToBeProcessed.addAll(serverIds);
+	//private final List<String> projection;
+	
+	
+	/**
+	 * NSSelectInfo constructor.
+	 * 
+	 * @param id
+	 * @param serverIds
+	 * @param selectPacket
+	 */
+	public NSSelectInfo(int id, Set<InetSocketAddress> serverIds, SelectRequestPacket selectPacket)
+	{
+		this.queryId = id;
+		this.selectPacket = selectPacket;
+		
+		this.serversToBeProcessed = new HashSet<InetSocketAddress>();
+		this.serversToBeProcessed.addAll(serverIds);
     
-	  this.allServers = new HashSet<InetSocketAddress>();
-	  this.allServers.addAll(serverIds);
+		this.allServers = new HashSet<InetSocketAddress>();
+		this.allServers.addAll(serverIds);
     
-	  this.recordResponses = new ConcurrentHashMap<>(10, 0.75f, 3);
-	  this.notificationStatusList = new LinkedList<NotificationStatsToIssuer>();
-	  this.selectOperation = selectOperation;
-	  this.query = query;
-	  this.projection = projection;
-  }
-
-  /**
-   *
-   * @return the queryId
-   */
-  public int getId() 
-  {
-	  return queryId;
-  }
-
-  /**
-   * Removes the server if from the list of servers that have yet to be processed.
-   *
-   * @param address
-   */
-  public void removeServerAddress(InetSocketAddress address) {
-    serversToBeProcessed.remove(address);
-  }
-
-  /**
-   *
-   * @return the set of servers
-   */
-  public Set<InetSocketAddress> serversYetToRespond() {
-    return serversToBeProcessed;
-  }
+		this.recordResponses = new ConcurrentHashMap<String, JSONObject>();
+		this.notificationStatusList = new LinkedList<NotificationStatsToIssuer>();
+	}
+	
+	/**
+	 * 
+	 * @return the queryId
+	 */
+	public int getId() 
+	{
+		return queryId;
+	}
+	
+	/**
+	 * Removes the server if from the list of servers that have yet to be processed.
+	 * 
+	 * @param address
+	 */
+	public void removeServerAddress(InetSocketAddress address) {
+		serversToBeProcessed.remove(address);
+	}
+	
+	/**
+	 * 
+	 * @return the set of servers
+	 */
+	public Set<InetSocketAddress> serversYetToRespond() {
+		return serversToBeProcessed;
+	}
 
   /**
    * Returns true if all the names servers have responded.
@@ -152,8 +153,9 @@ public class NSSelectInfo
    *
    * @return a set of JSONObjects
    */
-  public Set<JSONObject> getResponsesAsSet() {
-    return new HashSet<>(recordResponses.values());
+  public Set<JSONObject> getResponsesAsSet() 
+  {
+	  return new HashSet<>(recordResponses.values());
   }
 
   /**
@@ -161,8 +163,9 @@ public class NSSelectInfo
    *
    * @return a set of JSONObjects
    */
-  public List<JSONObject> getResponsesAsList() {
-    return new ArrayList<>(recordResponses.values());
+  public List<JSONObject> getResponsesAsList() 
+  {
+	  return new ArrayList<>(recordResponses.values());
   }
 
   /**
@@ -170,8 +173,9 @@ public class NSSelectInfo
    *
    * @return a {@link SelectOperation}
    */
-  public SelectOperation getSelectOperation() {
-    return selectOperation;
+  public SelectOperation getSelectOperation() 
+  {
+	  return this.selectPacket.getSelectOperation();
   }
 
   /**
@@ -179,8 +183,9 @@ public class NSSelectInfo
    *
    * @return a string
    */
-  public String getQuery() {
-    return query;
+  public String getQuery() 
+  {
+	  return this.selectPacket.getQuery();
   }
 
   /**
@@ -191,7 +196,7 @@ public class NSSelectInfo
    * @return the projection
    */
   public List<String> getProjection() {
-    return projection;
+    return this.selectPacket.getProjection();
   }
   
   /**

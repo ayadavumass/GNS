@@ -565,7 +565,7 @@ public class FieldAccess {
             UpdateOperation.SINGLE_FIELD_REMOVE_FIELD, writer, signature, message,
             timestamp, handler);
   }
-
+  
   ///
   /// SELECT METHODS
   ///
@@ -574,12 +574,15 @@ public class FieldAccess {
           String reader, String key, Object value, Object otherValue,
           String signature, String message,
           GNSApplicationInterface<String> app)
-          throws FailedDBOperationException, JSONException, UnknownHostException, InternalRequestException {
-    SelectRequestPacket packet = new SelectRequestPacket(-1, operation, 
+          throws FailedDBOperationException, JSONException, 
+          UnknownHostException, InternalRequestException 
+  {
+	  SelectRequestPacket packet = new SelectRequestPacket(operation, 
     		reader, key, value, otherValue);
-    return executeSelectHelper(header, commandPacket, packet, reader, signature, message, app);
+	  return executeSelectHelper(header, commandPacket, packet, reader, signature, message, app);
   }
-
+  
+  
   private static SelectResponsePacket executeSelectHelper(InternalRequestHeader header, 
 		  CommandPacket commandPacket, SelectRequestPacket packet,
           String reader, String signature, String message,
@@ -777,8 +780,8 @@ public class FieldAccess {
     }
     SelectResponsePacket selectResp;
     try {
-      SelectRequestPacket packet = SelectRequestPacket.makeSelectNotifyRequest(-1, reader, query, 
-    		  projection, notificationStr);
+      SelectRequestPacket packet = SelectRequestPacket.makeSelectNotifyRequest(
+    		  reader, query, projection, notificationStr);
       
       selectResp = executeSelectHelper(header, commandPacket, packet, reader, 
     		  								signature, message, handler.getApp());
@@ -824,21 +827,15 @@ public class FieldAccess {
           String signature, String message, ClientRequestHandlerInterface handler) 
         		  throws InternalRequestException 
   {
-	  if (Select.queryContainsEvil(query)) 
-	  {
-		  return new CommandResponse(ResponseCode.OPERATION_NOT_SUPPORTED,
-              GNSProtocol.BAD_RESPONSE.toString() + " "
-              + GNSProtocol.OPERATION_NOT_SUPPORTED.toString()
-              + " Bad query operators in " + query);
-	  }
 	  SelectResponsePacket selectResp;
 	  try 
 	  {
-		  SelectRequestPacket packet = SelectRequestPacket.makeSelectNotifyRequest(-1, reader, query, 
-    		  projection, notificationStr);
+		  SelectRequestPacket packet = SelectRequestPacket.makeSelectNotificationStatusRequest
+				  									(reader, selectHandle);
 		  
 		  selectResp = executeSelectHelper(header, commandPacket, packet, reader, 
     		  								signature, message, handler.getApp());
+		  
 	      if (selectResp != null && selectResp.getResponseCode().equals(ResponseCode.NO_ERROR))
 	      {
 	    	  return new CommandResponse(ResponseCode.NO_ERROR, 
@@ -866,26 +863,32 @@ public class FieldAccess {
    * @return a command response
    * @throws InternalRequestException
    */
-  public static CommandResponse selectQuery(InternalRequestHeader header, CommandPacket commandPacket,
+  public static CommandResponse selectQuery(InternalRequestHeader header, 
+		  CommandPacket commandPacket,
           String reader, String query, List<String> projection,
           String signature, String message,
           ClientRequestHandlerInterface handler) throws InternalRequestException {
-    if (Select.queryContainsEvil(query)) {
-      return new CommandResponse(ResponseCode.OPERATION_NOT_SUPPORTED,
+    if (Select.queryContainsEvil(query)) 
+    {
+    	return new CommandResponse(ResponseCode.OPERATION_NOT_SUPPORTED,
               GNSProtocol.BAD_RESPONSE.toString() + " "
               + GNSProtocol.OPERATION_NOT_SUPPORTED.toString()
               + " Bad query operators in " + query);
     }
     SelectResponsePacket selectResp;
-    try {
-      SelectRequestPacket packet = SelectRequestPacket.makeQueryRequest(-1, reader, query, projection);
-      selectResp = executeSelectHelper(header, commandPacket, packet, reader, 
+    try 
+    {
+    	SelectRequestPacket packet = SelectRequestPacket.makeQueryRequest
+    											(reader, query, projection);
+    	selectResp = executeSelectHelper(header, commandPacket, packet, reader, 
     		  										signature, message, handler.getApp());
-      if (selectResp != null && selectResp.getResponseCode().equals(ResponseCode.NO_ERROR)) 
-      {
-    	  return new CommandResponse(ResponseCode.NO_ERROR, selectResp.getRecords().toString());
-      }
-    } catch (IOException | JSONException | FailedDBOperationException e) {
+    	if (selectResp != null && selectResp.getResponseCode().equals(ResponseCode.NO_ERROR)) 
+    	{
+    		return new CommandResponse(ResponseCode.NO_ERROR, 
+    							selectResp.getRecords().toString());
+    	}
+    } catch (IOException | JSONException | FailedDBOperationException e) 
+    {
     	ClientException cle = new ClientException(e);
     	return new CommandResponse(cle.getCode(), "selectQuery failed. "+cle.getMessage());
     }

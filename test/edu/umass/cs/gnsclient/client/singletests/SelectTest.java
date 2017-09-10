@@ -26,6 +26,7 @@ import edu.umass.cs.gnscommon.AclAccessType;
 import edu.umass.cs.gnscommon.GNSProtocol;
 import edu.umass.cs.gnscommon.exceptions.client.ClientException;
 import edu.umass.cs.gnscommon.packets.commandreply.NotificationStatsToIssuer;
+import edu.umass.cs.gnscommon.packets.commandreply.SelectHandleInfo;
 import edu.umass.cs.gnscommon.utils.RandomString;
 
 import edu.umass.cs.gnscommon.utils.StringUtil;
@@ -569,6 +570,7 @@ public class SelectTest extends DefaultGNSTest
 
   /**
    * Check an empty query
+   * Empty query is also a malformed query
    */
   @Test
   public void test_091_EmptyQueryQuotes() {
@@ -581,6 +583,7 @@ public class SelectTest extends DefaultGNSTest
     } catch (IOException | JSONException | ClientException e) {
       Utils.failWithStackTrace("Exception executing empty query " + e);
     }
+    
   }
 
   /**
@@ -694,6 +697,67 @@ public class SelectTest extends DefaultGNSTest
 	    	Assert.assertThat(stats.getTotalNotifications(), Matchers.greaterThanOrEqualTo((long)5));
 	    	Assert.assertThat(stats.getPendingNotifications(), Matchers.greaterThanOrEqualTo((long)5));
 	    	Assert.assertThat(stats.getFailedNotifications(), Matchers.equalTo((long)0));
+	    	
+	    } catch (ClientException | IOException | JSONException e) {
+	    	Utils.failWithStackTrace("Exception executing selectAndNotify: " + e);
+	    }
+  }
+  
+  
+  /**
+   * Checks the select notify functionality. 
+   * For this test to pass, SELECT_REPONSE_PROCESSOR macro should be 
+   * edu.umass.cs.gnsserver.gnsapp.selectnotification.PendingSelectResponseProcessor
+   */
+  @Test
+  public void test_101_SelectNotificationStatusTest() 
+  {
+	  String fieldName = "SelectNotificationStatusTestField";
+	  try {
+		  for (int cnt = 0; cnt < 5; cnt++) {
+			  String queryTestName = "queryTest-" + RandomString.randomString(12);
+			  client.execute(GNSCommand.guidCreate(masterGuid, queryTestName));
+			  GuidEntry testEntry = GuidUtils.getGUIDKeys(queryTestName);
+			  CREATED_GUIDS.add(testEntry); // save them so we can delete them later
+			  JSONArray array = new JSONArray(Arrays.asList(25));
+			  client.execute(GNSCommand.fieldReplaceOrCreateList(testEntry.getGuid(), fieldName, array, testEntry));
+	      	}
+		  waitSettle(WAIT_SETTLE);
+	    } catch (ClientException | IOException e) {
+	      Utils.failWithStackTrace("Exception while trying to create the guids: " + e);
+	    }
+
+	    try 
+	    {
+	    	String query = "~" + fieldName + " : ($gt: 0)";
+	    	
+	    	JSONObject result = client.execute(GNSCommand.selectAndNotify
+	    			(query, new LinkedList<String>(), 
+	    					new TestSelectNotification<String>("Test notification"))).getResultJSONObject();
+	    	
+	    	NotificationStatsToIssuer stats = NotificationStatsToIssuer.fromJSON(result);
+	    	
+	    	
+	    	// Greater than or equal to 5 because of duplicate notifications 
+	    	// in REPLICATE_ALL scheme.
+	    	Assert.assertThat(stats.getTotalNotifications(), Matchers.greaterThanOrEqualTo((long)5));
+	    	Assert.assertThat(stats.getPendingNotifications(), Matchers.greaterThanOrEqualTo((long)5));
+	    	Assert.assertThat(stats.getFailedNotifications(), Matchers.equalTo((long)0));
+	    	
+	    	SelectHandleInfo selectHandle = stats.getSelectHandleInfo();
+	    	
+	    	JSONObject result1  
+	    		= client.execute(GNSCommand.selectNotificationStatus(selectHandle)).getResultJSONObject();
+	    	
+	    	NotificationStatsToIssuer stats1 = NotificationStatsToIssuer.fromJSON(result1);
+	    	
+	    	// Greater than or equal to 5 because of duplicate notifications 
+	    	// in REPLICATE_ALL scheme.
+	    	Assert.assertThat(stats1.getTotalNotifications(), Matchers.greaterThanOrEqualTo((long)5));
+	    	Assert.assertThat(stats1.getPendingNotifications(), Matchers.greaterThanOrEqualTo((long)5));
+	    	Assert.assertThat(stats1.getFailedNotifications(), Matchers.equalTo((long)0));
+	    	
+	    	
 	    	
 	    } catch (ClientException | IOException | JSONException e) {
 	    	Utils.failWithStackTrace("Exception executing selectAndNotify: " + e);

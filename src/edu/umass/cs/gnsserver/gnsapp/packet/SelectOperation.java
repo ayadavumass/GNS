@@ -39,9 +39,4 @@ public enum SelectOperation
    * other name servers.
    */
   NOTIFICATION_STATUS,
-  
-  /**
-   * The notification status reply from name servers to an entry-point name server.
-   */
-  NOTIFICATION_STATUS_REPLY,
 }

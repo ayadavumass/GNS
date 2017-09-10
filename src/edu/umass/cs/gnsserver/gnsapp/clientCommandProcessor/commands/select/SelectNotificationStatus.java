@@ -1,7 +1,5 @@
 package edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commands.select;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -17,7 +15,6 @@ import edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commandSupport.Field
 import edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commands.AbstractCommand;
 import edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commands.CommandModule;
 import edu.umass.cs.gnsserver.interfaces.InternalRequestHeader;
-import edu.umass.cs.gnsserver.utils.JSONUtils;
 
 public class SelectNotificationStatus extends AbstractCommand
 {

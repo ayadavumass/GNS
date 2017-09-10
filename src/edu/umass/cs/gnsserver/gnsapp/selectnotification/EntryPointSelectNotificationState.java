@@ -1,33 +1,52 @@
 package edu.umass.cs.gnsserver.gnsapp.selectnotification;
 
-import java.net.InetSocketAddress;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Random;
-import java.util.Set;
 
+
+import edu.umass.cs.gnscommon.packets.commandreply.SelectHandleInfo;
+
+/**
+ * This class is used to store the select notification state 
+ * at an entry-point name server.
+ * 
+ * @author ayadav
+ */
 public class EntryPointSelectNotificationState
 {
-	private final HashMap<Long, Set<InetSocketAddress>> entryPointStateMap;
+	/**
+	 * The key in this map is the localHandleId at the entry-point name server.
+	 * The value, List<SelectHandleInfo>, is the list of SelectHandleInfos corresponding 
+	 * to all name servers where the earlier issued selectAndNotify request was forwarded to.
+	 * Each SelectHandleInfo contains the server address of its name server and the localHandleId
+	 * at that name server.
+	 */
+	private final HashMap<Long, List<SelectHandleInfo>> entryPointStateMap;
 	private final Object lock;
 	private final Random rand;
 	
 	
 	public EntryPointSelectNotificationState()
 	{
-		entryPointStateMap = new HashMap<Long, Set<InetSocketAddress>>();
+		entryPointStateMap = new HashMap<Long, List<SelectHandleInfo>>();
 		lock = new Object();
 		rand = new Random();
 	}
+	
 	
 	/**
 	 * The function to add a notification state.
 	 * This function is thread-safe.
 	 * 
-	 * @param forwardedServers
+	 * @param selectHandleList
+	 * The list of select handles at the name servers where the  
+	 * issued selectAndNotify request was forwarded.
+	 * 
 	 * @return
-	 * Returns the localHandle for the added 
+	 * Returns the localHandleId for the added select handle
 	 */
-	public long addNotificationState(Set<InetSocketAddress> forwardedServers)
+	public long addNotificationState(List<SelectHandleInfo> selectHandleList)
 	{
 		long currHandle = -1;
 		synchronized(lock)
@@ -36,8 +55,7 @@ public class EntryPointSelectNotificationState
 			{
 				currHandle = rand.nextLong();	
 			} while(entryPointStateMap.containsKey(currHandle));
-			
-			entryPointStateMap.put(currHandle, forwardedServers);
+			entryPointStateMap.put(currHandle, selectHandleList);
 		}
 		return currHandle;
 	}
@@ -52,5 +70,11 @@ public class EntryPointSelectNotificationState
 	public boolean removeNotificationState()
 	{
 		return false;
+	}
+	
+	
+	public List<SelectHandleInfo> getListOfHandles(long localHandleId)
+	{
+		return entryPointStateMap.get(localHandleId);
 	}
 }

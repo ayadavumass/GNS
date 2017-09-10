@@ -193,9 +193,9 @@ public class SelectResponsePacket extends BasicPacketWithReturnAddressAndNsAddre
    *
    * @return the requestId
    */
-  public long getId() {
-    return requestId;
-  }
+//  public long getId() {
+//    return requestId;
+//  }
 
   /**
    * Return the records.
