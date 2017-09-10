@@ -597,19 +597,6 @@ public class FieldAccess {
 	  
 	  return  GNSConfig.getSelector().
     		handleSelectRequestFromClient(header, packet, app);
-	  
-	  /*if (responsePacket != null
-            && // Fixme: probably should just have handleSelectRequestFromClient throw a clientException
-            SelectResponsePacket.ResponseCode.NOERROR.equals(responsePacket.getResponseCode())) 
-	  {
-		  if (packet.getProjection() == null) {
-			  return responsePacket.getGuids();
-		  } else {
-			  return responsePacket.getRecords();
-		  }
-	  } else {
-		  return null;
-	  }*/
   }
 
   private static boolean signatureCheckForSelect(String reader, String signature,
@@ -771,30 +758,39 @@ public class FieldAccess {
   public static CommandResponse selectAndNotify(InternalRequestHeader header, 
 		  CommandPacket commandPacket, String reader, String query, List<String> projection,
           String signature, String message, String notificationStr, 
-          ClientRequestHandlerInterface handler) throws InternalRequestException {
-    if (Select.queryContainsEvil(query)) {
-      return new CommandResponse(ResponseCode.OPERATION_NOT_SUPPORTED,
+          ClientRequestHandlerInterface handler) throws InternalRequestException 
+  {
+	  if (Select.queryContainsEvil(query)) 
+	  {
+		  return new CommandResponse(ResponseCode.OPERATION_NOT_SUPPORTED,
               GNSProtocol.BAD_RESPONSE.toString() + " "
               + GNSProtocol.OPERATION_NOT_SUPPORTED.toString()
               + " Bad query operators in " + query);
-    }
-    SelectResponsePacket selectResp;
-    try {
-      SelectRequestPacket packet = SelectRequestPacket.makeSelectNotifyRequest(
+	  }
+	  SelectResponsePacket selectResp;
+	  try
+	  {
+		  SelectRequestPacket packet = SelectRequestPacket.makeSelectNotifyRequest(
     		  reader, query, projection, notificationStr);
       
-      selectResp = executeSelectHelper(header, commandPacket, packet, reader, 
+		  selectResp = executeSelectHelper(header, commandPacket, packet, reader, 
     		  								signature, message, handler.getApp());
-      if (selectResp != null && selectResp.getResponseCode().equals(ResponseCode.NO_ERROR))
-      {
-    	  return new CommandResponse(ResponseCode.NO_ERROR, 
-    			  	selectResp.getNotificationStats().toJSONObject().toString());
-      }
-    } catch (IOException | JSONException | FailedDBOperationException e) {
-    	ClientException cle = new ClientException(e);
-    	return new CommandResponse(cle.getCode(), "selectAndNotify failed: "+cle.getMessage());
-    }
-    return new CommandResponse(ResponseCode.UNSPECIFIED_ERROR, "selectAndNotify failed. ");
+		  if (selectResp != null )
+		  {
+			  if(selectResp.getResponseCode().equals(ResponseCode.NO_ERROR))
+				  return new CommandResponse(ResponseCode.NO_ERROR, 
+						  selectResp.getNotificationStats().toJSONObject().toString());
+			  else
+				  return new CommandResponse(selectResp.getResponseCode(), 
+						  selectResp.getErrorMessage());
+		  }
+	  } catch (IOException | JSONException | FailedDBOperationException e) 
+	  {
+		  ClientException cle = new ClientException(e);
+		  return new CommandResponse(cle.getCode(), "selectAndNotify failed: "+cle.getMessage());
+	  }
+	  return new CommandResponse(ResponseCode.UNSPECIFIED_ERROR, "selectAndNotify failed. "
+    		+ "Null response recevied");
   }
   
   
@@ -836,12 +832,18 @@ public class FieldAccess {
 		  selectResp = executeSelectHelper(header, commandPacket, packet, reader, 
     		  								signature, message, handler.getApp());
 		  
-	      if (selectResp != null && selectResp.getResponseCode().equals(ResponseCode.NO_ERROR))
+	      if (selectResp != null)
 	      {
-	    	  return new CommandResponse(ResponseCode.NO_ERROR, 
+	    	  if(selectResp.getResponseCode().equals(ResponseCode.NO_ERROR))
+	    		  return new CommandResponse(ResponseCode.NO_ERROR, 
 	    			  	selectResp.getNotificationStats().toJSONObject().toString());
+	    	  else
+	    		  return new CommandResponse(selectResp.getResponseCode(), 
+	    				  selectResp.getErrorMessage());
 	      }
-	  } catch (IOException | JSONException | FailedDBOperationException e) {
+	  }
+	  catch (IOException | JSONException | FailedDBOperationException e) 
+	  {
 		  ClientException cle = new ClientException(e);
 		  return new CommandResponse(cle.getCode(), "selectAndNotify failed: "+cle.getMessage());
 	  }
@@ -882,17 +884,22 @@ public class FieldAccess {
     											(reader, query, projection);
     	selectResp = executeSelectHelper(header, commandPacket, packet, reader, 
     		  										signature, message, handler.getApp());
-    	if (selectResp != null && selectResp.getResponseCode().equals(ResponseCode.NO_ERROR)) 
+    	if (selectResp != null ) 
     	{
-    		return new CommandResponse(ResponseCode.NO_ERROR, 
+    		if( selectResp.getResponseCode().equals(ResponseCode.NO_ERROR))
+    			return new CommandResponse(ResponseCode.NO_ERROR, 
     							selectResp.getRecords().toString());
+    		else
+    			return new CommandResponse(selectResp.getResponseCode(), 
+    					selectResp.getErrorMessage());
+    			
     	}
     } catch (IOException | JSONException | FailedDBOperationException e) 
     {
     	ClientException cle = new ClientException(e);
     	return new CommandResponse(cle.getCode(), "selectQuery failed. "+cle.getMessage());
     }
-    return new CommandResponse(ResponseCode.UNSPECIFIED_ERROR, "selectQuery failed. ");
+    return new CommandResponse(ResponseCode.UNSPECIFIED_ERROR, "selectQuery failed. Null reponse returned.");
   }
 
   /**

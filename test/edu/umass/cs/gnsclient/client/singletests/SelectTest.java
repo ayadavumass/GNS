@@ -30,7 +30,7 @@ import edu.umass.cs.gnscommon.packets.commandreply.SelectHandleInfo;
 import edu.umass.cs.gnscommon.utils.RandomString;
 
 import edu.umass.cs.gnscommon.utils.StringUtil;
-import edu.umass.cs.gnsserver.gnsapp.selectnotification.TestSelectNotification;
+import edu.umass.cs.gnsserver.gnsapp.selectnotification.examples.TestSelectNotification;
 import edu.umass.cs.gnsserver.utils.DefaultGNSTest;
 import edu.umass.cs.utils.Utils;
 import java.awt.geom.Point2D;
@@ -580,8 +580,14 @@ public class SelectTest extends DefaultGNSTest
       for (int i = 0; i < result.length(); i++) {
         Assert.assertTrue(StringUtil.isValidGuidString(result.get(i).toString()));
       }
-    } catch (IOException | JSONException | ClientException e) {
-      Utils.failWithStackTrace("Exception executing empty query " + e);
+      
+    } catch ( ClientException e) 
+    {
+    	System.out.println("Expected client exception for {} select query");
+    }
+    catch (IOException | JSONException e) 
+    {
+    	Utils.failWithStackTrace("Exception executing empty query " + e);
     }
     
   }
@@ -597,8 +603,14 @@ public class SelectTest extends DefaultGNSTest
       for (int i = 0; i < result.length(); i++) {
         Assert.assertTrue(StringUtil.isValidGuidString(result.get(i).toString()));
       }
-    } catch (IOException | JSONException | ClientException e) {
-      Utils.failWithStackTrace("Exception executing empty query " + e);
+    }
+    catch (ClientException e) 
+    {
+    	System.out.println("Expected client exception for [] select query");
+    }
+    catch (IOException | JSONException  e) 
+    {
+    	Utils.failWithStackTrace("Exception executing empty query " + e);
     }
   }
 
@@ -613,7 +625,12 @@ public class SelectTest extends DefaultGNSTest
       for (int i = 0; i < result.length(); i++) {
         Assert.assertTrue(StringUtil.isValidGuidString(result.get(i).toString()));
       }
-    } catch (IOException | JSONException | ClientException e) {
+    } 
+    catch (ClientException e) 
+    {
+    	System.out.println("Expected client exception for malformed select query");
+    }
+    catch (IOException | JSONException e) {
       Utils.failWithStackTrace("Exception executing empty query " + e);
     }
   }

@@ -1,4 +1,6 @@
-package edu.umass.cs.gnsserver.gnsapp.selectnotification;
+package edu.umass.cs.gnsserver.gnsapp.selectnotification.examples;
+
+import edu.umass.cs.gnsserver.gnsapp.selectnotification.SelectNotification;
 
 /**
  * A sample implementation of {@link SelectNotification} interface

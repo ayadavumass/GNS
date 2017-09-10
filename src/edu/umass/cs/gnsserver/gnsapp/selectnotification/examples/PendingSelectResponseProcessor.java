@@ -1,6 +1,11 @@
-package edu.umass.cs.gnsserver.gnsapp.selectnotification;
+package edu.umass.cs.gnsserver.gnsapp.selectnotification.examples;
 
 import java.util.List;
+
+import edu.umass.cs.gnsserver.gnsapp.selectnotification.InternalNotificationStats;
+import edu.umass.cs.gnsserver.gnsapp.selectnotification.NotificationSendingStats;
+import edu.umass.cs.gnsserver.gnsapp.selectnotification.SelectGUIDInfo;
+import edu.umass.cs.gnsserver.gnsapp.selectnotification.SelectResponseProcessor;
 
 /**
  * This class is a sample implementation of {@link SelectResponseProcessor} interface.

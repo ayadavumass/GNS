@@ -1827,7 +1827,7 @@ public class GNSCommand extends CommandPacket {
 	  {
 		  return getCommand(CommandType.SelectNotificationStatus, 
 				  GNSProtocol.SELECT_NOTIFICATION_HANDLE.toString(), 
-				  selectHandle.toJSONObject().toString());
+				  selectHandle.toJSONObject());
 	  } catch (JSONException e) 
 	  {
 		  throw new ClientException(e);
@@ -1840,10 +1840,6 @@ public class GNSCommand extends CommandPacket {
    * issued selectAndNotify request. The command takes as input the 
    * {@link SelectHandleInfo}, which a caller gets in reply after issuing a
    * selectAndNotify request. 
-   * 
-   * This command requires that the issuer of the earlier selectAndNotify request 
-   * and the issuer of this command is same. If the issuer is not same, then 
-   * this command returns an error response. 
    * 
    * If the command is successful, then the command returns notification stats, which is a 
    * JSONObject representation of {@link NotificationStatsToIssuer}.

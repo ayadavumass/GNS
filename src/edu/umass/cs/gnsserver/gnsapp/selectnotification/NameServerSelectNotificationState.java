@@ -6,20 +6,20 @@ import java.util.List;
 import java.util.Random;
 
 /**
- * This class stores the pending select notifications at a
+ * This class stores the select notifications state at a
  * name server.
  * 
  * @author ayadav
  *
  */
-public class PendingSelectNotifications 
+public class NameServerSelectNotificationState 
 {
 	private final HashMap<Long, List<NotificationSendingStats>> notificationInfo;
 	
 	private final Object lock;
 	private final Random rand;
 	
-	public PendingSelectNotifications()
+	public NameServerSelectNotificationState()
 	{
 		this.notificationInfo = new HashMap<Long, List<NotificationSendingStats>>();
 		lock = new Object();
