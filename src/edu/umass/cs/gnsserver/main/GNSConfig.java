@@ -294,7 +294,7 @@ public class GNSConfig {
      * One use of a select request processor is to send notifications 
      * to GUIDs that satisfy a select request. 
      */
-    SELECT_REPONSE_PROCESSOR("edu.umass.cs.gnsserver.gnsapp.selectnotification.PendingSelectResponseProcessor"),
+    SELECT_REPONSE_PROCESSOR("edu.umass.cs.gnsserver.gnsapp.selectnotification.examples.PendingSelectResponseProcessor"),
     ;
 
     final Object defaultValue;

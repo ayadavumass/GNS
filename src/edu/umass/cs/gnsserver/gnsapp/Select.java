@@ -142,7 +142,10 @@ public class Select extends AbstractSelector
 		{
 			clazz = (Class.forName(Config
 					.getGlobalString(GNSConfig.GNSC.SELECT_REPONSE_PROCESSOR)));
-		} catch (ClassNotFoundException e) {
+		} catch (ClassNotFoundException e) 
+		{
+			LOGGER.log(Level.WARNING, "initSelectResponseProcessor: Unable to find class {0}"
+						, new Object[]{Config.getGlobalString(GNSConfig.GNSC.SELECT_REPONSE_PROCESSOR)});
 			e.printStackTrace();
 		}
 	  
@@ -450,10 +453,10 @@ public class Select extends AbstractSelector
    * @throws JSONException
    */
   private void handleSelectRequestFromNS(SelectRequestPacket request,
-          GNSApplicationInterface<String> app) throws JSONException
+          GNSApplicationInterface<String> app) 
   {
 	  LOGGER.log(Level.FINE,
-            "NS {0} {1} received query {2}",
+            "NS {0} {1} handleSelectRequestFromNS {2}",
             new Object[]{Select.class.getSimpleName(),
               app.getNodeID(), request.getSummary()});
 	  
@@ -497,9 +500,12 @@ public class Select extends AbstractSelector
 	  try
 	  {
 		  assert(response != null);
+		  LOGGER.log(Level.FINE, "{0} Sending a SelectResponsePacket packet {1} to {2}"
+	    			, new Object[]{app, response, request.getNSReturnAddress()});
+		  
 		  app.sendToAddress(request.getNSReturnAddress(), response.toJSONObject());
-	  } 
-	  catch (IOException f) 
+	  }
+	  catch (IOException | JSONException f) 
 	  {
 		  LOGGER.log(Level.SEVERE, "Unable to send Failure SelectResponsePacket: {0}", f);
 	  }
@@ -596,6 +602,7 @@ public class Select extends AbstractSelector
   			  NotificationSendingStats stats 
 						= this.notificationSender.sendNotification(currList, notificationStr);
   			  
+  			  
   			  this.pendingNotifications.addNotificationStats(localhandle, stats);
   			  
   			  // Not clearing currList here, as the notification function 
@@ -604,6 +611,10 @@ public class Select extends AbstractSelector
   			  currList = new LinkedList<SelectGUIDInfo>();
   		  }
   	  }
+  	  
+  	  LOGGER.log(Level.FINE, "NS{0} processSelectRequestFromNSForSelectNotify cursor loop end: {1} {2}",
+            new Object[]{app.getNodeID(), request.getQuery(), request.getProjection()});
+  	  
   	  
   	  // last batch.
   	  if(currList.size() > 0)
@@ -619,27 +630,54 @@ public class Select extends AbstractSelector
   		  // The design is such that notification function can update the progress
   		  // of notification sending using InternalNotificationStats, and the GNS
   		  // can get the progress using NotificationSendingStats.
+  		  
+  		  LOGGER.log(Level.FINE, "NS{0} sendNotification: LIST {1} NOTIFICATION {2}",
+  		        new Object[]{app.getNodeID(), currList, notificationStr});
+    	  
   		  NotificationSendingStats stats 
 					= this.notificationSender.sendNotification(currList, notificationStr);
   		  
+  		LOGGER.log(Level.FINE, "NS{0} Notification sent: LIST {1} NOTIFICATION {2}",
+  		        new Object[]{app.getNodeID(), currList, notificationStr});
+  		
   		  this.pendingNotifications.addNotificationStats(localhandle, stats);
   	  }
   	  SelectHandleInfo selectHandle 
 			= new SelectHandleInfo(localhandle, app.getNodeAddress());
   	  
+  	  try {
+		LOGGER.log(Level.FINE, "NS{0} selectHandle: {1} ",
+			        new Object[]{app.getNodeID(), selectHandle.toJSONObject()});
+	} catch (JSONException e1) {
+		// TODO Auto-generated catch block
+		e1.printStackTrace();
+	}
   	  
   	  NotificationStatsToIssuer statsToIssuer 
 									= collectNotificationStats(selectHandle);
   	  
+  	  
+  	  try 
+  	  {
+  		  LOGGER.log(Level.FINE, "NS{0} NotificationStatsToIssuer: {1}",
+		        new Object[]{app.getNodeID(), statsToIssuer.toJSONObject()});
+  	  } catch (JSONException e) {
+		e.printStackTrace();
+  	  }
+  	
   	  // clearing the state
   	  // FIXME: clearing the state.
   	  // Mostly a timeout based clearing. 
   	  // A separate background thread that removes the state separately.
   	  //this.pendingNotifications.removeNotificationInfo(localhandle);
   	
-  	  return SelectResponsePacket.makeSuccessPacketForNotificationStatsOnly
+  	  SelectResponsePacket resp =  SelectResponsePacket.makeSuccessPacketForNotificationStatsOnly
   			(request.getRequestID(), request.getClientAddress(),
 						request.getNsQueryId(), app.getNodeAddress(), statsToIssuer);
+  	  
+  	  LOGGER.log(Level.FINE, "{0} processSelectRequestFromNSForSelectNotify sending reply {1}", 
+  			  new Object[] {app, resp});
+  	  return resp;
   }
   
   

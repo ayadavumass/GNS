@@ -227,6 +227,7 @@ public class GNSClient {
 				|| packet.getServiceName().equals(
 						Config.getGlobalString(RC.SPECIAL_NAME));
 	}
+	
 
 	/**
 	 * This method will force a connectivity check to at least one
@@ -278,7 +279,15 @@ public class GNSClient {
 			final Callback<Request, CommandPacket> callback) throws IOException {
 		ClientRequest request = packet
 				.setForceCoordinatedReads(isForceCoordinatedReads());
-
+		
+		if(packet instanceof DirectedGNSCommand)
+		{
+			DirectedGNSCommand dcmd = (DirectedGNSCommand)packet;
+			return this.asyncClient.sendRequest(request, 
+					new InetSocketAddress(dcmd.getNameServerAddress().getAddress(),
+					ReconfigurationConfig.getClientFacingPort(dcmd.getNameServerAddress().getPort())),
+					callback);
+		}
 		if (isAnycast(packet)) {
 			return this.asyncClient.sendRequestAnycast(request, callback);
 		} else if (this.GNSProxy != null) {

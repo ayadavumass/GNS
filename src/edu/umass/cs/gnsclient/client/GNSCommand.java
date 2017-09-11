@@ -85,7 +85,12 @@ public class GNSCommand extends CommandPacket {
    * key. If {@code querier} is null, the command will succeed only if the
    * operation is open to all, which is normally true only for fields that are
    * readable by anyone.
-   *
+   * If {@code nameServerAddress} is non-null then a {@link DirectedGNSCommand} 
+   * is returned, which goes to the specified name server. Otherwise, 
+   * GNSCommand is returned. Currently, AdminCommands cannot be directed 
+   * to a specified name server. 
+   * 
+   * @param nameServerAddress
    * @param type
    * @param querier
    * The guid issuing this query.
@@ -95,7 +100,8 @@ public class GNSCommand extends CommandPacket {
    * @return A {@link CommandPacket} constructed using the supplied arguments.
    * @throws ClientException
    */
-  public static CommandPacket getCommand(CommandType type, GuidEntry querier,
+  public static CommandPacket getCommand(InetSocketAddress nameServerAddress, 
+		  CommandType type, GuidEntry querier,
           Object... keysAndValues) throws ClientException {
     JSONObject command = CommandUtils.createAndSignCommand(type, querier,
             keysAndValues);
@@ -103,9 +109,40 @@ public class GNSCommand extends CommandPacket {
     if (CommandPacket.getJSONCommandType(command).isMutualAuth()) {
       return new AdminCommandPacket(randomLong(), command);
     }
-    return new GNSCommand(command);
+    if(nameServerAddress != null)
+    {
+    	return new DirectedGNSCommand(nameServerAddress, command);
+    }
+    else
+    {
+    	return new GNSCommand(command);
+    }
   }
-
+  
+  /**
+   * Constructs a command of type {@code type} issued by the {@code querier}
+   * using the variable length array {@code keysAndValues}. If {@code querier}
+   * is non-null, the returned command will be signed by the querier's private
+   * key. If {@code querier} is null, the command will succeed only if the
+   * operation is open to all, which is normally true only for fields that are
+   * readable by anyone.
+   * 
+   * @param type
+   * @param querier
+   * The guid issuing this query.
+   * @param keysAndValues
+   * A variable length array of even size containing a sequence of
+   * key and value pairs.
+   * @return A {@link CommandPacket} constructed using the supplied arguments.
+   * @throws ClientException
+   */
+  public static CommandPacket getCommand( 
+		  CommandType type, GuidEntry querier,
+          Object... keysAndValues) throws ClientException 
+  {
+	return   getCommand(null, type, querier, keysAndValues);
+  }
+  
   /**
    * @param type
    * @param keysAndValues
@@ -114,7 +151,7 @@ public class GNSCommand extends CommandPacket {
    */
   public static CommandPacket getCommand(CommandType type,
           Object... keysAndValues) throws ClientException {
-    return getCommand(type, null, keysAndValues);
+    return getCommand(null, type, null, keysAndValues);
   }
 
   /**
@@ -123,7 +160,7 @@ public class GNSCommand extends CommandPacket {
    * awaiting a response in the async client unless ENABLE_ID_TRANSFORM is
    * true.
    */
-  private static long randomLong() {
+  protected static long randomLong() {
     return (long) (Math.random() * Long.MAX_VALUE);
   }
 
@@ -1825,7 +1862,8 @@ public class GNSCommand extends CommandPacket {
   {
 	  try 
 	  {
-		  return getCommand(CommandType.SelectNotificationStatus, 
+		  return getCommand(selectHandle.getResponderAddress(), 
+				  CommandType.SelectNotificationStatus,  null,
 				  GNSProtocol.SELECT_NOTIFICATION_HANDLE.toString(), 
 				  selectHandle.toJSONObject());
 	  } catch (JSONException e) 
@@ -1854,7 +1892,8 @@ public class GNSCommand extends CommandPacket {
   {
 	  try
 	  {
-		  return getCommand(CommandType.SelectNotificationStatus, 
+		  return getCommand(selectHandle.getResponderAddress(),
+				  CommandType.SelectNotificationStatus, 
 				  issuer, 
 				  GNSProtocol.GUID.toString(), issuer.getGuid(),
 				  GNSProtocol.SELECT_NOTIFICATION_HANDLE.toString(), 
