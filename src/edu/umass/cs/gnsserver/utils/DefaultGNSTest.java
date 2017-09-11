@@ -317,7 +317,8 @@ public class DefaultGNSTest extends DefaultTest {
 			time+=1;
 		} while (numServersUp < numServers);
 	}
-
+	
+	
 	private static File[] getMatchingFiles(String dir, String startsWith) {
 		return new File(dir).listFiles(new FilenameFilter() {
 			@Override
