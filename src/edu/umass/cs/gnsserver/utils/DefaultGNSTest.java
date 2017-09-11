@@ -286,19 +286,35 @@ public class DefaultGNSTest extends DefaultTest {
 		// a little sleep ensures that there is time for at least one log file
 		// to get created
 		Thread.sleep(500);
+		long time = 0;
 		do {
 			File[] files = getMatchingFiles(getLogFileDir(), getLogFile());
 			numServersUp = 0;
-			for (File f : files) {
-                           if (!f.isDirectory()) {
-				numServersUp += UtilServer.readFileAsString(f.getAbsolutePath())
-						.contains("server ready") ? 1 : 0;
-                           }
-                        }
-
+			for (File f : files) 
+			{
+				if (!f.isDirectory())
+				{
+					String fileAsString = UtilServer.readFileAsString(f.getAbsolutePath());
+					numServersUp += fileAsString.contains("server ready") ? 1 : 0;
+					if(time % 30 == 0)
+					{
+						System.out.println("\n\n #### Printing file "+f.getAbsolutePath()+"####\n\n");
+						if(fileAsString.length() > 1000)
+						{
+							System.out.println(fileAsString.substring(fileAsString.length()-1000));
+						}
+						else
+						{
+							System.out.println(fileAsString);
+						}
+					}
+				}
+			}
+			
 			System.out.println((numServersUp) + " out of "
 					+ Integer.toString(numServers) + " servers are ready.");
 			Thread.sleep(1000);
+			time+=1;
 		} while (numServersUp < numServers);
 	}
 
