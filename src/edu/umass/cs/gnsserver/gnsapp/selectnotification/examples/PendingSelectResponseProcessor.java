@@ -29,7 +29,8 @@ public class PendingSelectResponseProcessor implements SelectResponseProcessor
 	{
 		InternalNotificationStats internalNot 
 					= new InternalNotificationStats(guidList.size());
-		internalNot.setNumberPending(guidList.size());
+		//internalNot.setNumberPending(guidList.size());
+		internalNot.setNumberPending(0);
 		NotificationSendingStats notStats = new NotificationSendingStats(internalNot);
 		return notStats;
 	}

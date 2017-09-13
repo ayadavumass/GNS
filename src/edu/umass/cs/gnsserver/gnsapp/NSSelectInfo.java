@@ -207,4 +207,13 @@ public class NSSelectInfo
   {
 	  return this.allServers;
   }
+  
+  /**
+   * Returns the select request packet that is received from the client. 
+   * @return
+   */
+  public SelectRequestPacket getSelectRequestPacket()
+  {
+	  return this.selectPacket;
+  }
 }

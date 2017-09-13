@@ -77,47 +77,6 @@ public class GNSCommand extends CommandPacket {
   {
 	  super(id, command);
   }
-
-  /**
-   * Constructs a command of type {@code type} issued by the {@code querier}
-   * using the variable length array {@code keysAndValues}. If {@code querier}
-   * is non-null, the returned command will be signed by the querier's private
-   * key. If {@code querier} is null, the command will succeed only if the
-   * operation is open to all, which is normally true only for fields that are
-   * readable by anyone.
-   * If {@code nameServerAddress} is non-null then a {@link DirectedGNSCommand} 
-   * is returned, which goes to the specified name server. Otherwise, 
-   * GNSCommand is returned. Currently, AdminCommands cannot be directed 
-   * to a specified name server. 
-   * 
-   * @param nameServerAddress
-   * @param type
-   * @param querier
-   * The guid issuing this query.
-   * @param keysAndValues
-   * A variable length array of even size containing a sequence of
-   * key and value pairs.
-   * @return A {@link CommandPacket} constructed using the supplied arguments.
-   * @throws ClientException
-   */
-  public static CommandPacket getCommand(InetSocketAddress nameServerAddress, 
-		  CommandType type, GuidEntry querier,
-          Object... keysAndValues) throws ClientException {
-    JSONObject command = CommandUtils.createAndSignCommand(type, querier,
-            keysAndValues);
-    //System.out.println(command);
-    if (CommandPacket.getJSONCommandType(command).isMutualAuth()) {
-      return new AdminCommandPacket(randomLong(), command);
-    }
-    if(nameServerAddress != null)
-    {
-    	return new DirectedGNSCommand(nameServerAddress, command);
-    }
-    else
-    {
-    	return new GNSCommand(command);
-    }
-  }
   
   /**
    * Constructs a command of type {@code type} issued by the {@code querier}
@@ -140,7 +99,14 @@ public class GNSCommand extends CommandPacket {
 		  CommandType type, GuidEntry querier,
           Object... keysAndValues) throws ClientException 
   {
-	return   getCommand(null, type, querier, keysAndValues);
+	  JSONObject command = CommandUtils.createAndSignCommand(type, querier,
+	            keysAndValues);
+	  
+	  if (CommandPacket.getJSONCommandType(command).isMutualAuth()) 
+	  {
+		  return new AdminCommandPacket(randomLong(), command);
+	  }
+	  return new GNSCommand(command);  
   }
   
   /**
@@ -151,7 +117,7 @@ public class GNSCommand extends CommandPacket {
    */
   public static CommandPacket getCommand(CommandType type,
           Object... keysAndValues) throws ClientException {
-    return getCommand(null, type, null, keysAndValues);
+    return getCommand(type, null, keysAndValues);
   }
 
   /**
@@ -1844,7 +1810,6 @@ public class GNSCommand extends CommandPacket {
     		  GNSProtocol.SELECT_NOTIFICATION.toString(), notification.toString());
   }
   
-  
   /**
    * The command to request the select notification status for an earlier 
    * issued selectAndNotify request. The command takes as input the 
@@ -1860,12 +1825,11 @@ public class GNSCommand extends CommandPacket {
   public static final CommandPacket selectNotificationStatus(SelectHandleInfo selectHandle) 
   										throws ClientException
   {
-	  try 
+	  try
 	  {
-		  return getCommand(selectHandle.getResponderAddress(), 
-				  CommandType.SelectNotificationStatus,  null,
+		  return getCommand(CommandType.SelectNotificationStatus,  null,
 				  GNSProtocol.SELECT_NOTIFICATION_HANDLE.toString(), 
-				  selectHandle.toJSONObject());
+				  selectHandle.toJSONArray());
 	  } catch (JSONException e) 
 	  {
 		  throw new ClientException(e);
@@ -1892,12 +1856,12 @@ public class GNSCommand extends CommandPacket {
   {
 	  try
 	  {
-		  return getCommand(selectHandle.getResponderAddress(),
+		  return getCommand(
 				  CommandType.SelectNotificationStatus, 
 				  issuer, 
 				  GNSProtocol.GUID.toString(), issuer.getGuid(),
 				  GNSProtocol.SELECT_NOTIFICATION_HANDLE.toString(), 
-				  selectHandle.toJSONObject().toString()
+				  selectHandle.toJSONArray()
 				  );
 	  } catch (JSONException e) 
 	  {

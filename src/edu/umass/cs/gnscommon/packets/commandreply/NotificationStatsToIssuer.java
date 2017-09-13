@@ -84,7 +84,7 @@ public class NotificationStatsToIssuer
 	public JSONObject toJSONObject() throws JSONException
 	{
 		JSONObject json = new JSONObject();
-		json.put(Keys.SELECT_HANDLE.toString(), selectHandle.toJSONObject());
+		json.put(Keys.SELECT_HANDLE.toString(), selectHandle.toJSONArray());
 		json.put(Keys.TOTAL_NOTIFICATIONS.toString(), totalNotifications);
 		json.put(Keys.FAILED_NOTIFICATIONS.toString(), failedNotifications);
 		json.put(Keys.PENDING_NOTIFICATIONS.toString(), pendingNotifications);
@@ -93,14 +93,12 @@ public class NotificationStatsToIssuer
 	
 	public static NotificationStatsToIssuer fromJSON(JSONObject json) throws JSONException
 	{
-		SelectHandleInfo selecthandle = SelectHandleInfo.fromJSONObject
-								(json.getJSONObject(Keys.SELECT_HANDLE.toString()));
+		SelectHandleInfo selecthandle = SelectHandleInfo.fromJSONArray
+								(json.getJSONArray(Keys.SELECT_HANDLE.toString()));
 		long totalNot 	= json.getLong(Keys.TOTAL_NOTIFICATIONS.toString());
 		long failedNot 	= json.getLong(Keys.FAILED_NOTIFICATIONS.toString());
 		long pendingNot = json.getLong(Keys.PENDING_NOTIFICATIONS.toString());
 		
 		return new NotificationStatsToIssuer(selecthandle, totalNot, failedNot, pendingNot);
-	}
-	
-	
+	}	
 }

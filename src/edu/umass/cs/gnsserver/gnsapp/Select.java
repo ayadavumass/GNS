@@ -58,6 +58,7 @@ import edu.umass.cs.gnscommon.ResponseCode;
 import edu.umass.cs.gnscommon.exceptions.client.ClientException;
 import edu.umass.cs.gnscommon.exceptions.server.FailedDBOperationException;
 import edu.umass.cs.gnscommon.exceptions.server.InternalRequestException;
+import edu.umass.cs.gnscommon.packets.commandreply.LocalSelectHandleInfo;
 import edu.umass.cs.gnscommon.packets.commandreply.NotificationStatsToIssuer;
 import edu.umass.cs.gnscommon.packets.commandreply.SelectHandleInfo;
 import edu.umass.cs.gnsserver.database.AbstractRecordCursor;
@@ -67,7 +68,6 @@ import edu.umass.cs.gnsserver.gnsapp.clientSupport.NSAuthentication;
 import edu.umass.cs.gnsserver.gnsapp.packet.SelectRequestPacket;
 import edu.umass.cs.gnsserver.gnsapp.packet.SelectResponsePacket;
 import edu.umass.cs.gnsserver.gnsapp.recordmap.NameRecord;
-import edu.umass.cs.gnsserver.gnsapp.selectnotification.EntryPointSelectNotificationState;
 import edu.umass.cs.gnsserver.gnsapp.selectnotification.NotificationSendingStats;
 import edu.umass.cs.gnsserver.gnsapp.selectnotification.NameServerSelectNotificationState;
 import edu.umass.cs.gnsserver.gnsapp.selectnotification.SelectGUIDInfo;
@@ -113,7 +113,7 @@ public class Select extends AbstractSelector
 	protected SelectResponseProcessor notificationSender;
 	
 	// for entry-point name server
-	private final EntryPointSelectNotificationState entryPointState;
+	//private final EntryPointSelectNotificationState entryPointState;
 	
 	// for any name server.
 	private final NameServerSelectNotificationState pendingNotifications;
@@ -129,7 +129,6 @@ public class Select extends AbstractSelector
 	public Select()
 	{
 		initSelectResponseProcessor();
-		entryPointState = new EntryPointSelectNotificationState();
 		
 		pendingNotifications = new NameServerSelectNotificationState();
 	}
@@ -306,24 +305,14 @@ public class Select extends AbstractSelector
   {
 	  SelectHandleInfo selectHandle = packet.getSelectHandleInfo();
 	  assert(selectHandle != null);
-	  // Also check if the entry-point address in the select handle is this node's address.
-	  InetSocketAddress addressFromHandle = selectHandle.getResponderAddress();
-	  
-	  // this should be server-server ip address and port. 
-	  assert(addressFromHandle.getAddress().getHostAddress().equals
-			  (app.getNodeAddress().getAddress().getHostAddress()));
-	  // this should be server-server ip address and port. 
-	  assert(addressFromHandle.getPort() == 
-			  app.getNodeAddress().getPort());
 	  
 	  // FIXME: pending implementation.
-	  List<SelectHandleInfo> handlesList = 
-			  		this.entryPointState.getListOfHandles(selectHandle.getHandleId());
+	  List<LocalSelectHandleInfo> localHandlesList = selectHandle.getLocalHandlesList();
 	  
-	  assert(handlesList != null);
+	  assert(localHandlesList != null);
 	  
 	  // These should be server-to-server addresses
-	  Set<InetSocketAddress> serverAddresses = getServerAddressFromHandles(handlesList);
+	  Set<InetSocketAddress> serverAddresses = getServerAddressFromHandles(localHandlesList);
 	  
 	  // store the info for later
 	  int queryId = addQueryInfo(serverAddresses, packet);
@@ -333,14 +322,14 @@ public class Select extends AbstractSelector
 			  app.getNodeAddress().getAddress(), 
 			  ReconfigurationConfig.getClientFacingPort(app.getNodeAddress().getPort()));
 	  
-	  for(int i=0; i<handlesList.size(); i++)
+	  for(int i=0; i<localHandlesList.size(); i++)
 	  {
 		  // This is the select handle at a node where an earlier 
 		  // selectAndNotify was forwarded to.
-		  SelectHandleInfo currSelectHandle =  handlesList.get(i);
+		  LocalSelectHandleInfo currLocalHandle =  localHandlesList.get(i);
 		  SelectRequestPacket currPacket = 
 				  SelectRequestPacket.makeSelectNotificationStatusRequest
-				  	(packet.getReader(), currSelectHandle);
+				  	(packet.getReader(), null, currLocalHandle);
 		  
 		  currPacket.setNSReturnAddress(returnAddress);
 		  currPacket.setNsQueryId(queryId);
@@ -348,9 +337,10 @@ public class Select extends AbstractSelector
 		  
 		  // Not sure why we are sending to client-facing port and not server-server port.
 		  InetSocketAddress offsetAddress = new InetSocketAddress(
-				  currSelectHandle.getResponderAddress().getAddress(),
+				  currLocalHandle.getNameServerAddress().getAddress(),
                   ReconfigurationConfig.getClientFacingPort
-                  (currSelectHandle.getResponderAddress().getPort()));
+                  (currLocalHandle.getNameServerAddress().getPort()));
+		  
 		  
 		  JSONObject messageJSON = null;
 		  
@@ -380,6 +370,7 @@ public class Select extends AbstractSelector
 			  }
 		  }
 	  }
+	  
 	  if (queryResult.containsKey(queryId)) 
 	  {
 		  return queryResult.remove(queryId);
@@ -388,13 +379,14 @@ public class Select extends AbstractSelector
   }
   
   
-  private Set<InetSocketAddress> getServerAddressFromHandles(List<SelectHandleInfo> handlesList)
+  private Set<InetSocketAddress> getServerAddressFromHandles(
+		  						List<LocalSelectHandleInfo> localHandlesList)
   {
 	  Set<InetSocketAddress> serverAddreses = new HashSet<InetSocketAddress>();
 	  
-	  for(int i=0; i<handlesList.size(); i++)
+	  for(int i=0; i<localHandlesList.size(); i++)
 	  {
-		  serverAddreses.add(handlesList.get(i).getResponderAddress());
+		  serverAddreses.add(localHandlesList.get(i).getNameServerAddress());
 	  }
 	  return serverAddreses;
   }
@@ -557,7 +549,9 @@ public class Select extends AbstractSelector
   	  String notificationStr = request.getNotificationString();
   	
   	  List<SelectGUIDInfo> currList = new LinkedList<SelectGUIDInfo>();
-  	  long localhandle = -1;
+  	  
+  	  List<NotificationSendingStats> notificationStatsList = new LinkedList<NotificationSendingStats>();
+  	  
   	  while (cursor != null && cursor.hasNext()) 
   	  {
   		  JSONObject record = cursor.nextJSONObject();
@@ -586,12 +580,7 @@ public class Select extends AbstractSelector
   		  }
   		  
   		  if(currList.size() >= Config.getGlobalInt(GNSC.SELECT_FETCH_SIZE))
-  		  {
-  			  if(localhandle == -1)
-  			  {
-  				  localhandle = this.pendingNotifications.getUniqueIDAndInit();
-  			  }
-  			  
+  		  {  
   			  // Sending the actual notification.
   			  // Based on the implementation, this function could block for very long.
   			  // Ideally, the implementation of this function should not be blocking. 
@@ -603,7 +592,8 @@ public class Select extends AbstractSelector
 						= this.notificationSender.sendNotification(currList, notificationStr);
   			  
   			  
-  			  this.pendingNotifications.addNotificationStats(localhandle, stats);
+  			  notificationStatsList.add(stats);
+  			  //this.pendingNotifications.addNotificationStats(localhandle, stats);
   			  
   			  // Not clearing currList here, as the notification function 
   			  // may be using it.
@@ -612,82 +602,55 @@ public class Select extends AbstractSelector
   		  }
   	  }
   	  
-  	  LOGGER.log(Level.FINE, "NS{0} processSelectRequestFromNSForSelectNotify cursor loop end: {1} {2}",
-            new Object[]{app.getNodeID(), request.getQuery(), request.getProjection()});
-  	  
   	  
   	  // last batch.
   	  if(currList.size() > 0)
-  	  {
-  		  if(localhandle == -1)
-  		  {
-  			  localhandle = this.pendingNotifications.getUniqueIDAndInit();
-  		  }
-  		  
+  	  {  
   		  // Sending the actual notification.
   		  // Based on the implementation, this function could block for very long.
   		  // Ideally, the implementation of this function should not be blocking. 
   		  // The design is such that notification function can update the progress
   		  // of notification sending using InternalNotificationStats, and the GNS
   		  // can get the progress using NotificationSendingStats.
-  		  
-  		  LOGGER.log(Level.FINE, "NS{0} sendNotification: LIST {1} NOTIFICATION {2}",
-  		        new Object[]{app.getNodeID(), currList, notificationStr});
     	  
   		  NotificationSendingStats stats 
 					= this.notificationSender.sendNotification(currList, notificationStr);
   		  
-  		LOGGER.log(Level.FINE, "NS{0} Notification sent: LIST {1} NOTIFICATION {2}",
-  		        new Object[]{app.getNodeID(), currList, notificationStr});
-  		
-  		  this.pendingNotifications.addNotificationStats(localhandle, stats);
+  		  notificationStatsList.add(stats);
   	  }
-  	  SelectHandleInfo selectHandle 
-			= new SelectHandleInfo(localhandle, app.getNodeAddress());
   	  
-  	  try {
-		LOGGER.log(Level.FINE, "NS{0} selectHandle: {1} ",
-			        new Object[]{app.getNodeID(), selectHandle.toJSONObject()});
-	} catch (JSONException e1) {
-		// TODO Auto-generated catch block
-		e1.printStackTrace();
-	}
+  	  long localHandleId = this.pendingNotifications.addNotificationStatsList(notificationStatsList);
+  	  
+  	  LocalSelectHandleInfo localSelectHandle 
+			= new LocalSelectHandleInfo(localHandleId, app.getNodeAddress());
   	  
   	  NotificationStatsToIssuer statsToIssuer 
-									= collectNotificationStats(selectHandle);
+									= collectNotificationStats(notificationStatsList, localSelectHandle);
   	  
-  	  
-  	  try 
+  	  SelectResponsePacket resp = null;
+  	  if(statsToIssuer != null)
   	  {
-  		  LOGGER.log(Level.FINE, "NS{0} NotificationStatsToIssuer: {1}",
-		        new Object[]{app.getNodeID(), statsToIssuer.toJSONObject()});
-  	  } catch (JSONException e) {
-		e.printStackTrace();
-  	  }
-  	
-  	  // clearing the state
-  	  // FIXME: clearing the state.
-  	  // Mostly a timeout based clearing. 
-  	  // A separate background thread that removes the state separately.
-  	  //this.pendingNotifications.removeNotificationInfo(localhandle);
-  	
-  	  SelectResponsePacket resp =  SelectResponsePacket.makeSuccessPacketForNotificationStatsOnly
+  		  resp =  SelectResponsePacket.makeSuccessPacketForNotificationStatsOnly
   			(request.getRequestID(), request.getClientAddress(),
 						request.getNsQueryId(), app.getNodeAddress(), statsToIssuer);
+  	  }
+  	  else
+  	  {
+  		  resp = SelectResponsePacket.makeFailPacket(request.getRequestID(), request.getClientAddress(),
+					request.getNsQueryId(), app.getNodeAddress(), "Handle state garbage collected on "
+																	+app.getNodeID());
+  	  }
   	  
-  	  LOGGER.log(Level.FINE, "{0} processSelectRequestFromNSForSelectNotify sending reply {1}", 
-  			  new Object[] {app, resp});
   	  return resp;
   }
-  
   
   private SelectResponsePacket processSelectRequestFromNSForNotificationStatus(
 		  SelectRequestPacket request, GNSApplicationInterface<String> app)
   {
-	  SelectHandleInfo selectHandle = request.getSelectHandleInfo();
-	  assert(selectHandle != null);
+	  LocalSelectHandleInfo localSelectHandle = request.getLocalSelectHandleInfo();
+	  assert(localSelectHandle != null);
 	  // Also check if the entry-point address in the select handle is this node's address.
-	  InetSocketAddress addressFromHandle = selectHandle.getResponderAddress();
+	  InetSocketAddress addressFromHandle = localSelectHandle.getNameServerAddress();
 	  
 	  // this should be server-server ip address and port. 
 	  assert(addressFromHandle.getAddress().getHostAddress().equals
@@ -696,18 +659,38 @@ public class Select extends AbstractSelector
 	  assert(addressFromHandle.getPort() == app.getNodeAddress().getPort());
 	  
 	  NotificationStatsToIssuer statsToIssuer 
-	  					= collectNotificationStats(selectHandle);
+	  					= collectNotificationStats(null, localSelectHandle);
 	  
-	  return SelectResponsePacket.makeSuccessPacketForNotificationStatsOnly
-	  			(request.getRequestID(), request.getClientAddress(),
-							request.getNsQueryId(), app.getNodeAddress(), statsToIssuer);
+	  SelectResponsePacket resp = null;
+  	  if(statsToIssuer != null)
+  	  {
+  		  resp =  SelectResponsePacket.makeSuccessPacketForNotificationStatsOnly
+  			(request.getRequestID(), request.getClientAddress(),
+						request.getNsQueryId(), app.getNodeAddress(), statsToIssuer);
+  	  }
+  	  else
+  	  {
+  		  resp = SelectResponsePacket.makeFailPacket(request.getRequestID(), request.getClientAddress(),
+					request.getNsQueryId(), app.getNodeAddress(), "Handle state garbage collected on "
+																	+app.getNodeID());
+  	  }
+  	  
+  	  return resp;
   }
   
-  
-  private NotificationStatsToIssuer collectNotificationStats(SelectHandleInfo selectHandle)
+  private NotificationStatsToIssuer collectNotificationStats(
+		  List<NotificationSendingStats> allStats, LocalSelectHandleInfo localSelectHandle)
   {
-	  List<NotificationSendingStats> allStats 
-	  		= this.pendingNotifications.lookupNotificationStats(selectHandle.getHandleId());
+	  assert(localSelectHandle != null);
+	  
+	  if(allStats == null)
+		  allStats = this.pendingNotifications.lookupNotificationStats(localSelectHandle.getLocalHandleId());
+	  
+	  // Handle state already garbage collected.
+	  if(allStats == null)
+		  return null;
+	  
+	  
 	  long totalNot = 0;
   	  long totalFailed = 0;
   	  long totalPending = 0;
@@ -720,7 +703,9 @@ public class Select extends AbstractSelector
   			  totalPending+=allStats.get(i).getNumberPending();
   		  }
   	  }
-  	  
+  	  List<LocalSelectHandleInfo> list = new LinkedList<LocalSelectHandleInfo>();
+  	  list.add(localSelectHandle);
+  	  SelectHandleInfo selectHandle = new SelectHandleInfo(list);
   	  return new NotificationStatsToIssuer(selectHandle, totalNot, 
 				totalFailed, totalPending);
   }
@@ -1161,6 +1146,12 @@ public class Select extends AbstractSelector
 	  {
 		  SelectResponsePacket response = null;
 		  List<NotificationStatsToIssuer> statsList = info.getAllNotificationStats();
+		  
+		  // In SelectAndNotify command, a user always gets back notification stats. 
+		  //Unlike in SelectNotificationStatus command, where the command can fail because 
+		  // of garbage collection of handle state at name servers. 
+		  assert(statsList.size() == info.getAllServers().size());
+		  
 		  long totalNot = 0;
 		  long failedNot = 0;
 		  long pendingNot = 0;
@@ -1172,17 +1163,10 @@ public class Select extends AbstractSelector
 			  pendingNot+=statsList.get(i).getPendingNotifications();
 		  }
 		  
-		  // FIXME: Need to add the removal of state here, if all notifications
-		  // are sent, no pending notifications, then we can remove notifications. 
-		  // Entry-point name server sends out removal request to other name servers. 
-		  
-		  List<SelectHandleInfo> handleList = getSelectHandleList(statsList);
-		  
-		  long localHandleId 
-	  					= entryPointState.addNotificationState(handleList);
+		  List<LocalSelectHandleInfo> handleList = getLocalSelectHandleList(statsList);
 		  
 		  SelectHandleInfo selectHandle 
-	  					= new SelectHandleInfo(localHandleId, app.getNodeAddress());
+	  					= new SelectHandleInfo(handleList);
 		  
 		  NotificationStatsToIssuer mergedStats = new NotificationStatsToIssuer
 	  							(selectHandle, totalNot, failedNot, pendingNot);
@@ -1201,14 +1185,15 @@ public class Select extends AbstractSelector
 	  return null;
   }
   
-  private List<SelectHandleInfo> getSelectHandleList(
+  private List<LocalSelectHandleInfo> getLocalSelectHandleList(
 		  					List<NotificationStatsToIssuer> statsList)
   {
-	  List<SelectHandleInfo> handleList = new LinkedList<SelectHandleInfo>();
+	  List<LocalSelectHandleInfo> handleList = new LinkedList<LocalSelectHandleInfo>();
 	  
 	  for(int i=0; i<statsList.size(); i++)
 	  {
-		  handleList.add(statsList.get(i).getSelectHandleInfo());
+		  // only one local handle is present in a reply from each name server.
+		  handleList.add(statsList.get(i).getSelectHandleInfo().getLocalHandlesList().get(0));
 	  }
 	  return handleList;
   }
@@ -1238,34 +1223,40 @@ public class Select extends AbstractSelector
 	  {
 		  SelectResponsePacket response = null;
 		  List<NotificationStatsToIssuer> statsList = info.getAllNotificationStats();
-		  long totalNot = 0;
-		  long failedNot = 0;
-		  long pendingNot = 0;
 		  
-		  for(int i=0; i<statsList.size(); i++)
+		  // Some handle requests failed.
+		  if(statsList.size() != info.getAllServers().size())
 		  {
-			  totalNot+=statsList.get(i).getTotalNotifications();
-			  failedNot+=statsList.get(i).getFailedNotifications();
-			  pendingNot+=statsList.get(i).getPendingNotifications();
+			  response = SelectResponsePacket.makeFailPacket
+					  	(packet.getRequestID(), null, -1, null, 
+					  	"Select notification state has been garbage collected. Notification status cannot"
+					  	+ "be queried anymore.");
 		  }
-		  
-		  // FIXME: Need to add the removal of state here, if all notifications
-		  // are sent, no pending notifications, then we can remove notifications. 
-		  // Entry-point name server sends out removal request to other name servers. 
-		  
-		  List<SelectHandleInfo> handleList = getSelectHandleList(statsList);
-		  
-		  long localHandleId 
-	  					= entryPointState.addNotificationState(handleList);
-		  
-		  SelectHandleInfo selectHandle 
-	  					= new SelectHandleInfo(localHandleId, app.getNodeAddress());
-		  
-		  NotificationStatsToIssuer mergedStats = new NotificationStatsToIssuer
-	  							(selectHandle, totalNot, failedNot, pendingNot);
-		  
-		  response = SelectResponsePacket.makeSuccessPacketForNotificationStatsOnly
-	  				(packet.getRequestID(), null, -1, null, mergedStats);
+		  else  // success case.
+		  {
+			  long totalNot = 0;
+			  long failedNot = 0;
+			  long pendingNot = 0;
+			  
+			  for(int i=0; i<statsList.size(); i++)
+			  {
+				  totalNot+=statsList.get(i).getTotalNotifications();
+				  failedNot+=statsList.get(i).getFailedNotifications();
+				  pendingNot+=statsList.get(i).getPendingNotifications();
+			  }
+			  
+			  SelectHandleInfo selectHandle 
+		  					= info.getSelectRequestPacket().getSelectHandleInfo();
+			  
+			  assert(selectHandle != null);
+			  
+			  NotificationStatsToIssuer mergedStats = new NotificationStatsToIssuer
+		  							(selectHandle, totalNot, failedNot, pendingNot);
+			  
+			  
+			  response = SelectResponsePacket.makeSuccessPacketForNotificationStatsOnly
+		  				(packet.getRequestID(), null, -1, null, mergedStats);
+		  }
 		  
 		  return response;
 	  }

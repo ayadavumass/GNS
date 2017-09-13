@@ -712,7 +712,7 @@ public class SelectTest extends DefaultGNSTest
 	    	// Greater than or equal to 5 because of duplicate notifications 
 	    	// in REPLICATE_ALL scheme.
 	    	Assert.assertThat(stats.getTotalNotifications(), Matchers.greaterThanOrEqualTo((long)5));
-	    	Assert.assertThat(stats.getPendingNotifications(), Matchers.greaterThanOrEqualTo((long)5));
+	    	Assert.assertThat(stats.getPendingNotifications(), Matchers.greaterThanOrEqualTo((long)0));
 	    	Assert.assertThat(stats.getFailedNotifications(), Matchers.equalTo((long)0));
 	    	
 	    } catch (ClientException | IOException | JSONException e) {
@@ -758,21 +758,35 @@ public class SelectTest extends DefaultGNSTest
 	    	// Greater than or equal to 5 because of duplicate notifications 
 	    	// in REPLICATE_ALL scheme.
 	    	Assert.assertThat(stats.getTotalNotifications(), Matchers.greaterThanOrEqualTo((long)5));
-	    	Assert.assertThat(stats.getPendingNotifications(), Matchers.greaterThanOrEqualTo((long)5));
+	    	Assert.assertThat(stats.getPendingNotifications(), Matchers.greaterThanOrEqualTo((long)0));
 	    	Assert.assertThat(stats.getFailedNotifications(), Matchers.equalTo((long)0));
 	    	
+	    	
 	    	SelectHandleInfo selectHandle = stats.getSelectHandleInfo();
-	    	
-	    	JSONObject result1  
-	    		= client.execute(GNSCommand.selectNotificationStatus(selectHandle)).getResultJSONObject();
-	    	
-	    	NotificationStatsToIssuer stats1 = NotificationStatsToIssuer.fromJSON(result1);
-	    	
-	    	// Greater than or equal to 5 because of duplicate notifications 
-	    	// in REPLICATE_ALL scheme.
-	    	Assert.assertThat(stats1.getTotalNotifications(), Matchers.greaterThanOrEqualTo((long)5));
-	    	Assert.assertThat(stats1.getPendingNotifications(), Matchers.greaterThanOrEqualTo((long)5));
-	    	Assert.assertThat(stats1.getFailedNotifications(), Matchers.equalTo((long)0));
+	    	int i=0;
+	    	while(i<10)
+	    	{
+		    	JSONObject result1  
+		    		= client.execute(GNSCommand.selectNotificationStatus(selectHandle)).getResultJSONObject();
+		    	
+		    	NotificationStatsToIssuer stats1 = NotificationStatsToIssuer.fromJSON(result1);
+		    	
+		    	// Greater than or equal to 5 because of duplicate notifications 
+		    	// in REPLICATE_ALL scheme.
+		    	Assert.assertThat(stats1.getTotalNotifications(), Matchers.greaterThanOrEqualTo((long)5));
+		    	Assert.assertThat(stats1.getPendingNotifications(), Matchers.greaterThanOrEqualTo((long)0));
+		    	Assert.assertThat(stats1.getFailedNotifications(), Matchers.equalTo((long)0));
+		    	
+		    	
+		    	try 
+		    	{
+					Thread.sleep(10000);
+				} catch (InterruptedException e) 
+		    	{
+					e.printStackTrace();
+				}
+		    	i++;
+	    	}
 	    	
 	    	
 	    	

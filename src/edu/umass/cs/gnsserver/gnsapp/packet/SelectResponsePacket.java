@@ -95,13 +95,14 @@ public class SelectResponsePacket extends BasicPacketWithReturnAddressAndNsAddre
   }
   
   /**
-   * Used by a NameServer to a send response with only a list of guids back to the Local NameServer
+   * Used by a NameServer to a send response with notification stats back to 
+   * an entry-point name server. 
    *
    * @param id
    * @param lnsAddress
    * @param nsQueryId
    * @param nsAddress
-   * @param guids
+   * @param notificationStats
    * @return a SelectResponsePacket
    */
   public static SelectResponsePacket makeSuccessPacketForNotificationStatsOnly
@@ -129,7 +130,7 @@ public class SelectResponsePacket extends BasicPacketWithReturnAddressAndNsAddre
     return new SelectResponsePacket(id, lnsAddress, nsQueryId, nsAddress,
             null, null, ResponseCode.UNSPECIFIED_ERROR, errorMessage);
   }
-
+  
   /**
    * Constructs new SelectResponsePacket from a JSONObject
    *

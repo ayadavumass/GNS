@@ -760,7 +760,7 @@ public enum CommandType {
    */
   SelectNotificationStatus(317, CommandCategory.SELECT, 
 		"edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commands.select.SelectNotificationStatus",
-        CommandResultType.MAP, false, false,
+        CommandResultType.LIST, false, false,
         " The command is used to request the status of notifications for an "
         + "earlier issued select request by using the corresponding select notification handle. "
         + "The return value is a JSONObject containing various statistics like "

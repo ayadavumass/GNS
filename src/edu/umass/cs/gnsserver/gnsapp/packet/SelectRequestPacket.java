@@ -25,6 +25,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import edu.umass.cs.gigapaxos.interfaces.ClientRequest;
+import edu.umass.cs.gnscommon.packets.commandreply.LocalSelectHandleInfo;
 import edu.umass.cs.gnscommon.packets.commandreply.SelectHandleInfo;
 import edu.umass.cs.gnsserver.utils.JSONUtils;
 
@@ -40,16 +41,17 @@ import edu.umass.cs.gnsserver.utils.JSONUtils;
  */
 public class SelectRequestPacket extends BasicPacketWithNSReturnAddress implements ClientRequest 
 {
-	private final static String KEY 					= "key";
-	private final static String READER 					= "reader";
-	private final static String VALUE 					= "value";
-	private final static String OTHERVALUE 				= "otherValue";
-	private final static String QUERY 					= "query";
-	private final static String PROJECTION 				= "projection";
-	private final static String NSQUERYID 				= "nsQueryId";
-	private final static String SELECT_OPERATION 		= "operation";
-	private final static String NOTIFICATION_STR 		= "notifcationMesg";
-	private final static String SELECT_HANDLE 			= "selectHandle";
+	private final static String KEY 							= "key";
+	private final static String READER 							= "reader";
+	private final static String VALUE 							= "value";
+	private final static String OTHERVALUE 						= "otherValue";
+	private final static String QUERY 							= "query";
+	private final static String PROJECTION 						= "projection";
+	private final static String NSQUERYID 						= "nsQueryId";
+	private final static String SELECT_OPERATION 				= "operation";
+	private final static String NOTIFICATION_STR 				= "notifcationMesg";
+	private final static String SELECT_HANDLE 					= "selectHandle";
+	private final static String LOCAL_SELECT_HANDLE 			= "localSelectHandle";
   
   
 	private SelectOperation selectOperation;
@@ -65,10 +67,11 @@ public class SelectRequestPacket extends BasicPacketWithNSReturnAddress implemen
   
   
 	private String notificationStr = null;
-  
+	
+	private LocalSelectHandleInfo localSelectHandle = null;
 	// used for notification status select operation. 
 	private SelectHandleInfo selectHandle = null;  
-  
+	
   /**
    * Constructs a new SelectRequestPacket
    *
@@ -103,7 +106,8 @@ public class SelectRequestPacket extends BasicPacketWithNSReturnAddress implemen
    */
   private SelectRequestPacket(SelectOperation selectOperation,
           String reader, String query, List<String> projection, 
-          String notifcationStr, SelectHandleInfo selectHandle)
+          String notifcationStr, SelectHandleInfo selectHandle, 
+          LocalSelectHandleInfo localHandle)
   {
     super();
     this.type = Packet.PacketType.SELECT_REQUEST;
@@ -116,6 +120,7 @@ public class SelectRequestPacket extends BasicPacketWithNSReturnAddress implemen
     this.otherValue = null;
     this.notificationStr = notifcationStr;
     this.selectHandle = selectHandle;
+    this.localSelectHandle = localHandle;
   }
 
   /**
@@ -131,7 +136,7 @@ public class SelectRequestPacket extends BasicPacketWithNSReturnAddress implemen
 		  String query, List<String> projection) 
   {
 	  return new SelectRequestPacket(SelectOperation.QUERY, 
-    		reader, query, projection, null, null);
+    		reader, query, projection, null, null, null);
   }
   
   
@@ -149,7 +154,7 @@ public class SelectRequestPacket extends BasicPacketWithNSReturnAddress implemen
 		  			List<String> projection, String notificationStr) 
   {
 	  return new SelectRequestPacket(SelectOperation.SELECT_NOTIFY,
-			  reader, query, projection, notificationStr, null);
+			  reader, query, projection, notificationStr, null, null);
   }
   
   
@@ -163,10 +168,11 @@ public class SelectRequestPacket extends BasicPacketWithNSReturnAddress implemen
    * @return a SelectRequestPacket
    */
   public static SelectRequestPacket makeSelectNotificationStatusRequest
-  					(String reader, SelectHandleInfo selectHandle)
+  					(String reader, SelectHandleInfo selectHandle, 
+  					LocalSelectHandleInfo localSelectHandle)
   {
 	  return new SelectRequestPacket(SelectOperation.NOTIFICATION_STATUS,
-			  reader, null, null, null, selectHandle);
+			  reader, null, null, null, selectHandle, localSelectHandle);
   }
   
   /**
@@ -201,7 +207,11 @@ public class SelectRequestPacket extends BasicPacketWithNSReturnAddress implemen
 	  
 	  this.notificationStr = json.optString(NOTIFICATION_STR, null);
 	  this.selectHandle = json.has(SELECT_HANDLE) ? 
-			  	SelectHandleInfo.fromJSONObject(json.getJSONObject(SELECT_HANDLE)):null;
+			  	SelectHandleInfo.fromJSONArray(json.getJSONArray(SELECT_HANDLE)):null;
+			  	
+	  this.localSelectHandle = json.has(LOCAL_SELECT_HANDLE) ?
+			  	LocalSelectHandleInfo.fromJSONObject(json.getJSONObject(LOCAL_SELECT_HANDLE)):null;
+	
   }
 
   /**
@@ -252,7 +262,12 @@ public class SelectRequestPacket extends BasicPacketWithNSReturnAddress implemen
 	  
 	  if(this.selectHandle != null)
 	  {
-		  json.put(SELECT_HANDLE, selectHandle.toJSONObject());
+		  json.put(SELECT_HANDLE, selectHandle.toJSONArray());
+	  }
+	  
+	  if(this.localSelectHandle != null)
+	  {
+		  json.put(LOCAL_SELECT_HANDLE, this.localSelectHandle.toJSONObject());
 	  }
   }
 
@@ -261,26 +276,20 @@ public class SelectRequestPacket extends BasicPacketWithNSReturnAddress implemen
    *
    * @param nsQueryId
    */
-  public void setNsQueryId(int nsQueryId) {
-    this.nsQueryId = nsQueryId;
+  public void setNsQueryId(int nsQueryId) 
+  {
+	  this.nsQueryId = nsQueryId;
   }
-
-  /**
-   * Sets the request id.
-   *
-   * @param requestId
-   */
-//  public void setRequestId(long requestId) {
-//    this.requestId = requestId;
-//  }
+  
 
   /**
    * Return the reader.
    *
    * @return the reader
    */
-  public String getReader() {
-    return reader;
+  public String getReader() 
+  {
+	  return reader;
   }
 
   /**
@@ -288,8 +297,9 @@ public class SelectRequestPacket extends BasicPacketWithNSReturnAddress implemen
    *
    * @return the key
    */
-  public String getKey() {
-    return key;
+  public String getKey() 
+  {
+	  return key;
   }
 
   /**
@@ -297,8 +307,9 @@ public class SelectRequestPacket extends BasicPacketWithNSReturnAddress implemen
    *
    * @return the value
    */
-  public Object getValue() {
-    return value;
+  public Object getValue() 
+  {
+	  return value;
   }
 
   /**
@@ -306,8 +317,9 @@ public class SelectRequestPacket extends BasicPacketWithNSReturnAddress implemen
    *
    * @return the NS query requestId
    */
-  public int getNsQueryId() {
-    return nsQueryId;
+  public int getNsQueryId() 
+  {
+	  return nsQueryId;
   }
 
   /**
@@ -315,8 +327,9 @@ public class SelectRequestPacket extends BasicPacketWithNSReturnAddress implemen
    *
    * @return the select operation
    */
-  public SelectOperation getSelectOperation() {
-    return selectOperation;
+  public SelectOperation getSelectOperation() 
+  {
+	  return selectOperation;
   }
 
   /**
@@ -324,8 +337,9 @@ public class SelectRequestPacket extends BasicPacketWithNSReturnAddress implemen
    *
    * @return the other value
    */
-  public Object getOtherValue() {
-    return otherValue;
+  public Object getOtherValue() 
+  {
+	  return otherValue;
   }
 
   /**
@@ -333,8 +347,9 @@ public class SelectRequestPacket extends BasicPacketWithNSReturnAddress implemen
    *
    * @return the query
    */
-  public String getQuery() {
-    return query;
+  public String getQuery() 
+  {
+	  return query;
   }
 
   /**
@@ -412,6 +427,16 @@ public class SelectRequestPacket extends BasicPacketWithNSReturnAddress implemen
   {
 	  return this.selectHandle;
   }
+  
+  /**
+   * Returns a local select handle. 
+   * @return
+   */
+  public LocalSelectHandleInfo getLocalSelectHandleInfo()
+  {
+	  return this.localSelectHandle;
+  }
+  
   
   /**
    *

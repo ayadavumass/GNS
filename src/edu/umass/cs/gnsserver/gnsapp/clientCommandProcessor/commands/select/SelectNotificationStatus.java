@@ -42,8 +42,8 @@ public class SelectNotificationStatus extends AbstractCommand
 				ClientRequestHandlerInterface handler) throws JSONException, InternalRequestException 
 	{
 		JSONObject json = commandPacket.getCommand();
-		SelectHandleInfo selectHandle = SelectHandleInfo.fromJSONObject(
-				json.getJSONObject(GNSProtocol.SELECT_NOTIFICATION_HANDLE.toString()));
+		SelectHandleInfo selectHandle = SelectHandleInfo.fromJSONArray(
+				json.getJSONArray(GNSProtocol.SELECT_NOTIFICATION_HANDLE.toString()));
 		
 		String reader = json.optString(GNSProtocol.GUID.toString(), null);
 	    String signature = json.optString(GNSProtocol.SIGNATURE.toString(), null);

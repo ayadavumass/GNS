@@ -827,7 +827,7 @@ public class FieldAccess {
 	  try 
 	  {
 		  SelectRequestPacket packet = SelectRequestPacket.makeSelectNotificationStatusRequest
-				  									(reader, selectHandle);
+				  									(reader, selectHandle, null);
 		  
 		  selectResp = executeSelectHelper(header, commandPacket, packet, reader, 
     		  								signature, message, handler.getApp());
@@ -845,9 +845,9 @@ public class FieldAccess {
 	  catch (IOException | JSONException | FailedDBOperationException e) 
 	  {
 		  ClientException cle = new ClientException(e);
-		  return new CommandResponse(cle.getCode(), "selectAndNotify failed: "+cle.getMessage());
+		  return new CommandResponse(cle.getCode(), "selectNotificationStatus failed: "+cle.getMessage());
 	  }
-	  return new CommandResponse(ResponseCode.UNSPECIFIED_ERROR, "selectAndNotify failed. ");
+	  return new CommandResponse(ResponseCode.UNSPECIFIED_ERROR, "selectNotificationStatus failed. ");
   }
   
   

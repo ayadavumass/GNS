@@ -1,9 +1,10 @@
 package edu.umass.cs.gnscommon.packets.commandreply;
 
-import java.net.InetSocketAddress;
+import java.util.LinkedList;
+import java.util.List;
 
+import org.json.JSONArray;
 import org.json.JSONException;
-import org.json.JSONObject;
 
 /**
  * This class represents a handle for select notifications. 
@@ -12,75 +13,49 @@ import org.json.JSONObject;
  *
  */
 public class SelectHandleInfo
-{
-	public static enum Keys
+{	
+	private final List<LocalSelectHandleInfo> localHandlesList;
+	
+	public SelectHandleInfo(List<LocalSelectHandleInfo> localHandlesList)
 	{
-		/**
-		 * A handleId corresponding to this handle. 
-		 */
-		HANDLE_ID,
-		/**
-		 * The address of name server/active that sent this message.
-		 */
-		SERVER_ADDRESS,
-	}
-	
-	/**
-	 * <serverAddress, handleId> is a unique identifier for a handle. 
-	 */
-	private final long handleId;
-	
-	private final InetSocketAddress serverAddress;
-	
-	
-	public SelectHandleInfo(long handleId, InetSocketAddress serverAddress)
-	{
-		this.handleId = handleId;
-		this.serverAddress = serverAddress;
+		this.localHandlesList = localHandlesList;
 	}
 	
 	
-	public JSONObject toJSONObject() throws JSONException
+	public JSONArray toJSONArray() throws JSONException
 	{
-		JSONObject json = new JSONObject();
-		json.put(Keys.HANDLE_ID.toString(), handleId);
-		json.put(Keys.SERVER_ADDRESS.toString(), 
-					serverAddress.getAddress().getHostAddress()+":"+serverAddress.getPort());
-		return json;
+		JSONArray jsonArr = new JSONArray();
+		for(int i=0; i<localHandlesList.size(); i++)
+		{
+			jsonArr.put(localHandlesList.get(i).toJSONObject());
+		}
+		return jsonArr;
 	}
 	
 	
-	public static SelectHandleInfo fromJSONObject(JSONObject json) throws JSONException
+	public static SelectHandleInfo fromJSONArray(JSONArray jsonArray) throws JSONException
 	{
-		long handle = json.getLong(Keys.HANDLE_ID.toString());
-		String[] ipPort = json.getString(Keys.SERVER_ADDRESS.toString()).split(":");
-		
-		InetSocketAddress serverAdd = new InetSocketAddress
-							(ipPort[0], Integer.parseInt(ipPort[1]));
-		
-		return new SelectHandleInfo(handle, serverAdd);
+		List<LocalSelectHandleInfo> localHandlesList 
+									= new LinkedList<LocalSelectHandleInfo>();
+		for(int i=0; i<jsonArray.length(); i++)
+		{
+			LocalSelectHandleInfo local = LocalSelectHandleInfo.fromJSONObject
+																(jsonArray.getJSONObject(i));
+			
+			localHandlesList.add(local);
+		}	
+		return new SelectHandleInfo(localHandlesList);
 	}
 	
 	
 	/**
-	 * Returns the socket address of the name server that stores the select handle specified 
-	 * by the object of this class.
+	 * Returns the lsit of local handles corresponding to 
+	 * this select handle. 
 	 * 
 	 * @return
 	 */
-	public InetSocketAddress getResponderAddress()
+	public List<LocalSelectHandleInfo> getLocalHandlesList()
 	{
-		return this.serverAddress;
-	}
-	
-	/**
-	 * Returns the handleId corresponding to the select handle specified  
-	 * by the object of this class.
-	 * 
-	 * @return
-	 */
-	public long getHandleId()
-	{
-		return this.handleId;
+		return this.localHandlesList;
 	}
 }

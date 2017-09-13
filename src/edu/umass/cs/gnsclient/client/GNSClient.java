@@ -280,14 +280,6 @@ public class GNSClient {
 		ClientRequest request = packet
 				.setForceCoordinatedReads(isForceCoordinatedReads());
 		
-		if(packet instanceof DirectedGNSCommand)
-		{
-			DirectedGNSCommand dcmd = (DirectedGNSCommand)packet;
-			return this.asyncClient.sendRequest(request, 
-					new InetSocketAddress(dcmd.getNameServerAddress().getAddress(),
-					ReconfigurationConfig.getClientFacingPort(dcmd.getNameServerAddress().getPort())),
-					callback);
-		}
 		if (isAnycast(packet)) {
 			return this.asyncClient.sendRequestAnycast(request, callback);
 		} else if (this.GNSProxy != null) {
