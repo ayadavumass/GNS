@@ -730,7 +730,8 @@ public class SelectTest extends DefaultGNSTest
   public void test_101_SelectNotificationStatusTest() 
   {
 	  String fieldName = "SelectNotificationStatusTestField";
-	  try {
+	  try 
+	  {
 		  for (int cnt = 0; cnt < 5; cnt++) {
 			  String queryTestName = "queryTest-" + RandomString.randomString(12);
 			  client.execute(GNSCommand.guidCreate(masterGuid, queryTestName));
@@ -740,11 +741,12 @@ public class SelectTest extends DefaultGNSTest
 			  client.execute(GNSCommand.fieldReplaceOrCreateList(testEntry.getGuid(), fieldName, array, testEntry));
 	      	}
 		  waitSettle(WAIT_SETTLE);
-	    } catch (ClientException | IOException e) {
-	      Utils.failWithStackTrace("Exception while trying to create the guids: " + e);
-	    }
+	  } catch (ClientException | IOException e) 
+	  {
+		  Utils.failWithStackTrace("Exception while trying to create the guids: " + e);
+	  }
 
-	    try 
+	    try
 	    {
 	    	String query = "~" + fieldName + " : ($gt: 0)";
 	    	
