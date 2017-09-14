@@ -507,9 +507,49 @@ public class GNSCommand extends CommandPacket {
    * @throws ClientException
    */
   public static final CommandPacket publicKeyLookupFromGUID(String targetGUID)
-          throws ClientException {
-    // FIXME: This is not correctly implemented
-    return lookupGUIDRecord(targetGUID);
+          throws ClientException 
+  {
+	  // FIXME: This is not correctly implemented
+	  return lookupGUIDRecord(targetGUID);
+  }
+  
+  
+  /**
+   * Registers a new account with the GuidEntry  and password given by 
+   * {@code guidEntry} and {@code password} respectively. 
+   * This comman allows a user to create a GUID in the GNS with the
+   * supplied GuidEntry, which contains alias, guid, public-private key pair 
+   * information. In this command, the GUID doesn't have to necessarily be 
+   * a hash of the public key. 
+   * 
+   * 
+   * Executing this query generates a new guid and a public
+   * / private key pair. {@code password} can be used to retrieve account
+   * information if the client loses the private key corresponding to the
+   * account guid. The new account guid is created with the provided {@code activesSet}
+   * set of actives.
+   *
+   * @param alias
+   * Human readable alias for the account guid being created, e.g.,
+   * an email address
+   * @param password
+   * @param activesSet 
+   * The set of actives for the account guid. A null means that the account guid will be created on all 
+   * set of actives.
+   * @return CommandPacket
+   * @throws ClientException
+   * @throws java.io.IOException
+   * @throws java.security.NoSuchAlgorithmException
+   */
+  //FIXME: The name this of these violates the NOUNVERB naming convention adopted
+  // almost everywhere else in here.
+  protected static final CommandPacket createAccount(
+		  GuidEntry guidEntry, String password, Set<InetSocketAddress> activesSet) 
+        		  	throws ClientException, IOException, NoSuchAlgorithmException 
+  {
+	  @SuppressWarnings("deprecation") // FIXME : deprecated getGNSProvider use.
+	  GuidEntry guidEntry = lookupOrCreateGuidEntry(GNSClient.getGNSProvider(), alias);
+	  return accountGuidCreateInternal(alias, password, CommandType.RegisterAccount, guidEntry, activesSet);
   }
   
   
