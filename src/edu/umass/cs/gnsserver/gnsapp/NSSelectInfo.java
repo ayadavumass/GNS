@@ -51,14 +51,6 @@ public class NSSelectInfo
 	private final List<NotificationStatsToIssuer> notificationStatusList;
 	
 	
-	
-	//private final SelectOperation selectOperation;
-	//private final String query; // The string used to set up the query if applicable
-	// The list of fields to return. 
-	// Null means return GUIDS instead of whole records (old style select).
-	//private final List<String> projection;
-	
-	
 	/**
 	 * NSSelectInfo constructor.
 	 * 
