@@ -187,7 +187,6 @@ public class KeyPairUtilsAndroid {
    * @param gnsName the name of the GNS instance (e.g. "server.gns.name:8080")
    */
   public static void removeDefaultGuidEntryFromPreferences(String gnsName) {
-    String aliasKey = gnsName + "@default-guid";
 
     // adding order
     // alias,
@@ -226,9 +225,9 @@ public class KeyPairUtilsAndroid {
     String extStorageDirectory = gnsFolder.toString();
 
     File file = new File(extStorageDirectory, DEFAULT_GUIDS_FILENAME);
-
+    BufferedReader br = null;
     try {
-      BufferedReader br = new BufferedReader(new FileReader(file));
+      br = new BufferedReader(new FileReader(file));
       String line;
 
       while ((line = br.readLine()) != null) {
@@ -245,6 +244,15 @@ public class KeyPairUtilsAndroid {
     } catch (IOException e) {
       e.printStackTrace();
       // You'll need to add proper error handling here
+    }
+    finally
+    {
+    	if(br != null)
+			try {
+				br.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
     }
     return null;
   }
@@ -348,9 +356,9 @@ public class KeyPairUtilsAndroid {
     String extStorageDirectory = gnsFolder.toString();
 
     File file = new File(extStorageDirectory, GNS_KEYS_FILENAME);
-
+    BufferedReader br = null;
     try {
-      BufferedReader br = new BufferedReader(new FileReader(file));
+      br = new BufferedReader(new FileReader(file));
       String line;
 
       while ((line = br.readLine()) != null) {
@@ -384,6 +392,15 @@ public class KeyPairUtilsAndroid {
     } catch (IOException e) {
       e.printStackTrace();
       // You'll need to add proper error handling here
+    }
+    finally
+    {
+    	if(br != null)
+			try {
+				br.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
     }
 
     return guids;
@@ -428,9 +445,9 @@ public class KeyPairUtilsAndroid {
 
     File file = new File(extStorageDirectory, GNS_KEYS_FILENAME);
     String aliasKey = gnsName + "@" + username;
-
+    BufferedReader br = null;
     try {
-      BufferedReader br = new BufferedReader(new FileReader(file));
+    	br = new BufferedReader(new FileReader(file));
       String line;
 
       while ((line = br.readLine()) != null) {
@@ -466,6 +483,16 @@ public class KeyPairUtilsAndroid {
     } catch (IOException e) {
       e.printStackTrace();
       // You'll need to add proper error handling here
+    }
+    finally
+    {
+    	if(br != null)
+			try {
+				br.close();
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
     }
 
     return null;

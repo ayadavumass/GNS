@@ -34,7 +34,6 @@ import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
-import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.SignatureException;
 import java.security.spec.InvalidKeySpecException;
@@ -1272,75 +1271,6 @@ public class HttpClient {
   }
 
   /**
-   * Set up a context aware group guid using a query.
-   * All fields accessed must be world readable.
-   *
-   * @param guid
-   * @param query
-   * @return a JSONArray containing all the guids
-   * @throws java.io.IOException
-   * @throws edu.umass.cs.gnscommon.exceptions.client.ClientException
-   * @throws org.json.JSONException
-   */
-  public JSONArray selectSetupGroupQuery(String guid, String query)
-          throws IOException, ClientException, JSONException {
-    return new JSONArray(getResponse(CommandType.SelectGroupSetupQuery, 
-            GNSProtocol.ACCOUNT_GUID.toString(), guid,
-            GNSProtocol.QUERY.toString(), query));
-  }
-  
-  /**
-   * Set up a context aware group guid using a query.
-   *
-   * @param reader
-   * @param groupGuid
-   * @param query
-   * @return a JSONArray containing all the guids
-   * @throws java.io.IOException
-   * @throws edu.umass.cs.gnscommon.exceptions.client.ClientException
-   * @throws org.json.JSONException
-   */
-  public JSONArray selectSetupGroupQuery(GuidEntry reader, String groupGuid, String query)
-          throws IOException, ClientException, JSONException {
-    return new JSONArray(getResponse(CommandType.SelectGroupSetupQuery, reader,
-            GNSProtocol.GUID.toString(), reader.getGuid(),
-            GNSProtocol.ACCOUNT_GUID.toString(), groupGuid,
-            GNSProtocol.QUERY.toString(), query));
-  }
-
-  /**
-   * Look up the value of a context aware group guid using a query.
-   * All fields accessed must be world readable.
-   *
-   * @param guid
-   * @return a JSONArray containing all the guids
-   * @throws java.io.IOException
-   * @throws edu.umass.cs.gnscommon.exceptions.client.ClientException
-   * @throws org.json.JSONException
-   */
-  public JSONArray selectLookupGroupQuery(String guid) throws IOException, ClientException, JSONException {
-    return new JSONArray(getResponse(CommandType.SelectGroupLookupQuery, 
-            GNSProtocol.ACCOUNT_GUID.toString(), guid));
-  }
-  
-  /**
-   * Look up the value of a context aware group guid created using a query.
-   *
-   * @param reader
-   * @param groupGuid
-   * @return a JSONArray containing all the guids
-   * @throws java.io.IOException
-   * @throws edu.umass.cs.gnscommon.exceptions.client.ClientException
-   * @throws org.json.JSONException
-   */
-  public JSONArray selectLookupGroupQuery(GuidEntry reader, String groupGuid) 
-          throws IOException, ClientException, JSONException {
-    return new JSONArray(getResponse(CommandType.SelectGroupLookupQuery, reader,
-            GNSProtocol.GUID.toString(), reader.getGuid(),
-            GNSProtocol.ACCOUNT_GUID.toString(), groupGuid));
-  }
-
-  /**
    * Update the location field for the given GNSProtocol.GUID.toString()
    *
    * @param longitude the GNSProtocol.GUID.toString() longitude
@@ -1825,13 +1755,7 @@ public class HttpClient {
       // And make a canonical version of the JSON
       String canonicalJSON = CanonicalJSON.getCanonicalForm(jsonVersionOfCommand);
       LOGGER.log(Level.FINE, "Canonical JSON: {0}", canonicalJSON);
-
-      // Now grab the keypair for signing the canonicalJSON string
-      KeyPair keypair;
-      keypair = new KeyPair(guid.getPublicKey(), guid.getPrivateKey());
-
-      PrivateKey privateKey = keypair.getPrivate();
-      PublicKey publicKey = keypair.getPublic();
+      
       String signatureString;
       if (Config.getGlobalBoolean(GNSClientConfig.GNSCC.ENABLE_SECRET_KEY)) {
         signatureString = CryptoUtils.signDigestOfMessageSecretKey(guid, canonicalJSON);
@@ -1848,11 +1772,11 @@ public class HttpClient {
       // This is a debugging aid so we can auto check the message part on the other side. 
       String debuggingPart = "";
       // Currently not being used.
-      if (false) {
+      /*if (false) {
         debuggingPart = KEYSEP + "originalMessageBase64" + VALSEP
                 + URIEncoderDecoder.quoteIllegal(
                         Base64.encodeToString(canonicalJSON.getBytes(GNSProtocol.CHARSET.toString()), false));
-      }
+      }*/
       // Finally return everything
       return encodedString.toString() + signaturePart + debuggingPart;
     } catch (JSONException | UnsupportedEncodingException e) {

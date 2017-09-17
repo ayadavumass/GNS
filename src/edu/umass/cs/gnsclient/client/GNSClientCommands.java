@@ -26,9 +26,7 @@ import edu.umass.cs.gnscommon.exceptions.client.EncryptionException;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import edu.umass.cs.gnscommon.exceptions.client.ClientException;
-import edu.umass.cs.gnscommon.exceptions.client.DuplicateNameException;
 import edu.umass.cs.gnscommon.utils.Base64;
-import edu.umass.cs.gnsserver.main.GNSConfig;
 import java.security.KeyFactory;
 import java.security.PublicKey;
 import java.security.spec.InvalidKeySpecException;
@@ -475,99 +473,6 @@ public class GNSClientCommands
    */
   public JSONArray selectRecords(GuidEntry reader, String query, List<String> fields) throws ClientException, IOException {
     return gnsClient.execute(GNSCommand.selectRecords(reader, query, fields)).getResultJSONArray();
-  }
-
-  /**
-   * Set up a context aware group guid using a query. Requires a accountGuid
-   * and a publicKey which are used to set up the new guid or look it up if it
-   * already exists. Requires that all fields accessed be world readable.
-   *
-   * Also returns the result of the query as a JSONArray of guids.
-   *
-   * The query syntax is described here:
-   * https://gns.name/wiki/index.php?title=Query_Syntax
-   *
-   * @param accountGuid
-   * @param publicKey
-   * @param query
-   * the query
-   * @param interval
-   * - the refresh interval in seconds - default is 60 - (queries
-   * that happens quicker than this will get stale results)
-   * @return a JSONArray of guids
-   * @throws edu.umass.cs.gnscommon.exceptions.client.ClientException
-   * if a protocol error occurs or the list cannot be parsed
-   * @throws java.io.IOException
-   * if a communication error occurs
-   */
-  public JSONArray selectSetupGroupQuery(GuidEntry accountGuid,
-          String publicKey, String query, int interval) throws ClientException, IOException {
-    return gnsClient.execute(GNSCommand.selectSetupGroupQuery(accountGuid, publicKey, query, interval)).getResultJSONArray();
-  }
-
-  /**
-   * Set up a context aware group guid using a query. Requires a accountGuid
-   * and a publicKey which are used to set up the new guid or look it up if it
-   * already exists.
-   *
-   * Also returns the result of the query as a JSONArray of guids.
-   *
-   * The query syntax is described here:
-   * https://gns.name/wiki/index.php?title=Query_Syntax
-   *
-   * @param reader
-   * @param accountGuid
-   * @param publicKey
-   * @param query
-   * the query
-   * @param interval
-   * - the refresh interval in seconds - default is 60 - (queries
-   * that happens quicker than this will get stale results)
-   * @return a JSONArray of guids
-   * @throws edu.umass.cs.gnscommon.exceptions.client.ClientException
-   * if a protocol error occurs or the list cannot be parsed
-   * @throws java.io.IOException
-   * if a communication error occurs
-   */
-  public JSONArray selectSetupGroupQuery(GuidEntry reader, GuidEntry accountGuid,
-          String publicKey, String query, int interval) throws ClientException, IOException {
-    return gnsClient.execute(GNSCommand.selectSetupGroupQuery(reader, accountGuid, publicKey,
-            query, interval)).getResultJSONArray();
-  }
-
-  /**
-   * Look up the value of a context aware group guid using a query. Returns
-   * the result of the query as a JSONArray of guids. The results will be
-   * stale if the queries that happen more quickly than the refresh interval
-   * given during setup. Requires that all fields accessed be world readable.
-   *
-   * @param guid
-   * @return a JSONArray of guids
-   * @throws edu.umass.cs.gnscommon.exceptions.client.ClientException
-   * if a protocol error occurs or the list cannot be parsed
-   * @throws java.io.IOException
-   * if a communication error occurs
-   */
-  public JSONArray selectLookupGroupQuery(String guid) throws ClientException, IOException {
-    return gnsClient.execute(GNSCommand.selectLookupGroupQuery(guid)).getResultJSONArray();
-  }
-  
-  /**
-   * Look up the value of a context aware group guid using a query. Returns
-   * the result of the query as a JSONArray of guids. The results will be
-   * stale if the queries that happen more quickly than the refresh interval
-   * given during setup.
-   *
-   * @param reader
-   * @param guid
-   * @return a JSONArray of guids
-   * @throws edu.umass.cs.gnscommon.exceptions.client.ClientException
-   * if a protocol error occurs or the list cannot be parsed
-   * @throws java.io.IOException
-   * if a communication error occurs
-   */
-  public JSONArray selectLookupGroupQuery(GuidEntry reader, String guid) throws ClientException, IOException {
-    return gnsClient.execute(GNSCommand.selectLookupGroupQuery(reader, guid)).getResultJSONArray();
   }
 
   // ACCOUNT COMMANDS

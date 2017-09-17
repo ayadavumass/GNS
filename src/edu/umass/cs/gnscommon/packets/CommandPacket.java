@@ -56,7 +56,7 @@ import org.json.JSONObject;
  *
  */
 public class CommandPacket extends BasicPacketWithClientAddress implements
-        ClientRequest, ReplicableRequest, Byteable {
+				ClientRequest, ReplicableRequest, Byteable {
 
   private final static String QID = GNSProtocol.REQUEST_ID.toString();
   private final static String COMMAND = GNSProtocol.COMMAND_QUERY.toString();
@@ -89,19 +89,25 @@ public class CommandPacket extends BasicPacketWithClientAddress implements
 
   // never serialized
   private Object result = null;
-
+  
+  
   /**
    * Create a CommandPacket instance.
    *
    * @param requestId
    * @param command
    */
-  public CommandPacket(long requestId, JSONObject command) {
-    this(requestId, command, true);
-    // We don't need to set the sender address in this constructor 
-    // because this constructor is only used to construct a command.
-    // This constructor is not used to get a CommandPacket object 
-    // after receiving a command from NIO. 
+  public CommandPacket(long requestId, JSONObject command) 
+  {
+	  this(requestId, command, true);
+	  // We don't need to set the sender address in this constructor 
+	  // because this constructor is only used to construct a command.
+	  // This constructor is not used to get a CommandPacket object 
+	  // after receiving a command from NIO. 
+	  // Similarly, we also don't need set server Address in the CommandPacket,
+	  // because we only want to create a command and pass it to ReconfigurableAppAsyncClient
+	  // so that it can do a directed send. But, the server address itself doesn't need to 
+	  // be sent to a GNS server.
   }
   
   
@@ -112,7 +118,9 @@ public class CommandPacket extends BasicPacketWithClientAddress implements
    * @param command
    * @param validate
    */
-  public CommandPacket(long requestId, JSONObject command, boolean validate) {
+  public CommandPacket(long requestId, JSONObject command, 
+		  boolean validate) 
+  {
     this.setType(Packet.PacketType.COMMAND);
     this.clientRequestId = requestId;
     this.command = command;
@@ -788,6 +796,7 @@ public class CommandPacket extends BasicPacketWithClientAddress implements
   }
 
   /* ********************** End of result-related methods **************** */
+  
   /**
    *
    * @return the summary
@@ -811,5 +820,5 @@ public class CommandPacket extends BasicPacketWithClientAddress implements
       }
     };
   }
-
+  
 }

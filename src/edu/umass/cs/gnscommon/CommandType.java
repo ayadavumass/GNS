@@ -734,89 +734,49 @@ public enum CommandType {
           new String[]{GNSProtocol.GUID.toString(), // the reader
             GNSProtocol.FIELDS.toString(),
             GNSProtocol.SIGNATURE.toString(),
-            GNSProtocol.SIGNATUREFULLMESSAGE.toString()}),
+            GNSProtocol.SIGNATUREFULLMESSAGE.toString(),}),
+  
+  
+  /**
+   * Select commands that also send a notification
+   */
+  SelectAndNotify(316, CommandCategory.SELECT, "edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commands.select.SelectAndNotify",
+         CommandResultType.MAP, false, false,
+         "Sends a notification to all guids that satisfy the select query."
+         + "For details see http://gns.name/wiki/index.php/Query_Syntax "
+         + "The return value is a JSONObject containing various statistics like "
+         + "total number of GUIDs to whom notifications were sent, total failed notification etc.",
+         new String[]{GNSProtocol.QUERY.toString(), GNSProtocol.SELECT_NOTIFICATION.toString()},
+         // optional parameters
+         new String[]{GNSProtocol.GUID.toString(), // the reader
+           GNSProtocol.FIELDS.toString(),
+           GNSProtocol.SIGNATURE.toString(),
+           GNSProtocol.SIGNATUREFULLMESSAGE.toString(),
+           }),
+ 
+  /**
+   * The command to request the status of notifications for 
+   * an earlier issued select request.
+   */
+  SelectNotificationStatus(317, CommandCategory.SELECT, 
+		"edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commands.select.SelectNotificationStatus",
+        CommandResultType.LIST, false, false,
+        " The command is used to request the status of notifications for an "
+        + "earlier issued select request by using the corresponding select notification handle. "
+        + "The return value is a JSONObject containing various statistics like "
+        + "total number of GUIDs to whom notifications were sent, total failed notification, "
+        + "total pending notifications  etc.",
+        new String[]{GNSProtocol.SELECT_NOTIFICATION_HANDLE.toString()},
+        // optional parameters
+        new String[]{GNSProtocol.GUID.toString(), // the reader
+          GNSProtocol.SIGNATURE.toString(),
+          GNSProtocol.SIGNATUREFULLMESSAGE.toString(),
+          }),
+  
   //
   // Select commands that maintain a group guid
   //
-
-  /**
-   *
-   */
-  SelectGroupLookupQuery(311, CommandCategory.SELECT, "edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commands.select.SelectGroupLookupQuery",
-          CommandResultType.LIST, false, false,
-          "Prototype functionality of a full-fledged Context Name Service. "
-          + "Returns all records for a group guid that was previously setup with SelectGroupSetupQuery. "
-          + "For details see http://gns.name/wiki/index.php/Query_Syntax "
-          + "Values are returned as a JSON array of guids.",
-          new String[]{GNSProtocol.ACCOUNT_GUID.toString()},
-          // optional parameters
-          new String[]{GNSProtocol.GUID.toString(), // the reader
-            GNSProtocol.SIGNATURE.toString(),
-            GNSProtocol.SIGNATUREFULLMESSAGE.toString()}),
-  /**
-   *
-   */
-  SelectGroupSetupQuery(312, CommandCategory.SELECT, "edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commands.select.SelectGroupSetupQuery",
-          CommandResultType.LIST, false, false,
-          "Prototype functionality of a full-fledged Context Name Service. "
-          + "Initializes a new group guid to automatically update and maintain all records that satisfy the query. "
-          + "For details see http://gns.name/wiki/index.php/Query_Syntax "
-          + "Values are returned as a JSON array of guids.",
-          new String[]{GNSProtocol.ACCOUNT_GUID.toString(),
-            GNSProtocol.QUERY.toString()},
-          // optional parameters
-          new String[]{GNSProtocol.GUID.toString(), // the reader
-            GNSProtocol.SIGNATURE.toString(),
-            GNSProtocol.SIGNATUREFULLMESSAGE.toString()}),
-  /**
-   *
-   */
-  SelectGroupSetupQueryWithGuid(313, CommandCategory.SELECT, "edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commands.select.SelectGroupSetupQueryWithGuid",
-          CommandResultType.LIST, false, false,
-          "Prototype functionality of a full-fledged Context Name Service. "
-          + "Initializes the given group guid to automatically update and maintain all records that satisfy the query. "
-          + "For details see http://gns.name/wiki/index.php/Query_Syntax "
-          + "Values are returned as a JSON array of guids.",
-          new String[]{GNSProtocol.QUERY.toString(),
-            GNSProtocol.ACCOUNT_GUID.toString()},
-          // optional parameters
-          new String[]{GNSProtocol.GUID.toString(), // the reader
-            GNSProtocol.SIGNATURE.toString(),
-            GNSProtocol.SIGNATUREFULLMESSAGE.toString()}),
-  /**
-   *
-   */
-  SelectGroupSetupQueryWithGuidAndInterval(314, CommandCategory.SELECT, "edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commands.select.SelectGroupSetupQueryWithGuidAndInterval",
-          CommandResultType.LIST, false, false,
-          "Prototype functionality of a full-fledged Context Name Service. "
-          + "Initializes the group guid to automatically update and maintain all records that satisfy the query. "
-          + "Interval is the minimum refresh interval of the query - lookups happening more quickly than this "
-          + "interval will retrieve a stale value.For details see http://gns.name/wiki/index.php/Query_Syntax"
-          + "Values are returned as a JSON array of guids.",
-          new String[]{GNSProtocol.ACCOUNT_GUID.toString(),
-            GNSProtocol.QUERY.toString(),
-            GNSProtocol.INTERVAL.toString()},
-          // optional parameters
-          new String[]{GNSProtocol.GUID.toString(), // the reader
-            GNSProtocol.SIGNATURE.toString(),
-            GNSProtocol.SIGNATUREFULLMESSAGE.toString()}),
-  /**
-   *
-   */
-  SelectGroupSetupQueryWithInterval(315, CommandCategory.SELECT, "edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commands.select.SelectGroupSetupQueryWithInterval",
-          CommandResultType.LIST, false, false,
-          "Prototype functionality of a full-fledged Context Name Service. "
-          + "Initializes a new group guid to automatically update and maintain all records that satisfy the query. "
-          + "Interval is the minimum refresh interval of the query - lookups happening more "
-          + "quickly than this interval will retrieve a stale value. "
-          + "For details see http://gns.name/wiki/index.php/Query_Syntax "
-          + "Values are returned as a JSON array of guids.",
-          new String[]{GNSProtocol.QUERY.toString(),
-            GNSProtocol.INTERVAL.toString()},
-          // optional parameters
-          new String[]{GNSProtocol.GUID.toString(), // the reader
-            GNSProtocol.SIGNATURE.toString(),
-            GNSProtocol.SIGNATUREFULLMESSAGE.toString()}),
+ 
   //
   // Account commands
   //
@@ -1847,20 +1807,17 @@ public enum CommandType {
     SetFieldNull.setChain(ReadUnsigned);
     //
     Select.setChain();
-    SelectGroupLookupQuery.setChain();
-    SelectGroupSetupQueryWithGuid.setChain();
-    SelectGroupSetupQueryWithGuidAndInterval.setChain();
-    SelectGroupSetupQueryWithInterval.setChain();
     SelectNear.setChain();
     SelectWithin.setChain();
     SelectQuery.setChain();
+    SelectAndNotify.setChain();
+    SelectNotificationStatus.setChain();
     //
     AddGuid.setChain(LookupGuid, ReplaceUserJSONUnsigned, ReadUnsigned); // what else?
     RemoveGuid.setChain(ReadUnsigned);
     RemoveAccount.setChain(ReadUnsigned);
     RemoveAccountWithPassword.setChain(ReadUnsigned);
     RemoveAccountSecured.setChain(ReadUnsigned);
-    SelectGroupSetupQuery.setChain(ReadUnsigned);
     VerifyAccount.setChain(ReplaceUserJSONUnsigned);
 
     AddAlias.setChain(ReadUnsigned, ReplaceUserJSONUnsigned);

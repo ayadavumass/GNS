@@ -97,6 +97,7 @@ public class CommandResponse {
 
 	}
 	
+	
 	/**
 	 * @return Default no error response.
 	 */

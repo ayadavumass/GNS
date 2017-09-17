@@ -549,10 +549,19 @@ public enum GNSProtocol {
   SANITY_CHECK_ERROR("+SANITY_CHECK_ERROR+"),
   
   /**
-   * The set of actives field in a command. This is mainly used to specify
-   * the initial set of actives while creating an account or a guid.
+   * The select notification key field in a command.
+   */
+  SELECT_NOTIFICATION("select_notification"),
+  
+  /** The set of actives field in a command. This is mainly used to specify
+   *  the initial set of actives while creating an account or a guid.
    */
   ACTIVES_SET("activesSet"),
+  
+  /**
+   * The key field for the select notification handle. 
+   */
+  SELECT_NOTIFICATION_HANDLE("select_notification_handle"),
   ;
 
   final String label;

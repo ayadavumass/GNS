@@ -797,7 +797,7 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
       GNSConfig
               .getLogger()
               .log(Level.FINE,
-                      "{0} set response {1} for requesting client {2} for request {3}",
+                      "{0} set response {1} 2 {2} for request {3}",
                       new Object[]{
                         this,
                         response.getSummary(),

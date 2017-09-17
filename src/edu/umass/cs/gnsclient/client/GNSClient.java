@@ -78,7 +78,7 @@ public class GNSClient {
 	protected AsyncClient asyncClient;
 	// local name server
 	private InetSocketAddress GNSProxy = null;
-
+	
 	protected String getLabel() {
 		return GNSClient.class.getSimpleName();
 	}
@@ -156,22 +156,24 @@ public class GNSClient {
 			return new HashSet<>(Arrays.asList(DEFAULT_LOCAL_RECONFIGURATOR));
 		}
 	}
-
+	
 	private GNSClient(Set<InetSocketAddress> reconfigurators)
 			throws IOException {
 		this(reconfigurators, false);
 	}
 	
 	private GNSClient(Set<InetSocketAddress> reconfigurators, boolean checkConnectivity)
-			throws IOException {
+			throws IOException 
+	{	
 		this.asyncClient = new AsyncClient(reconfigurators,
 				ReconfigurationConfig.getClientSSLMode(),
-				ReconfigurationConfig.getClientPortOffset(), checkConnectivity) {
+				ReconfigurationConfig.getClientPortOffset(), checkConnectivity) 
+		{
 			@Override
 			protected String getLabel() {
 				return GNSClient.this.getLabel();
 			}
-
+			
 			@Override
 			public Set<IntegerPacketType> getRequestTypes() {
 				return GNSClient.this.getRequestTypes();
@@ -225,6 +227,7 @@ public class GNSClient {
 				|| packet.getServiceName().equals(
 						Config.getGlobalString(RC.SPECIAL_NAME));
 	}
+	
 
 	/**
 	 * This method will force a connectivity check to at least one
@@ -276,7 +279,7 @@ public class GNSClient {
 			final Callback<Request, CommandPacket> callback) throws IOException {
 		ClientRequest request = packet
 				.setForceCoordinatedReads(isForceCoordinatedReads());
-
+		
 		if (isAnycast(packet)) {
 			return this.asyncClient.sendRequestAnycast(request, callback);
 		} else if (this.GNSProxy != null) {

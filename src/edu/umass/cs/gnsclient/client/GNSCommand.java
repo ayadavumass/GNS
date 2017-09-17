@@ -39,7 +39,9 @@ import edu.umass.cs.gnscommon.exceptions.client.ClientException;
 import edu.umass.cs.gnscommon.exceptions.client.EncryptionException;
 import edu.umass.cs.gnscommon.packets.AdminCommandPacket;
 import edu.umass.cs.gnscommon.packets.CommandPacket;
+import edu.umass.cs.gnscommon.packets.commandreply.SelectHandleInfo;
 import edu.umass.cs.gnscommon.utils.Base64;
+import edu.umass.cs.gnsserver.gnsapp.selectnotification.SelectNotification;
 import edu.umass.cs.utils.Util;
 
 /**
@@ -54,8 +56,9 @@ public class GNSCommand extends CommandPacket {
    *
    * @param command
    */
-  protected GNSCommand(JSONObject command) {
-    this(
+  protected GNSCommand(JSONObject command) 
+  {
+	  this(
             /**
              * Generate a random value here because it is not easy (or
              * worth trying) to guarantee non-conflicting IDs here. Conflicts will
@@ -70,10 +73,11 @@ public class GNSCommand extends CommandPacket {
    * @param id
    * @param command
    */
-  protected GNSCommand(long id, JSONObject command) {
-    super(id, command);
+  protected GNSCommand(long id, JSONObject command) 
+  {
+	  super(id, command);
   }
-
+  
   /**
    * Constructs a command of type {@code type} issued by the {@code querier}
    * using the variable length array {@code keysAndValues}. If {@code querier}
@@ -81,7 +85,7 @@ public class GNSCommand extends CommandPacket {
    * key. If {@code querier} is null, the command will succeed only if the
    * operation is open to all, which is normally true only for fields that are
    * readable by anyone.
-   *
+   * 
    * @param type
    * @param querier
    * The guid issuing this query.
@@ -91,17 +95,20 @@ public class GNSCommand extends CommandPacket {
    * @return A {@link CommandPacket} constructed using the supplied arguments.
    * @throws ClientException
    */
-  public static CommandPacket getCommand(CommandType type, GuidEntry querier,
-          Object... keysAndValues) throws ClientException {
-    JSONObject command = CommandUtils.createAndSignCommand(type, querier,
-            keysAndValues);
-    //System.out.println(command);
-    if (CommandPacket.getJSONCommandType(command).isMutualAuth()) {
-      return new AdminCommandPacket(randomLong(), command);
-    }
-    return new GNSCommand(command);
+  public static CommandPacket getCommand( 
+		  CommandType type, GuidEntry querier,
+          Object... keysAndValues) throws ClientException 
+  {
+	  JSONObject command = CommandUtils.createAndSignCommand(type, querier,
+	            keysAndValues);
+	  
+	  if (CommandPacket.getJSONCommandType(command).isMutualAuth()) 
+	  {
+		  return new AdminCommandPacket(randomLong(), command);
+	  }
+	  return new GNSCommand(command);  
   }
-
+  
   /**
    * @param type
    * @param keysAndValues
@@ -119,7 +126,7 @@ public class GNSCommand extends CommandPacket {
    * awaiting a response in the async client unless ENABLE_ID_TRANSFORM is
    * true.
    */
-  private static long randomLong() {
+  protected static long randomLong() {
     return (long) (Math.random() * Long.MAX_VALUE);
   }
 
@@ -1711,6 +1718,157 @@ public class GNSCommand extends CommandPacket {
   }
 
   // *********************** SELECT *********************** 
+  
+  /**
+   * Sends {@code notification} to all guid records that match {@code query}. 
+   *
+   * The query syntax is described here:
+   * https://gns.name/wiki/index.php?title=Query_Syntax
+   *
+   * There are some predefined field names such as
+   * {@link edu.umass.cs.gnscommon.GNSProtocol#LOCATION_FIELD_NAME} and
+   * {@link edu.umass.cs.gnscommon.GNSProtocol#IPADDRESS_FIELD_NAME} that are indexed by
+   * default.
+   *
+   * There are links in the wiki page above to find the exact syntax for
+   * querying spatial coordinates.
+   * 
+   * The GUIDs that have attributes queried in the query as world-readable can satisfy the query
+   * and will be notified. 
+   * 
+   * The command returns notification stats, which is a 
+   * JSONObject representation of {@link NotificationStatsToIssuer}
+   *
+   * @param query
+   * The select query being issued.
+   * @param fields
+   * The GUID fields that a user wants to be passed to the notification sending 
+   * mechanism, implemented using 
+   * {@link edu.umass.cs.gnsserver.gnsapp.selectnotification.SelectResponseProcessor}.
+   * For a GUID that satisfies the query, the field-value pairs are passed as a JSONObject in 
+   * {@link edu.umass.cs.gnsserver.gnsapp.selectnotification.SelectGUIDInfo}
+   * 
+   * @param notification
+   * The notification to send to GUIDs that satisfy query.
+   * @return CommandPacket
+   * CommandPacket contains a JSONObject representation of {@link NotificationStatsToIssuer}.
+   *  
+   * @throws ClientException
+   */
+  public static final CommandPacket selectAndNotify(String query, List<String> fields, 
+		  												SelectNotification<?> notification)
+          throws ClientException {
+    return getCommand(CommandType.SelectAndNotify, GNSProtocol.QUERY.toString(), query,
+    			GNSProtocol.SELECT_NOTIFICATION.toString(), notification.toString());
+  }
+  
+  /**
+   * Sends {@code notification} to all guid records that match {@code query}. 
+   *
+   * The query syntax is described here:
+   * https://gns.name/wiki/index.php?title=Query_Syntax
+   *
+   * There are some predefined field names such as
+   * {@link edu.umass.cs.gnscommon.GNSProtocol#LOCATION_FIELD_NAME} and
+   * {@link edu.umass.cs.gnscommon.GNSProtocol#IPADDRESS_FIELD_NAME} that are indexed by
+   * default.
+   *
+   * There are links in the wiki page above to find the exact syntax for
+   * querying spatial coordinates.
+   * 
+   * The GUIDs whose read ACLs for the attributes in the query include
+   * the issuer can satisfy the query and will be notified. 
+   * 
+   * The command returns notification stats, which is a 
+   * JSONObject representation of {@link NotificationStatsToIssuer}
+   *
+   * @param issuer
+   * The GuidEntry of the issuer. 
+   * @param query
+   * The select query being issued.
+   * @param fields
+   * The GUID fields that a user wants to be passed to the notification sending 
+   * mechanism, implemented using 
+   * {@link edu.umass.cs.gnsserver.gnsapp.selectnotification.SelectResponseProcessor}.
+   * For a GUID that satisfies the query, the field-value pairs are passed as a JSONObject in 
+   * {@link edu.umass.cs.gnsserver.gnsapp.selectnotification.SelectGUIDInfo}
+   * 
+   * @param notification
+   * The notification to send to GUIDs that satisfy query.
+   * @return CommandPacket
+   * CommandPacket contains a JSONObject representation of {@link NotificationStatsToIssuer}.
+   * @throws ClientException
+   */
+  public static final CommandPacket selectAndNotify(GuidEntry issuer, String query, 
+		  List<String> fields, SelectNotification<?> notification)
+          throws ClientException 
+  {
+	  return getCommand(CommandType.SelectAndNotify, 
+			  issuer, 
+			  GNSProtocol.GUID.toString(), issuer.getGuid(),
+			  GNSProtocol.QUERY.toString(), query,
+    		  GNSProtocol.SELECT_NOTIFICATION.toString(), notification.toString());
+  }
+  
+  /**
+   * The command to request the select notification status for an earlier 
+   * issued selectAndNotify request. The command takes as input the 
+   * {@link SelectHandleInfo}, which a caller gets in reply after issuing a
+   * selectAndNotify request. The command returns notification stats, which is a 
+   * JSONObject representation of {@link NotificationStatsToIssuer}.
+   * 
+   * @param selectHandle
+   * @return 
+   * CommandPacket contains a JSONObject representation of {@link NotificationStatsToIssuer}.
+   * @throws ClientException
+   */
+  public static final CommandPacket selectNotificationStatus(SelectHandleInfo selectHandle) 
+  										throws ClientException
+  {
+	  try
+	  {
+		  return getCommand(CommandType.SelectNotificationStatus,  null,
+				  GNSProtocol.SELECT_NOTIFICATION_HANDLE.toString(), 
+				  selectHandle.toJSONArray());
+	  } catch (JSONException e) 
+	  {
+		  throw new ClientException(e);
+	  }
+  }
+  
+  
+  /**
+   * The command to request the select notification status for an earlier 
+   * issued selectAndNotify request. The command takes as input the 
+   * {@link SelectHandleInfo}, which a caller gets in reply after issuing a
+   * selectAndNotify request. 
+   * 
+   * If the command is successful, then the command returns notification stats, which is a 
+   * JSONObject representation of {@link NotificationStatsToIssuer}.
+   * 
+   * @param selectHandle
+   * @return 
+   * CommandPacket contains a JSONObject representation of {@link NotificationStatsToIssuer}.
+   * @throws ClientException
+   */
+  public static final CommandPacket selectNotificationStatus
+  			(GuidEntry issuer, SelectHandleInfo selectHandle) throws ClientException
+  {
+	  try
+	  {
+		  return getCommand(
+				  CommandType.SelectNotificationStatus, 
+				  issuer, 
+				  GNSProtocol.GUID.toString(), issuer.getGuid(),
+				  GNSProtocol.SELECT_NOTIFICATION_HANDLE.toString(), 
+				  selectHandle.toJSONArray()
+				  );
+	  } catch (JSONException e) 
+	  {
+		  throw new ClientException(e);
+	  }
+  }
+  
   /**
    * Selects all guid records that match {@code query}. The result type of the
    * execution result of this query is {@link CommandResultType#LIST}.
@@ -1733,8 +1891,9 @@ public class GNSCommand extends CommandPacket {
    * @throws ClientException
    */
   public static final CommandPacket selectQuery(String query)
-          throws ClientException {
-    return getCommand(CommandType.SelectQuery, GNSProtocol.QUERY.toString(), query);
+          throws ClientException 
+  {
+	  return getCommand(CommandType.SelectQuery, GNSProtocol.QUERY.toString(), query);
   }
 
   /**
@@ -1830,105 +1989,6 @@ public class GNSCommand extends CommandPacket {
             GNSProtocol.QUERY.toString(), query,
             GNSProtocol.FIELDS.toString(), fields == null ? GNSProtocol.ENTIRE_RECORD : fields
     );
-  }
-
-  /**
-   * Set up a context-aware group guid corresponding to the query. Requires
-   * {@code accountGuid} and {@code publicKey} that are used to set up the new
-   * guid or look it up if it already exists. The result type of the execution
-   * result of this query is {@link CommandResultType#LIST}.
-   * Requires all fields accessed to be world readable.
-   *
-   * The query syntax is described here:
-   * https://gns.name/wiki/index.php?title=Query_Syntax
-   *
-   * @param accountGUID
-   * The guid issuing the query.
-   * @param publicKey
-   * @param query
-   * The select query.
-   * @param interval
-   * The refresh interval in seconds (default 60).
-   * @return CommandPacket
-   * @throws ClientException
-   */
-  public static final CommandPacket selectSetupGroupQuery(
-          GuidEntry accountGUID, String publicKey, String query, int interval)
-          throws ClientException {
-    return getCommand(CommandType.SelectGroupSetupQuery,
-            GNSProtocol.ACCOUNT_GUID.toString(), accountGUID.getGuid(),
-            GNSProtocol.PUBLIC_KEY.toString(), publicKey,
-            GNSProtocol.QUERY.toString(), query,
-            GNSProtocol.INTERVAL.toString(), interval);
-  }
-
-  /**
-   * Set up a context-aware group guid corresponding to the query. Requires
-   * {@code accountGuid} and {@code publicKey} that are used to set up the new
-   * guid or look it up if it already exists. The result type of the execution
-   * result of this query is {@link CommandResultType#LIST}.
-   *
-   * The query syntax is described here:
-   * https://gns.name/wiki/index.php?title=Query_Syntax
-   *
-   * @param reader
-   * @param accountGUID
-   * The guid issuing the query.
-   * @param publicKey
-   * @param query
-   * The select query.
-   * @param interval
-   * The refresh interval in seconds (default 60).
-   * @return CommandPacket
-   * @throws ClientException
-   */
-  public static final CommandPacket selectSetupGroupQuery(GuidEntry reader,
-          GuidEntry accountGUID, String publicKey, String query, int interval)
-          throws ClientException {
-    return getCommand(CommandType.SelectGroupSetupQuery, reader,
-            GNSProtocol.GUID.toString(), reader.getGuid(),
-            GNSProtocol.ACCOUNT_GUID.toString(), accountGUID.getGuid(),
-            GNSProtocol.PUBLIC_KEY.toString(), publicKey,
-            GNSProtocol.QUERY.toString(), query,
-            GNSProtocol.INTERVAL.toString(), interval);
-  }
-
-  /**
-   * Looks up the membership of a context-aware group guid created using a
-   * query. The results may be stale if the queries that happen more quickly
-   * than the refresh interval given during setup. The result type of the
-   * execution result of this query is {@link CommandResultType#LIST}.
-   * Requires all fields accessed to be world readable.
-   *
-   * @param groupGUID
-   * The group guid being queried.
-   * @return CommandPacket
-   * @throws ClientException
-   */
-  public static final CommandPacket selectLookupGroupQuery(String groupGUID)
-          throws ClientException {
-    return getCommand(CommandType.SelectGroupLookupQuery,
-            GNSProtocol.ACCOUNT_GUID.toString(), groupGUID);
-  }
-
-  /**
-   * Looks up the membership of a context-aware group guid created using a
-   * query. The results may be stale if the queries that happen more quickly
-   * than the refresh interval given during setup. The result type of the
-   * execution result of this query is {@link CommandResultType#LIST}.
-   *
-   * @param reader
-   * @param groupGUID
-   * The group guid being queried.
-   * @return CommandPacket
-   * @throws ClientException
-   */
-  public static final CommandPacket selectLookupGroupQuery(GuidEntry reader,
-          String groupGUID)
-          throws ClientException {
-    return getCommand(CommandType.SelectGroupLookupQuery, reader,
-            GNSProtocol.GUID.toString(), reader.getGuid(),
-            GNSProtocol.ACCOUNT_GUID.toString(), groupGUID);
   }
 
   /**
@@ -2805,7 +2865,7 @@ public static final CommandPacket selectNear(GuidEntry reader, String field, JSO
             accessType, GNSProtocol.GUID.toString(), guid.getGuid(), GNSProtocol.FIELD.toString(), field, GNSProtocol.ACCESSER.toString(),
             accesserGuid == null ? GNSProtocol.ALL_GUIDS.toString() : accesserGuid);
   }
-
+  
   private static CommandPacket aclGet(String accessType,
           GuidEntry guid, String field, String readerGuid)
           throws ClientException {
@@ -2813,5 +2873,4 @@ public static final CommandPacket selectNear(GuidEntry reader, String field, JSO
             GNSProtocol.GUID.toString(), guid.getGuid(), GNSProtocol.FIELD.toString(), field, GNSProtocol.READER.toString(),
             readerGuid == null ? GNSProtocol.ALL_GUIDS.toString() : readerGuid);
   }
-
 }

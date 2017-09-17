@@ -19,14 +19,11 @@
  */
 package edu.umass.cs.gnsclient.client.deprecated.examples;
 
-import edu.umass.cs.gigapaxos.interfaces.Request;
 import edu.umass.cs.gnsclient.client.GNSClient;
 import edu.umass.cs.gnsclient.client.util.GuidEntry;
 import edu.umass.cs.gnsclient.client.util.GuidUtils;
 import edu.umass.cs.gnscommon.exceptions.client.ClientException;
 import edu.umass.cs.gnscommon.packets.CommandPacket;
-import edu.umass.cs.gnscommon.packets.ResponsePacket;
-import edu.umass.cs.gnscommon.utils.ThreadUtils;
 import static edu.umass.cs.gnsclient.client.CommandUtils.*;
 
 import java.io.IOException;
@@ -41,7 +38,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import edu.umass.cs.gnsclient.client.GNSClientCommands;
 import edu.umass.cs.gnscommon.CommandType;
 
-import edu.umass.cs.gnscommon.ResponseCode;
 import org.json.JSONObject;
 import edu.umass.cs.gnscommon.GNSProtocol;
 
@@ -141,22 +137,24 @@ public class ClientAsynchExample {
       }
       // Actually send out the packet
       //client.sendCommandPacketAsynch(commandPacket);
-      ThreadUtils.sleep(100); // if you generate them too fast you'll clog things up 
+      //ThreadUtils.sleep(100); // if you generate them too fast you'll clog things up 
     }
   }
 
   // Not saying this is the best way to handle responses, but it works for this example.
   private static void lookForResponses(GNSClientCommands client, Set<Long> pendingIds) {
-    while (true) {
+	// arun: disabled
+      if (true) {
+        throw new RuntimeException("disabled");
+      }
+      
+    /*while (true) {
       ThreadUtils.sleep(10);
       // Loop through all the ones we've sent
       for (Long id : pendingIds) {
         if (true //client.isAsynchResponseReceived(id)
                 ) {
-          // arun: disabled
-          if (true) {
-            throw new RuntimeException("disabled");
-          }
+          
           pendingIds.remove(id);
           Request removed = null;//client.removeAsynchResponse(id);
           if (removed instanceof ResponsePacket) {
@@ -169,9 +167,12 @@ public class ClientAsynchExample {
             //                  + "Latency is " + commandResult.getClientLatency()
             );
           }
+          
+          
         }
       }
-    }
+    }*/
+    
   }
 
 }

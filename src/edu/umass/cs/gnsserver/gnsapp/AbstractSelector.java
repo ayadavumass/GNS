@@ -28,7 +28,7 @@ public abstract class AbstractSelector {
 
 	protected static final Logger LOGGER = Logger.getLogger(Select.class
 			.getName());
-
+	
 	/**
 	 * Handles select request from a server.
 	 * 
