@@ -28,6 +28,7 @@ import edu.umass.cs.gnscommon.exceptions.client.ClientException;
 import edu.umass.cs.gnscommon.exceptions.client.DuplicateNameException;
 import edu.umass.cs.gnscommon.exceptions.client.EncryptionException;
 import java.io.IOException;
+import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
 import java.util.logging.Level;
 
@@ -96,7 +97,7 @@ public class GuidUtils {
    */
   private static GuidEntry generateAndSaveKeyPairForGuidAlias(String gnsInstance,
           String alias) throws NoSuchAlgorithmException, EncryptionException {
-    return KeyPairUtils.generateAndSaveKeyPair(gnsInstance, alias);
+	  return KeyPairUtils.generateAndSaveKeyPair(gnsInstance, alias);
   }
 
   /**
@@ -448,7 +449,24 @@ public class GuidUtils {
           throws NoSuchAlgorithmException, EncryptionException {
     return generateAndSaveKeyPairForGuidAlias(hostport, alias);
   }
-
+  
+  /**
+   * Creates a GuidEntry using {@code alias} and {@code userSuppliedKeyPair} and stores it in 
+   * the local key database. This method will overwrite existing entries if any for alias.
+   * 
+   * @param hostport
+   * @param alias
+   * @param userSuppliedKeyPair
+   * @return {@link GuidEntry} created for {@code alias} and {@code userSuppliedKeyPair}.
+   * @throws EncryptionException 
+   */
+  public static GuidEntry createAndSaveGuidEntryUsingKeyPair(String hostport, String alias, KeyPair userSuppliedKeyPair) throws EncryptionException 
+  {
+	  GuidEntry guidEntry =  KeyPairUtils.generateGuidEntryUsingKeyPair(hostport, alias, userSuppliedKeyPair);
+	  KeyPairUtils.saveKeyPair(hostport, alias, guidEntry.getGuid(), userSuppliedKeyPair);
+	  return guidEntry;
+  }
+  
   /**
    * Finds a GuidEntry which associated with an alias or creates and stores it in the local preferences.
    *

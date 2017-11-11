@@ -81,8 +81,11 @@ public class RegisterAccount extends AbstractCommand {
     String password = json.getString(GNSProtocol.PASSWORD.toString());
     String signature = json.getString(GNSProtocol.SIGNATURE.toString());
     String message = json.getString(GNSProtocol.SIGNATUREFULLMESSAGE.toString());
-
-    String guid = SharedGuidUtils.createGuidStringFromBase64PublicKey(publicKey);
+    
+    // String guid = SharedGuidUtils.createGuidStringFromBase64PublicKey(publicKey);
+    // TODO: We can add a check here that the GUID in the command is the hash of the public key.
+    // But, that will not work in the case when we create non self-certifying GUIDs.
+    String guid = json.getString(GNSProtocol.GUID.toString());
     if (!NSAccessSupport.verifySignature(publicKey, signature, message)) {
       return new CommandResponse(ResponseCode.SIGNATURE_ERROR, GNSProtocol.BAD_RESPONSE.toString() + " " + GNSProtocol.BAD_SIGNATURE.toString());
     }

@@ -26,6 +26,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -151,7 +152,31 @@ public class KeyPairUtils {
     saveKeyPair(gnsName, username, guid, keyPair);
     return guidEntry;
   }
-
+  
+  /**
+   * Generates a {@code GuidEntry} using the supplied {@code alias} and {@code keyPair}.
+   * 
+   * @param gnsName the name of the GNS instance (e.g. "server.gns.name:8080")
+   * @param alias for the account.
+   * @param keyPair to use while creating the account guid.
+   * @return
+   * @throws EncryptionException 
+   */
+  public static GuidEntry generateGuidEntryUsingKeyPair(String gnsName, String alias, KeyPair keyPair) throws EncryptionException
+  {
+	  // Using the the default charset for encoding.
+	  byte[] publicKeyBytes = keyPair.getPublic().getEncoded();
+	  byte[] aliasBytes = alias.getBytes();
+	  byte[] concatenation = new byte[aliasBytes.length+publicKeyBytes.length];
+	  
+	  System.arraycopy(publicKeyBytes, 0, concatenation, 0, publicKeyBytes.length);
+	  System.arraycopy(aliasBytes, 0, concatenation, publicKeyBytes.length, aliasBytes.length);
+	  
+	  String guid = SharedGuidUtils.createGuidStringFromPublicKey(concatenation);
+	  GuidEntry guidEntry = new GuidEntry(gnsName, guid, keyPair.getPublic(), keyPair.getPrivate());
+	  return guidEntry;
+  }
+  
   /**
    * Saves the public/private key pair to preferences for the given user.
    *
@@ -165,13 +190,13 @@ public class KeyPairUtils {
       KeyPairUtilsAndroid.saveKeyPairToPreferences(gnsName, username, guid, keyPair);
       return;
     }
-
+    
     createSingleton();
-
+    
     String publicString =  DatatypeConverter.printHexBinary(keyPair.getPublic().getEncoded());
     String privateString =  DatatypeConverter.printHexBinary(keyPair.getPrivate().getEncoded());
-    //String publicString = ByteUtils.toHex(keyPair.getPublic().getEncoded());
-    //String privateString = ByteUtils.toHex(keyPair.getPrivate().getEncoded());
+    // String publicString = ByteUtils.toHex(keyPair.getPublic().getEncoded());
+    // String privateString = ByteUtils.toHex(keyPair.getPrivate().getEncoded());
     keyStorageObj.put(generateKey(gnsName, username, PUBLIC), publicString);
     keyStorageObj.put(generateKey(gnsName, username, PRIVATE), privateString);
     keyStorageObj.put(generateKey(gnsName, username, GUID), guid);

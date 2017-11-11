@@ -17,6 +17,7 @@
 package edu.umass.cs.gnsclient.client;
 
 import java.io.IOException;
+import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -529,7 +530,41 @@ public class GNSCommand extends CommandPacket {
     GuidEntry guidEntry = lookupOrCreateGuidEntry(GNSClient.getGNSProvider(), alias);
     return accountGuidCreateInternal(alias, password, CommandType.RegisterAccount, guidEntry);
   }
-
+  
+  /**
+   * Registers a new account guid with the name {@code alias}. The account guid is created
+   * using the supplied {@code keyPair}. In this case, the created account guid doesn't satisfy
+   * the self certification property, i.e., the guid is not the hash of the public-key. Actually, it
+   * is hash of the public-key+alias. 
+   * 
+   * @param alias
+   * Human readable alias for the account guid being created, e.g., an email address
+   * @param keyPair 
+   * A public-private key-pair to use for creating the accoutn guid. 
+   * @return
+   * 
+   * @throws NoSuchAlgorithmException 
+   * @throws ClientException 
+   */
+  //Suppressing GNSProvider warning.
+  @SuppressWarnings("deprecation")
+  public static final CommandPacket createAccountUsingKeyPair(String alias, KeyPair keyPair) throws ClientException, NoSuchAlgorithmException
+  {
+	  GuidEntry guidEntry = GuidUtils.lookupGuidEntryFromDatabase(GNSClient.getGNSProvider(), alias);
+	  /*
+	   * Don't recreate pair if one already exists. Otherwise you can 
+	   * not get out of the funk where the account creation timed out but 
+	   * wasn't rolled back fully at the server. Re-using
+	   * the same guid will at least pass verification as opposed to 
+	   * incurring an GNSProtocol.ACTIVE_REPLICA_EXCEPTION.toString() for a new (non-existent) guid.
+	   */
+	  if (guidEntry == null) 
+	  {
+		  guidEntry = GuidUtils.createAndSaveGuidEntryUsingKeyPair(GNSClient.getGNSProvider(), alias, keyPair);
+	  }
+	  return accountGuidCreateInternal(alias, null, CommandType.RegisterAccount, guidEntry);
+  }
+  
   /**
    * Same as {@link #createAccount(String, String)} but with no
    * password.
@@ -550,7 +585,7 @@ public class GNSCommand extends CommandPacket {
     return accountGuidCreateInternal(alias, null,
             CommandType.RegisterAccount, guidEntry);
   }
-
+  
   /**
    * Register a new account guid with the name {@code alias} and a password
    * {@code password}. Executing this query generates a new guid and a public
@@ -2562,6 +2597,7 @@ public class GNSCommand extends CommandPacket {
           throws ClientException, NoSuchAlgorithmException {
     return getCommand(commandType,
             guidEntry, GNSProtocol.NAME.toString(), alias,
+            GNSProtocol.GUID.toString(), guidEntry.getGuid(),
             GNSProtocol.PUBLIC_KEY.toString(),
             KeyPairUtils.publicKeyToBase64ForGuid(guidEntry),
             GNSProtocol.PASSWORD.toString(),
