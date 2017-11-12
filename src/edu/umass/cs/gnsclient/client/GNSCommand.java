@@ -18,6 +18,7 @@ package edu.umass.cs.gnsclient.client;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -584,7 +585,56 @@ public class GNSCommand extends CommandPacket {
           NoSuchAlgorithmException {
 	  return createAccount(alias, null, null);
   }
-
+  
+  /**
+   * Register a new account guid with the name {@code alias} and a password
+   * {@code password} using the user supplied {@code keyPair}. The account guid created 
+   * by this command is not self-certifying. The account guid is the hash of the public key+alias.
+   * {@code password} can be used to retrieve account information if the client loses the private key 
+   * corresponding to the account guid. The new account guid is created with the provided {@code activesSet}
+   * set of actives. The created account {@code GuiEntry} is stored locally if {@code storeGuidEntryLocally}.
+   * If {@code storeGuidEntryLocally} is false then no {@code GuidEntry} is stored locally, but it can 
+   * be computed on-fly using {@link GuidUtils#getGuidEntryFromAliasAndKeyPair(String, String, KeyPair)}.
+   *  
+   *
+   * @param alias
+   * Human readable alias for the account guid being created, e.g.,
+   * an email address
+   * @param password
+   * @param activesSet 
+   * The set of actives for the account guid. The socket address for an active
+   * should be based on the server-server port for that active, which is also specified 
+   * in the gigapaxosConfig file.
+   * A null means that the account guid will be created using the default policy.
+   * @param keyPair The keyPair corresponding to the account guid. 
+   * @param storeGuidEntryLocally, if true then the created account guid entry is stored locally. 
+   * 
+   * @return CommandPacket
+   * @throws ClientException
+   * @throws java.io.IOException
+   * @throws java.security.NoSuchAlgorithmException
+   */
+  //FIXME: The name this of these violates the NOUNVERB naming convention adopted
+  // almost everywhere else in here.
+  public static final CommandPacket createAccountUsingKeyPair(String alias, String password, 
+		  Set<InetSocketAddress> activesSet, KeyPair keyPair, boolean storeGuidEntryLocally)
+          		  	throws ClientException, IOException, NoSuchAlgorithmException 
+  {
+	  //GuidEntry guidEntry = lookupOrCreateGuidEntry(GNSClient.getGNSProvider(), alias);
+	  //return accountGuidCreateInternal(alias, password, CommandType.RegisterAccount, guidEntry, activesSet);
+	  String gnsProvider = GNSClient.getGNSProvider();
+	  
+	  GuidEntry guidEntry = GuidUtils.lookupGuidEntryFromDatabase(gnsProvider, alias);
+	  if (guidEntry == null) 
+	  {
+		  guidEntry = GuidUtils.getGuidEntryFromAliasAndKeyPair(gnsProvider, alias, keyPair);
+		  if(storeGuidEntryLocally)
+			  KeyPairUtils.saveKeyPair(gnsProvider, alias, guidEntry.getGuid(), keyPair);
+	  }
+	  return accountGuidCreateInternal(alias, password, CommandType.RegisterAccount, guidEntry, activesSet);
+  }
+  
+  
   /**
    * Register a new account guid with the name {@code alias} and a password
    * {@code password}. Executing this query generates a new guid and a public
@@ -2916,6 +2966,7 @@ public static final CommandPacket selectNear(GuidEntry reader, String field, JSO
 		  try {
 			  return getCommand(commandType,
 			            guidEntry, GNSProtocol.NAME.toString(), alias,
+			            GNSProtocol.GUID.toString(), guidEntry.getGuid(),
 			            GNSProtocol.PUBLIC_KEY.toString(),
 			            KeyPairUtils.publicKeyToBase64ForGuid(guidEntry),
 			            GNSProtocol.PASSWORD.toString(),
@@ -2929,6 +2980,7 @@ public static final CommandPacket selectNear(GuidEntry reader, String field, JSO
 	  {
 		  return getCommand(commandType,
 				  guidEntry, GNSProtocol.NAME.toString(), alias,
+				  GNSProtocol.GUID.toString(), guidEntry.getGuid(),
 				  GNSProtocol.PUBLIC_KEY.toString(),
 				  KeyPairUtils.publicKeyToBase64ForGuid(guidEntry),
 				  GNSProtocol.PASSWORD.toString(),

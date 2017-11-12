@@ -24,10 +24,12 @@ import edu.umass.cs.gnsclient.client.GNSClientCommands;
 import edu.umass.cs.gnsclient.client.GNSClientConfig;
 import edu.umass.cs.gnsclient.client.GNSCommand;
 import edu.umass.cs.gnsclient.client.http.HttpClient;
+import edu.umass.cs.gnscommon.SharedGuidUtils;
 import edu.umass.cs.gnscommon.exceptions.client.ClientException;
 import edu.umass.cs.gnscommon.exceptions.client.DuplicateNameException;
 import edu.umass.cs.gnscommon.exceptions.client.EncryptionException;
 import java.io.IOException;
+import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
 import java.util.logging.Level;
 
@@ -466,5 +468,33 @@ public class GuidUtils {
     } else {
       return createAndSaveGuidEntry(alias, gnsInstance);
     }
+  }
+  
+  /**
+   * Generates a {@code GuidEntry} using {@code alias} and {@code keyPair}. Basically, the guid in the generated
+   * {@code GuidEntry} is the hash(keyPair.publicKey + alias). This function can be used to generate 
+   * a {@code GuidEntry} on-fly when a user doesn't want to store the guid entries in the local database.
+   * 
+   * @param gnsInstance
+   * @param alias
+   * @param keyPair
+   * @return The generated guid entry.
+   * @throws EncryptionException
+   */
+  public static GuidEntry getGuidEntryFromAliasAndKeyPair(String gnsInstance, String alias, KeyPair keyPair) throws EncryptionException
+  {
+	  byte[] publicKeyBytes = keyPair.getPublic().getEncoded();
+	  byte[] aliasBytes = alias.getBytes();
+	  
+	  byte[] concatenation = new byte[aliasBytes.length+publicKeyBytes.length];
+	  
+	  System.arraycopy(publicKeyBytes, 0, concatenation, 0, publicKeyBytes.length);
+	  System.arraycopy(aliasBytes, 0, concatenation, publicKeyBytes.length, aliasBytes.length);
+	  
+	  String guid = SharedGuidUtils.createGuidStringFromPublicKey(concatenation);
+	  
+	  GuidEntry guidEntry = new GuidEntry(gnsInstance, guid, keyPair.getPublic(), keyPair.getPrivate());
+	  
+	  return guidEntry;
   }
 }
