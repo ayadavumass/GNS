@@ -29,5 +29,6 @@ public class NonSelfCertifyingGUIDsTest
 			System.out.println("i = "+i+"; alias = "+guidEntry.getEntityName()
 			+"; GUID = "+guidEntry.getGuid()+" ; public key="+guidEntry.getPublicKeyString());
 		}
+		gnsClient.close();
 	}
 }
