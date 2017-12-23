@@ -54,7 +54,7 @@ public class NonSelfCertifyingGUIDsTest
 				gnsClient.execute(GNSCommand.update(guidEntry, json));
 				JSONObject resultJSON = gnsClient.execute(GNSCommand.read(guidEntry)).getResultJSONObject();
 				System.out.println("original json "+json.toString());
-				System.out.println("original json "+resultJSON.toString());
+				System.out.println("GNS JSON  "+resultJSON.toString());
 				
 				assert(resultJSON.toString().equals(json.toString()));
 			} catch (JSONException e) 
@@ -75,6 +75,8 @@ public class NonSelfCertifyingGUIDsTest
 				json.put("KeyString1", "ValueString1");
 				gnsClient.execute(GNSCommand.update(guidEntry, json));
 				JSONObject resultJSON = gnsClient.execute(GNSCommand.read(guidEntry)).getResultJSONObject();
+				System.out.println("original json "+json.toString());
+				System.out.println("GNS JSON  "+resultJSON.toString());
 				assert(resultJSON.toString().equals(json.toString()));
 			} catch (JSONException e) 
 			{
