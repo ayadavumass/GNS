@@ -47,20 +47,11 @@ public class NonSelfCertifyingGUIDsTest
 		{
 			String alias = ALIAS_PREFIX+i+ALIAS_SUFFIX;
 			GuidEntry guidEntry = GuidUtils.lookupGuidEntryFromDatabase(gnsClient, alias);
-			JSONObject json = new JSONObject();
-			try 
-			{
-				json.put("KeyString", "ValueString");
-				gnsClient.execute(GNSCommand.update(guidEntry, json));
-				JSONObject resultJSON = gnsClient.execute(GNSCommand.read(guidEntry)).getResultJSONObject();
-				System.out.println("original json "+json.toString());
-				System.out.println("GNS JSON  "+resultJSON.toString());
+			
+			gnsClient.execute(GNSCommand.fieldUpdate(guidEntry, "MyField", "MyValue"));
+			String valueString = gnsClient.execute(GNSCommand.fieldRead(guidEntry, "MyField")).getResultString();
 				
-				assert(resultJSON.toString().equals(json.toString()));
-			} catch (JSONException e) 
-			{
-				e.printStackTrace();
-			}
+			assert(valueString.equals("MyValue"));
 		}
 		
 		// Performing write and read operations by creating GuidEntries using alias and key-value pair.
@@ -69,19 +60,9 @@ public class NonSelfCertifyingGUIDsTest
 			String alias = ALIAS_PREFIX+i+ALIAS_SUFFIX;
 			@SuppressWarnings("deprecation")
 			GuidEntry guidEntry = GuidUtils.getGuidEntryFromAliasAndKeyPair(gnsClient.getGNSProvider(), alias, keyPair);
-			JSONObject json = new JSONObject();
-			try 
-			{
-				json.put("KeyString1", "ValueString1");
-				gnsClient.execute(GNSCommand.update(guidEntry, json));
-				JSONObject resultJSON = gnsClient.execute(GNSCommand.read(guidEntry)).getResultJSONObject();
-				System.out.println("original json "+json.toString());
-				System.out.println("GNS JSON  "+resultJSON.toString());
-				assert(resultJSON.toString().equals(json.toString()));
-			} catch (JSONException e) 
-			{
-				e.printStackTrace();
-			}
+			gnsClient.execute(GNSCommand.fieldUpdate(guidEntry, "KeyString1", "ValueString1"));
+			String valueString = gnsClient.execute(GNSCommand.fieldRead(guidEntry, "KeyString1")).getResultString();
+			assert(valueString.toString().equals("ValueString1"));
 		}
 		
 		gnsClient.close();
