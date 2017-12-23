@@ -7,9 +7,6 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Map;
 import java.util.Random;
 
-import org.json.JSONException;
-import org.json.JSONObject;
-
 import edu.umass.cs.gnsclient.client.GNSClient;
 import edu.umass.cs.gnsclient.client.GNSCommand;
 import edu.umass.cs.gnsclient.client.util.GuidEntry;
@@ -33,6 +30,7 @@ public class NonSelfCertifyingGUIDsTest
 		KeyPair keyPair = KeyPairGenerator.getInstance(GNSProtocol.RSA_ALGORITHM.toString()).generateKeyPair();
 		
 		// Creating GUIDs using a single key value pair.
+		System.out.println("Creating GUIDs using a single key value pair.");
 		for(int i=0;i<numGuids; i++)
 		{
 			String alias = ALIAS_PREFIX+i+ALIAS_SUFFIX;
@@ -41,21 +39,22 @@ public class NonSelfCertifyingGUIDsTest
 			System.out.println("i = "+i+"; alias = "+guidEntry.getEntityName()
 			+"; GUID = "+guidEntry.getGuid()+" ; public key="+guidEntry.getPublicKeyString());
 		}
-		
+		System.out.println("Completed successfully");
 		
 		// Performing write and read operations by reading GuidEntries from the local clientKeyDB
+		System.out.println("Performing write and read operations by reading GuidEntries from the local clientKeyDB.");
 		for(int i=0;i<numGuids; i++)
 		{
 			String alias = ALIAS_PREFIX+i+ALIAS_SUFFIX;
 			GuidEntry guidEntry = GuidUtils.lookupGuidEntryFromDatabase(gnsClient, alias);
-			
 			gnsClient.execute(GNSCommand.fieldUpdate(guidEntry, "MyField", "MyValue"));
 			Map<String, ?> valMap = gnsClient.execute(GNSCommand.fieldRead(guidEntry, "MyField")).getResultMap();
-			System.out.println("valueString="+valMap.get("MyField"));
 			assert(valMap.get("MyField").equals("MyValue"));
 		}
+		System.out.println("Completed successfully");
 		
 		// Performing write and read operations by creating GuidEntries using alias and key-value pair.
+		System.out.println("Performing write and read operations by creating GuidEntries using alias and key-value pair.");
 		for(int i=0;i<numGuids; i++)
 		{
 			String alias = ALIAS_PREFIX+i+ALIAS_SUFFIX;
@@ -63,9 +62,9 @@ public class NonSelfCertifyingGUIDsTest
 			GuidEntry guidEntry = GuidUtils.getGuidEntryFromAliasAndKeyPair(gnsClient.getGNSProvider(), alias, keyPair);
 			gnsClient.execute(GNSCommand.fieldUpdate(guidEntry, "KeyString1", "ValueString1"));
 			Map<String, ?> valMap = gnsClient.execute(GNSCommand.fieldRead(guidEntry, "KeyString1")).getResultMap();
-			System.out.println("valueString2="+valMap.get("KeyString1"));
 			assert(valMap.get("KeyString1").toString().equals("ValueString1"));
 		}
+		System.out.println("Completed successfully");
 		
 		gnsClient.close();
 	}
