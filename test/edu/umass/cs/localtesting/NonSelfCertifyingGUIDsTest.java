@@ -50,7 +50,7 @@ public class NonSelfCertifyingGUIDsTest
 			
 			gnsClient.execute(GNSCommand.fieldUpdate(guidEntry, "MyField", "MyValue"));
 			String valueString = gnsClient.execute(GNSCommand.fieldRead(guidEntry, "MyField")).getResultString();
-				
+			System.out.println("valueString="+valueString);
 			assert(valueString.equals("MyValue"));
 		}
 		
@@ -62,6 +62,7 @@ public class NonSelfCertifyingGUIDsTest
 			GuidEntry guidEntry = GuidUtils.getGuidEntryFromAliasAndKeyPair(gnsClient.getGNSProvider(), alias, keyPair);
 			gnsClient.execute(GNSCommand.fieldUpdate(guidEntry, "KeyString1", "ValueString1"));
 			String valueString = gnsClient.execute(GNSCommand.fieldRead(guidEntry, "KeyString1")).getResultString();
+			System.out.println("valueString2="+valueString);
 			assert(valueString.toString().equals("ValueString1"));
 		}
 		
