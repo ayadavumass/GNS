@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
+import java.util.Map;
 import java.util.Random;
 
 import org.json.JSONException;
@@ -49,9 +50,9 @@ public class NonSelfCertifyingGUIDsTest
 			GuidEntry guidEntry = GuidUtils.lookupGuidEntryFromDatabase(gnsClient, alias);
 			
 			gnsClient.execute(GNSCommand.fieldUpdate(guidEntry, "MyField", "MyValue"));
-			String valueString = gnsClient.execute(GNSCommand.fieldRead(guidEntry, "MyField")).getResultString();
-			System.out.println("valueString="+valueString);
-			assert(valueString.equals("MyValue"));
+			Map<String, ?> valMap = gnsClient.execute(GNSCommand.fieldRead(guidEntry, "MyField")).getResultMap();
+			System.out.println("valueString="+valMap.get("MyField"));
+			assert(valMap.get("MyField").equals("MyValue"));
 		}
 		
 		// Performing write and read operations by creating GuidEntries using alias and key-value pair.
@@ -61,9 +62,9 @@ public class NonSelfCertifyingGUIDsTest
 			@SuppressWarnings("deprecation")
 			GuidEntry guidEntry = GuidUtils.getGuidEntryFromAliasAndKeyPair(gnsClient.getGNSProvider(), alias, keyPair);
 			gnsClient.execute(GNSCommand.fieldUpdate(guidEntry, "KeyString1", "ValueString1"));
-			String valueString = gnsClient.execute(GNSCommand.fieldRead(guidEntry, "KeyString1")).getResultString();
-			System.out.println("valueString2="+valueString);
-			assert(valueString.toString().equals("ValueString1"));
+			Map<String, ?> valMap = gnsClient.execute(GNSCommand.fieldRead(guidEntry, "KeyString1")).getResultMap();
+			System.out.println("valueString2="+valMap.get("KeyString1"));
+			assert(valMap.get("KeyString1").toString().equals("ValueString1"));
 		}
 		
 		gnsClient.close();
