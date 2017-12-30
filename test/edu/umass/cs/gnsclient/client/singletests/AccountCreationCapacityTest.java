@@ -5,7 +5,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import org.junit.FixMethodOrder;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.Timeout;
 import org.junit.runners.MethodSorters;
 
 import edu.umass.cs.capacitytesting.CapacityConfig;
@@ -25,6 +27,12 @@ public class AccountCreationCapacityTest extends DefaultGNSTest
 	{
 		CapacityConfig.load();
 	}
+	
+	/**
+	 * Overriding the timeout rule for this test. 30 minutes.
+	 */
+	@Rule
+	public Timeout globalTimeout = Timeout.seconds(30*60);
 	
 	/** 
 	 * Initial probe starting load.
