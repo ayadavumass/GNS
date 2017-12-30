@@ -829,7 +829,6 @@ public class AccountAccess {
           throws IOException 
   {
     try {
-    	
       ResponseCode returnCode;
       
       ReconfigureUponActivesChange activesChangePolicy = 
@@ -841,12 +840,9 @@ public class AccountAccess {
       JSONObject jsonHRN = new JSONObject();
       jsonHRN.put(HRN_GUID, guid);
       
-      long s1 = System.nanoTime();
+      
       returnCode = handler.getInternalClient().createOrExists(
               new CreateServiceName(name, jsonHRN.toString(), activesSet, activesChangePolicy));
-      long e1 = System.nanoTime();
-      
-      System.out.println("HRN creation time "+((e1-s1)/1000)+" micros");
       
       String boundGUID = null;
       if (!returnCode.isExceptionOrError()
@@ -879,14 +875,9 @@ public class AccountAccess {
         // prefix is the same for all acls so just pick one to use here
         json.put(MetaDataTypeName.READ_WHITELIST.getPrefix(), acl);
         // set up the default read access
-
-        long s2 = System.nanoTime();
+        
         returnCode = handler.getInternalClient().createOrExists(
                 new CreateServiceName(guid, json.toString(), activesSet, activesChangePolicy));
-        long e2 = System.nanoTime();
-        
-        System.out.println("GUID creation time "+((e2-s2)/1000)+" micros");
-        
         
         String boundHRN = null;
         assert (returnCode != null);

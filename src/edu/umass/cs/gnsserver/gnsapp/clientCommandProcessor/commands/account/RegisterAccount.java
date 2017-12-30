@@ -85,10 +85,6 @@ public class RegisterAccount extends AbstractCommand {
     String password = json.getString(GNSProtocol.PASSWORD.toString());
     String signature = json.getString(GNSProtocol.SIGNATURE.toString());
     String message = json.getString(GNSProtocol.SIGNATUREFULLMESSAGE.toString());
-    
-	System.out.println("Register account execute GUID = "+name+" Thread Id = "
-						+Thread.currentThread().getId()
-						+" Thread name "+Thread.currentThread().getName());
 	
 	
     Set<InetSocketAddress> activesSet = json.has(GNSProtocol.ACTIVES_SET.toString())
@@ -101,10 +97,10 @@ public class RegisterAccount extends AbstractCommand {
     // non self-certifying GUIDs.
     String guid = json.getString(GNSProtocol.GUID.toString());
     
-    // FIXME: Disabled signature checking for debugging.
-    // if (!NSAccessSupport.verifySignature(publicKey, signature, message)) {
-    //  return new CommandResponse(ResponseCode.SIGNATURE_ERROR, GNSProtocol.BAD_RESPONSE.toString() + " " + GNSProtocol.BAD_SIGNATURE.toString());
-    //}
+    if (!NSAccessSupport.verifySignature(publicKey, signature, message)) {
+    	return new CommandResponse(ResponseCode.SIGNATURE_ERROR, GNSProtocol.BAD_RESPONSE.toString() + " " + GNSProtocol.BAD_SIGNATURE.toString());
+    }
+    
     try {
       CommandResponse result = AccountAccess.addAccount(header, commandPacket,
               handler.getHttpServerHostPortString(),
