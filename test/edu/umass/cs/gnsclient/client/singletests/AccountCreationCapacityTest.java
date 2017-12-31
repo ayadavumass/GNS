@@ -1,6 +1,7 @@
 package edu.umass.cs.gnsclient.client.singletests;
 
 
+import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -27,12 +28,6 @@ public class AccountCreationCapacityTest extends DefaultGNSTest
 	{
 		CapacityConfig.load();
 	}
-	
-	/**
-	 * Overriding the timeout rule for this test. 30 minutes.
-	 */
-	@Rule
-	public Timeout globalTimeout = Timeout.seconds(30*60);
 	
 	/** 
 	 * Initial probe starting load.
@@ -80,12 +75,34 @@ public class AccountCreationCapacityTest extends DefaultGNSTest
 	
 	private static final ExecutorService THREAD_POOL = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
 	
+	pssrivate final long MAXIMUM_TEST_DURATION 					= Config.getGlobalLong(CapacityTestEnum.MAX_TEST_DURATION);
+	
+	/**
+	 * Overriding the timeout rule for this test. 30 minutes.
+	 */
+	@Rule
+	public Timeout globalTimeout = Timeout.seconds(MAXIMUM_TEST_DURATION);
+	
+	
 	public AccountCreationCapacityTest()
 	{
 	}
 	
 	@Test
-	public void test_1_basicAccountCreation() 
+	public void test_1_accountCreationWithSingleKeypair() throws NoSuchAlgorithmException
+	{	
+		// This test doesn't clean all the created guids. So, it assumes that each time test is started by resetting the GNS.
+		AccountGUIDRequestSender accountGuidRequestSender = 
+				new AccountGUIDRequestSender(PROBE_RUN_DURATION, ALIAS_PREFIX, ALIAS_SUFFIX, 
+						AccountCreationMode.MULTIPLE_ACCOUNT_GUID_SINGLE_KEYPAIR, THREAD_POOL, client);
+				
+		double capacity = probeCapacity(accountGuidRequestSender);
+		System.out.println("Account creation with single  capacity is "+capacity+" account GUIDs/sec");
+	}
+	
+	
+	@Test
+	public void test_2_basicAccountCreation() throws NoSuchAlgorithmException 
 	{
 		// This test doesn't clean all the created guids. So, it assumes that each time test is started by resetting the GNS.
 		AccountGUIDRequestSender accountGuidRequestSender = 
@@ -95,12 +112,6 @@ public class AccountCreationCapacityTest extends DefaultGNSTest
 		double capacity = probeCapacity(accountGuidRequestSender);
 		System.out.println("Basic account creation capacity is "+capacity+" account GUIDs/sec");
 	}
-	
-	@Test
-	public void test_2_accountCreationWithSingleKeypair()
-	{	
-	}
-	
 	
 	/**
 	 * This method probes for the capacity by multiplicatively increasing the
@@ -112,7 +123,6 @@ public class AccountCreationCapacityTest extends DefaultGNSTest
 	 */
 	private double probeCapacity(AbstractRequestSender requestSender) 
 	{
-		
 		double load = PROBE_INIT_LOAD;
 		double responseRate = 0, capacity = 0, latency = Double.MAX_VALUE;
 		double threshold = PROBE_RESPONSE_THRESHOLD, 

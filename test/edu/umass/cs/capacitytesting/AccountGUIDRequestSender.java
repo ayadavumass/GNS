@@ -2,6 +2,8 @@ package edu.umass.cs.capacitytesting;
 
 
 import java.io.IOException;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
@@ -13,6 +15,7 @@ import edu.umass.cs.capacitytesting.CapacityConfig.CapacityTestEnum;
 import edu.umass.cs.gigapaxos.paxosutil.RateLimiter;
 import edu.umass.cs.gnsclient.client.GNSClient;
 import edu.umass.cs.gnsclient.client.GNSCommand;
+import edu.umass.cs.gnscommon.GNSProtocol;
 import edu.umass.cs.gnscommon.exceptions.client.ClientException;
 import edu.umass.cs.utils.Config;
 
@@ -43,6 +46,7 @@ public class AccountGUIDRequestSender extends AbstractRequestSender
 	private final ExecutorService threadPool;
 	private final GNSClient gnsClient;
 	private final long probeDuration;
+	private final KeyPair keyPair;
 	
 	private int probeNum = 0;
 	
@@ -50,7 +54,7 @@ public class AccountGUIDRequestSender extends AbstractRequestSender
 	private long numGuidsCreatedSoFar = 0;
 	
 	public AccountGUIDRequestSender(long  probeDuration, String aliasPrefix, String aliasSuffix, 
-			AccountCreationMode accountCreationMode, ExecutorService threadPool, GNSClient gnsClient)
+			AccountCreationMode accountCreationMode, ExecutorService threadPool, GNSClient gnsClient) throws NoSuchAlgorithmException
 	{
 		super(Config.getGlobalDouble(CapacityTestEnum.INSERT_LOSS_TOLERANCE) );
 		initRand = new Random();
@@ -60,6 +64,15 @@ public class AccountGUIDRequestSender extends AbstractRequestSender
 		this.accountCreationMode = accountCreationMode;
 		this.threadPool = threadPool;
 		this.gnsClient = gnsClient;
+		
+		if(accountCreationMode == AccountCreationMode.MULTIPLE_ACCOUNT_GUID_SINGLE_KEYPAIR)
+		{
+			keyPair = KeyPairGenerator.getInstance(GNSProtocol.RSA_ALGORITHM.toString()).generateKeyPair();
+		}
+		else
+		{
+			keyPair = null;
+		}
 	}
 	
 	public double rateControlledRequestSender(double requestRate)
@@ -141,7 +154,15 @@ public class AccountGUIDRequestSender extends AbstractRequestSender
 					{
 						try
 						{
-							gnsClient.execute(GNSCommand.createAccount(alias), new InitCallBack(probeNum, reqSender));
+							if(accountCreationMode == AccountCreationMode.MULTIPLE_ACCOUNT_GUID_SINGLE_KEYPAIR)
+							{
+								gnsClient.execute(GNSCommand.createAccountUsingKeyPair(alias, null, null, keyPair, false), 
+										new InitCallBack(probeNum, reqSender));
+							}
+							else
+							{
+								gnsClient.execute(GNSCommand.createAccount(alias), new InitCallBack(probeNum, reqSender));
+							}
 						} catch (ClientException | NoSuchAlgorithmException | IOException e) 
 						{
 							e.printStackTrace();

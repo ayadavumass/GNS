@@ -143,6 +143,11 @@ public class CapacityConfig
 		 * in the {@link GNSClient#setMaximumOutstandingAppRequests}
 		 */
 		MAX_OUTSTANDING_APP_REQUESTS(100000),
+		
+		/**
+		 * Indicates the maximum test duration for a capacity test.
+		 */
+		MAX_TEST_DURATION(30*60),
 		;
 		
 		
