@@ -92,7 +92,7 @@ public class AccountCreationCapacityTest extends DefaultGNSTest
 	public void test_1_accountCreationWithSingleKeypair() throws NoSuchAlgorithmException
 	{	
 		// This test doesn't clean all the created guids. So, it assumes that each time test is started by resetting the GNS.
-		String alias = "accountCreationWithSingleKeypair"+ALIAS_PREFIX;
+		String alias = "singleKeypair";
 		
 		AccountGUIDRequestSender accountGuidRequestSender = 
 				new AccountGUIDRequestSender(PROBE_RUN_DURATION, alias, ALIAS_SUFFIX, 
@@ -107,7 +107,7 @@ public class AccountCreationCapacityTest extends DefaultGNSTest
 	public void test_2_basicAccountCreation() throws NoSuchAlgorithmException 
 	{
 		// This test doesn't clean all the created guids. So, it assumes that each time test is started by resetting the GNS.
-		String alias = "basicAccountCreation"+ALIAS_PREFIX;
+		String alias = "basicGUID";
 		
 		AccountGUIDRequestSender accountGuidRequestSender = 
 				new AccountGUIDRequestSender(PROBE_RUN_DURATION, alias, ALIAS_SUFFIX, 
