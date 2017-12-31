@@ -22,7 +22,7 @@ import edu.umass.cs.utils.Util;
 
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 
-public class AccountCreationCapacityTest extends DefaultGNSTest
+public class BasicAccountCreationCapacityTest extends DefaultGNSTest
 {
 	static 
 	{
@@ -84,27 +84,13 @@ public class AccountCreationCapacityTest extends DefaultGNSTest
 	public Timeout globalTimeout = Timeout.seconds(MAXIMUM_TEST_DURATION);
 	
 	
-	public AccountCreationCapacityTest()
+	public BasicAccountCreationCapacityTest()
 	{
 	}
 	
-	@Test
-	public void test_1_accountCreationWithSingleKeypair() throws NoSuchAlgorithmException
-	{	
-		// This test doesn't clean all the created guids. So, it assumes that each time test is started by resetting the GNS.
-		String alias = "singleKeypair";
-		
-		AccountGUIDRequestSender accountGuidRequestSender = 
-				new AccountGUIDRequestSender(PROBE_RUN_DURATION, alias, ALIAS_SUFFIX, 
-						AccountCreationMode.MULTIPLE_ACCOUNT_GUID_SINGLE_KEYPAIR, THREAD_POOL, client);
-				
-		double capacity = probeCapacity(accountGuidRequestSender);
-		System.out.println("Account creation with single  capacity is "+capacity+" account GUIDs/sec");
-	}
-	
 	
 	@Test
-	public void test_2_basicAccountCreation() throws NoSuchAlgorithmException 
+	public void test_1_basicAccountCreation() throws NoSuchAlgorithmException 
 	{
 		// This test doesn't clean all the created guids. So, it assumes that each time test is started by resetting the GNS.
 		String alias = "basicGUID";
