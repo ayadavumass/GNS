@@ -829,7 +829,6 @@ public class AccountAccess {
           throws IOException 
   {
     try {
-    	
       ResponseCode returnCode;
       
       ReconfigureUponActivesChange activesChangePolicy = 
@@ -840,6 +839,8 @@ public class AccountAccess {
       // isn't already registered
       JSONObject jsonHRN = new JSONObject();
       jsonHRN.put(HRN_GUID, guid);
+      
+      
       returnCode = handler.getInternalClient().createOrExists(
               new CreateServiceName(name, jsonHRN.toString(), activesSet, activesChangePolicy));
       
@@ -874,10 +875,10 @@ public class AccountAccess {
         // prefix is the same for all acls so just pick one to use here
         json.put(MetaDataTypeName.READ_WHITELIST.getPrefix(), acl);
         // set up the default read access
-
+        
         returnCode = handler.getInternalClient().createOrExists(
                 new CreateServiceName(guid, json.toString(), activesSet, activesChangePolicy));
-
+        
         String boundHRN = null;
         assert (returnCode != null);
         if (!returnCode.isExceptionOrError()

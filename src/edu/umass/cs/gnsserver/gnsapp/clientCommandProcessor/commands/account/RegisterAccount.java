@@ -78,22 +78,29 @@ public class RegisterAccount extends AbstractCommand {
   public CommandResponse execute(InternalRequestHeader header, CommandPacket commandPacket, ClientRequestHandlerInterface handler) throws InvalidKeyException, InvalidKeySpecException,
           JSONException, NoSuchAlgorithmException, SignatureException, UnsupportedEncodingException,
           InternalRequestException {
+	  
     JSONObject json = commandPacket.getCommand();
     String name = json.getString(GNSProtocol.NAME.toString());
     String publicKey = json.getString(GNSProtocol.PUBLIC_KEY.toString());
     String password = json.getString(GNSProtocol.PASSWORD.toString());
     String signature = json.getString(GNSProtocol.SIGNATURE.toString());
     String message = json.getString(GNSProtocol.SIGNATUREFULLMESSAGE.toString());
-    
+	
+	
     Set<InetSocketAddress> activesSet = json.has(GNSProtocol.ACTIVES_SET.toString())
     		? Util.getSocketAddresses(json.getJSONArray(GNSProtocol.ACTIVES_SET.toString()))
     		: null;
-    		
     
-    String guid = SharedGuidUtils.createGuidStringFromBase64PublicKey(publicKey);
+    		
+    // String guid = SharedGuidUtils.createGuidStringFromBase64PublicKey(publicKey);
+    // TODO: We can add a check that the GUID is indeed the hash of public key or hash(public key + alias), in case of
+    // non self-certifying GUIDs.
+    String guid = json.getString(GNSProtocol.GUID.toString());
+    
     if (!NSAccessSupport.verifySignature(publicKey, signature, message)) {
-      return new CommandResponse(ResponseCode.SIGNATURE_ERROR, GNSProtocol.BAD_RESPONSE.toString() + " " + GNSProtocol.BAD_SIGNATURE.toString());
+    	return new CommandResponse(ResponseCode.SIGNATURE_ERROR, GNSProtocol.BAD_RESPONSE.toString() + " " + GNSProtocol.BAD_SIGNATURE.toString());
     }
+    
     try {
       CommandResponse result = AccountAccess.addAccount(header, commandPacket,
               handler.getHttpServerHostPortString(),
