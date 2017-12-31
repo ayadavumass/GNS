@@ -92,8 +92,10 @@ public class AccountCreationCapacityTest extends DefaultGNSTest
 	public void test_1_accountCreationWithSingleKeypair() throws NoSuchAlgorithmException
 	{	
 		// This test doesn't clean all the created guids. So, it assumes that each time test is started by resetting the GNS.
+		String alias = "accountCreationWithSingleKeypair"+ALIAS_PREFIX;
+		
 		AccountGUIDRequestSender accountGuidRequestSender = 
-				new AccountGUIDRequestSender(PROBE_RUN_DURATION, ALIAS_PREFIX, ALIAS_SUFFIX, 
+				new AccountGUIDRequestSender(PROBE_RUN_DURATION, alias, ALIAS_SUFFIX, 
 						AccountCreationMode.MULTIPLE_ACCOUNT_GUID_SINGLE_KEYPAIR, THREAD_POOL, client);
 				
 		double capacity = probeCapacity(accountGuidRequestSender);
@@ -105,8 +107,10 @@ public class AccountCreationCapacityTest extends DefaultGNSTest
 	public void test_2_basicAccountCreation() throws NoSuchAlgorithmException 
 	{
 		// This test doesn't clean all the created guids. So, it assumes that each time test is started by resetting the GNS.
+		String alias = "basicAccountCreation"+ALIAS_PREFIX;
+		
 		AccountGUIDRequestSender accountGuidRequestSender = 
-				new AccountGUIDRequestSender(PROBE_RUN_DURATION, ALIAS_PREFIX, ALIAS_SUFFIX, 
+				new AccountGUIDRequestSender(PROBE_RUN_DURATION, alias, ALIAS_SUFFIX, 
 						AccountCreationMode.BASIC_ACCOUNT_GUID, THREAD_POOL, client);
 		
 		double capacity = probeCapacity(accountGuidRequestSender);
