@@ -75,7 +75,7 @@ public class AccountCreationCapacityTest extends DefaultGNSTest
 	
 	private static final ExecutorService THREAD_POOL = Executors.newFixedThreadPool(THREAD_POOL_SIZE);
 	
-	pssrivate final long MAXIMUM_TEST_DURATION 					= Config.getGlobalLong(CapacityTestEnum.MAX_TEST_DURATION);
+	private final long MAXIMUM_TEST_DURATION 					= Config.getGlobalLong(CapacityTestEnum.MAX_TEST_DURATION);
 	
 	/**
 	 * Overriding the timeout rule for this test. 30 minutes.
