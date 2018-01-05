@@ -22,6 +22,7 @@ import java.security.KeyPair;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
@@ -949,7 +950,7 @@ public class GNSCommand extends CommandPacket {
   public static final CommandPacket batchCreateGUIDs(
           GuidEntry accountGUID, Set<String> aliases,
           Set<InetSocketAddress> activeSet ) throws ClientException {
-
+	  
     List<String> aliasList = new ArrayList<>(aliases);
     List<String> publicKeys;
     publicKeys = new ArrayList<>();
@@ -988,6 +989,82 @@ public class GNSCommand extends CommandPacket {
                     GNSProtocol.PUBLIC_KEYS.toString(), new JSONArray(publicKeys));
     }
   }
+  
+  
+  /**
+   * Creates a batch of GUIDs listed in {@code aliases} using gigapaxos' batch
+   * creation mechanism. The initial set of actives for all GUIDs in the batch is given 
+   * by {@code activeSet}.
+   * 
+   * Creates a batch of account GUIDs using a single key pair. 
+   * 
+   * @param aliases
+   * The aliases of the account GUIDs to create.
+   * @param password
+   * The password to use while creating account GUIDs.
+   * @param activeSet
+   * The initial set of actives for all GUIDs in the batch.
+   * @param keyPair 
+   * The key pair to use while creating account GUIDs.
+   * @param storeGuidEntryLocally
+   * storeGuidEntryLocally=true indicates that the account guid entries should be stored in the local
+   * DerbyDB database. 
+   * @return CommandPacket
+   * @throws ClientException
+   */
+  public static final CommandPacket batchCreateAccountGUIDsUsingKeyPair(Set<String> aliases, String password,
+          Set<InetSocketAddress> activeSet, KeyPair  keyPair, boolean storeGuidEntryLocally) throws ClientException 
+  {
+	  String gnsProvider = GNSClient.getGNSProvider();
+	  
+	  JSONArray aliasJSONArray = new JSONArray();
+	  JSONArray guidsJSONArray = new JSONArray();
+	  assert(!storeGuidEntryLocally);
+	  
+	  GuidEntry guidEntry = null;
+	  String alias = "";
+			  
+	  Iterator<String> iter = aliases.iterator();
+	  while(iter.hasNext())
+	  {
+		  alias = iter.next();
+		  guidEntry = GuidUtils.getGuidEntryFromAliasAndKeyPair(gnsProvider, alias, keyPair);
+		  aliasJSONArray.put(alias);
+		  guidsJSONArray.put(guidEntry.getGuid());
+	  }
+    
+	  if(activeSet != null)
+	  {
+		  try {
+			  return getCommand(CommandType.BatchRegisterAccount,
+			            guidEntry, GNSProtocol.NAMES.toString(), aliasJSONArray,
+			            GNSProtocol.GUIDS.toString(), guidsJSONArray,
+			            GNSProtocol.PUBLIC_KEY.toString(),
+			            KeyPairUtils.publicKeyToBase64ForGuid(guidEntry),
+			            GNSProtocol.PASSWORD.toString(),
+			            password != null ? Password.encryptAndEncodePassword(password, alias) : "",
+			            GNSProtocol.ACTIVES_SET.toString(), Util.getJSONArray(activeSet));
+			  } catch (JSONException | NoSuchAlgorithmException e) {
+				  throw new ClientException(e);
+			  }
+	  }
+	  else
+	  {
+		  
+		  try {
+			  return getCommand(CommandType.BatchRegisterAccount,
+			            guidEntry, GNSProtocol.NAMES.toString(), aliasJSONArray,
+			            GNSProtocol.GUIDS.toString(), guidsJSONArray,
+			            GNSProtocol.PUBLIC_KEY.toString(),
+			            KeyPairUtils.publicKeyToBase64ForGuid(guidEntry),
+			            GNSProtocol.PASSWORD.toString(),
+			            password != null ? Password.encryptAndEncodePassword(password, alias) : "");
+			  } catch (NoSuchAlgorithmException e) {
+				  throw new ClientException(e);
+			  }
+	  }
+  }
+  
 
   /**
    * Removes {@code targetGUID} that is not an account guid.

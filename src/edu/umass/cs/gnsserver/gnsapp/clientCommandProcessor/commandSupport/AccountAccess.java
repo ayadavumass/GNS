@@ -565,7 +565,43 @@ public class AccountAccess {
     }
     return response;
   }
-
+  
+  /**
+   * Creates account GUIDs in batch.
+   *
+   * @param header
+   * @param commandPacket
+   *
+   * @param hostPortString
+   * @param names
+   * The HRNs of account GUIDs to create. 
+   * @param guids
+   * The GUIDs for account GUIDs to create. 
+   * names.get(i) denotes a HRN and guids.get(i) denotes the GUID corresponding to names.get(i)
+   * @param publicKey
+   * The public key related to all the account GUIDs. Currently, only supports creating account GUIDs using
+   * single keypair. 
+   * @param password
+   * @param useEmailVerification
+   * @param handler
+   * @return the command response
+   * @throws edu.umass.cs.gnscommon.exceptions.client.ClientException
+   * @throws java.io.IOException
+   * @throws org.json.JSONException
+   * @throws edu.umass.cs.gnscommon.exceptions.server.InternalRequestException
+   */
+  public static CommandResponse addAccountsInBatch(InternalRequestHeader header,
+          CommandPacket commandPacket,
+          final String hostPortString, List<String> names, List<String> guids,
+          String publicKey, String password, boolean useEmailVerification,
+          ClientRequestHandlerInterface handler, Set<InetSocketAddress> activesSet)
+        		  throws ClientException, IOException, JSONException, InternalRequestException {
+	  
+	  useEmailVerification = false;
+	  return addBatchAccountInternal(header, names, guids, publicKey, password, useEmailVerification,
+	          "verifyCode", handler, activesSet);
+  }
+  
   private static final int VERIFICATION_CODE_LENGTH = 3; // Six hex characters
 
   private static String createVerificationCode(String name) {
@@ -938,6 +974,148 @@ public class AccountAccess {
               + ce.getMessage()
               + " ("
               + name
+              + " may have gotten created despite this exception)");
+    }
+  }
+  
+  
+  /**
+   * Create a new GNS user account.
+   *
+   * THIS CAN BYPASS THE EMAIL VERIFICATION if you set emailVerify to false;
+   * 
+   * The account guid and the HRN are created using the provided set of actives,
+   * {@code activesSet}. If {@code activesSet} is null then the default policy 
+   * is used to determine actives.
+   * 
+   * <p>
+   * This adds three records to the GNS for the account:<br>
+   * GNSProtocol.NAME.toString(): "_GNS_GUID" -- guid<br>
+   * GUID: "_GNS_ACCOUNT_INFO" -- {account record - an AccountInfo object
+   * stored as JSON}<br>
+   * GUID: "_GNS_GUID_INFO" -- {guid record - a GuidInfo object stored as
+   * JSON}<br>
+   *
+   * @param header
+   *
+   * @param name
+   * @param guid
+   * @param publicKey
+   * @param password
+   * @param emailVerify
+   * @param verifyCode
+   * @param handler
+   * @param activesSet
+   * The set of actives for creating the account guid and the HRN record. If 
+   * activesSet is null then all actives are used. 
+   * 
+   * @return status result
+   * @throws IOException
+   */
+  public static CommandResponse addBatchAccountInternal(
+          InternalRequestHeader header, List<String> names, List<String> guids,
+          String publicKey, String password, boolean emailVerify,
+          String verifyCode, ClientRequestHandlerInterface handler, 
+          Set<InetSocketAddress> activesSet)
+          throws IOException 
+  {
+    try {
+      ResponseCode hrnReturnCode;
+      
+      ReconfigureUponActivesChange activesChangePolicy = 
+    		  ReconfigureUponActivesChange.valueOf(ReconfigureUponActivesChange.class, 
+    				  Config.getGlobalString(GNSConfig.GNSC.RECONFIGURE_ON_ACTIVE_CHANGE_POLICY));
+      
+      // First try to createField the HRN record to make sure this name
+      // isn't already registered
+      Map<String, JSONObject> hrnMap = new HashMap<String, JSONObject>();
+      
+      for(int i=0; i<names.size(); i++)
+      {
+    	  String name = names.get(i);
+    	  String guid = guids.get(i);
+          JSONObject jsonHRN = new JSONObject();
+          jsonHRN.put(HRN_GUID, guid);
+          hrnMap.put(name, jsonHRN);
+      }
+      
+      // First try to create the HRNs to ensure that that name does not already exist
+      Map<String, String> nameStates = new HashMap<>();
+      for (String key : hrnMap.keySet()) 
+      {
+    	  nameStates.put(key, hrnMap.get(key).toString());
+      }
+      
+      if (!(hrnReturnCode = handler.getInternalClient().createOrExists(
+      		  new CreateServiceName(nameStates, activesChangePolicy)))
+                .isExceptionOrError()) 
+      {
+          Map<String, String> guidsMap = new HashMap<String, String>();
+          for(int i=0; i<names.size(); i++)
+          {
+              AccountInfo accountInfo = new AccountInfo(names.get(i), guids.get(i), password);
+              accountInfo.noteUpdate();
+              // if email verifications are off we just set it to verified
+              if (!emailVerify) {
+                accountInfo.setVerified(true);
+              } else {
+                accountInfo.setVerificationCode(verifyCode);
+              }
+              JSONObject json = new JSONObject();
+              json.put(ACCOUNT_INFO, accountInfo.toJSONObject());
+              GuidInfo guidInfo = new GuidInfo(names.get(i), guids.get(i), publicKey);
+              json.put(GUID_INFO, guidInfo.toJSONObject());
+              // set up ACL to look like this
+              // "_GNS_ACL": {
+              // "READ_WHITELIST": {"+ALL+": {"MD": "+ALL+"]}}}
+              JSONObject acl = createACL(
+                      GNSProtocol.ENTIRE_RECORD.toString(),
+                      Arrays.asList(GNSProtocol.EVERYONE.toString()), null,
+                      null);
+              // prefix is the same for all acls so just pick one to use here
+              json.put(MetaDataTypeName.READ_WHITELIST.getPrefix(), acl);
+              // set up the default read access
+              guidsMap.put(guids.get(i), json.toString());
+          }
+          ResponseCode guidsReturnCode;
+          
+          if (!(guidsReturnCode = handler.getInternalClient().createOrExists(
+          		  new CreateServiceName(guidsMap, activesChangePolicy)))
+                    .isExceptionOrError()) 
+          {
+        	  return CommandResponse.noError();
+          }
+          else
+          {
+        	  return new CommandResponse(guidsReturnCode,
+                      GNSProtocol.BAD_RESPONSE.toString() + " "
+                      + guidsReturnCode.getProtocolCode() + " " 
+                      + "Batch account creation failed in GUIDs creation step " 
+                      + " " + guidsReturnCode.getMessage());
+          }
+      }
+      else
+      {
+    	  return new CommandResponse(hrnReturnCode,
+                  GNSProtocol.BAD_RESPONSE.toString() + " "
+                  + hrnReturnCode.getProtocolCode() + " " 
+                  + "Batch account creation failed in HRNs creation step " 
+                  + " " + hrnReturnCode.getMessage());
+      }
+    } catch (JSONException e) {
+      return CommandResponse.toCommandResponse(e);
+    } catch (ClientException ce) {
+      return new CommandResponse(
+              ce.getCode(),
+              GNSProtocol.BAD_RESPONSE.toString()
+              + " "
+              + ce.getCode()
+              + " "
+              + names
+              + " "
+              + ce.getMessage()
+              + " ("
+              + names
               + " may have gotten created despite this exception)");
     }
   }

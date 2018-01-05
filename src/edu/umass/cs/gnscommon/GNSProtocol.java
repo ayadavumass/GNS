@@ -199,6 +199,10 @@ public enum GNSProtocol {
    */
   GUID("guid"),
   /**
+   * The guids field in a command. Usually used in batch creation of GUIDs.
+   */
+  GUIDS("guids"),
+  /**
    * The name field in a command. Usually the HRN being acted upon.
    */
   NAME("name"),

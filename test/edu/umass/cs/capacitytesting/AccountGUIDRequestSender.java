@@ -2,10 +2,13 @@ package edu.umass.cs.capacitytesting;
 
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
+import java.util.HashSet;
 import java.util.Random;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
 import org.json.JSONObject;
@@ -35,7 +38,9 @@ public class AccountGUIDRequestSender extends AbstractRequestSender
 		/**
 		 * Multiple account GUIDs using a single keypair.
 		 */
-		MULTIPLE_ACCOUNT_GUID_SINGLE_KEYPAIR
+		MULTIPLE_ACCOUNT_GUID_SINGLE_KEYPAIR,
+		
+		MULTIPLE_BATCH_ACCOUNT_GUID_SINGLE_KEYPAIR
 	}
 	
 	private final Random initRand;
@@ -65,14 +70,7 @@ public class AccountGUIDRequestSender extends AbstractRequestSender
 		this.threadPool = threadPool;
 		this.gnsClient = gnsClient;
 		
-		if(accountCreationMode == AccountCreationMode.MULTIPLE_ACCOUNT_GUID_SINGLE_KEYPAIR)
-		{
-			keyPair = KeyPairGenerator.getInstance(GNSProtocol.RSA_ALGORITHM.toString()).generateKeyPair();
-		}
-		else
-		{
-			keyPair = null;
-		}
+		keyPair = KeyPairGenerator.getInstance(GNSProtocol.RSA_ALGORITHM.toString()).generateKeyPair();
 	}
 	
 	public double rateControlledRequestSender(double requestRate)
@@ -141,10 +139,7 @@ public class AccountGUIDRequestSender extends AbstractRequestSender
 	}
 	
 	private void sendAInitMessage()
-	{
-		String alias = aliasPrefix+numGuidsCreatedSoFar+aliasSuffix;
-		numGuidsCreatedSoFar++;
-		
+	{	
 		AbstractRequestSender reqSender = this;
 		threadPool.execute(
 				new Runnable()
@@ -156,11 +151,29 @@ public class AccountGUIDRequestSender extends AbstractRequestSender
 						{
 							if(accountCreationMode == AccountCreationMode.MULTIPLE_ACCOUNT_GUID_SINGLE_KEYPAIR)
 							{
+								String alias = aliasPrefix+numGuidsCreatedSoFar+aliasSuffix;
+								numGuidsCreatedSoFar++;
 								gnsClient.execute(GNSCommand.createAccountUsingKeyPair(alias, null, null, keyPair, false), 
+										new InitCallBack(probeNum, reqSender));
+							}
+							else if(accountCreationMode == AccountCreationMode.MULTIPLE_BATCH_ACCOUNT_GUID_SINGLE_KEYPAIR)
+							{
+								int batchSize=10;
+								Set<String> aliasSet = new HashSet<String>();
+								for(int i=0; i<batchSize; i++)
+								{
+									String alias = aliasPrefix+numGuidsCreatedSoFar+aliasSuffix;
+									numGuidsCreatedSoFar++;
+									aliasSet.add(alias);
+								}
+								
+								gnsClient.execute(GNSCommand.batchCreateAccountGUIDsUsingKeyPair(aliasSet, null, null, keyPair, false), 
 										new InitCallBack(probeNum, reqSender));
 							}
 							else
 							{
+								String alias = aliasPrefix+numGuidsCreatedSoFar+aliasSuffix;
+								numGuidsCreatedSoFar++;
 								gnsClient.execute(GNSCommand.createAccount(alias), new InitCallBack(probeNum, reqSender));
 							}
 						} catch (ClientException | NoSuchAlgorithmException | IOException e) 

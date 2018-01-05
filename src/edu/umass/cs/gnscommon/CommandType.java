@@ -1010,6 +1010,22 @@ public enum CommandType {
           CommandFlag.MUTUAL_AUTH // This is important - without this the command isn't secure.
   ),
   /**
+  *
+  */
+ BatchRegisterAccount(432, CommandCategory.CREATE_DELETE,
+         "edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commands.account.BatchRegisterAccount",
+         CommandResultType.NULL, false, false,
+         "Creates a batch of account guids using a single keypair. NAMES field contains the HRNs, GUIDS field contains the"
+         + "account guids."
+         + "Must be signed with the public key. Returns a guid.",
+         new String[]{GNSProtocol.NAMES.toString(), 
+       		  GNSProtocol.GUIDS.toString(),
+       		  GNSProtocol.PUBLIC_KEY.toString(),
+       		  GNSProtocol.PASSWORD.toString(),
+       		  GNSProtocol.SIGNATURE.toString(),
+       		  GNSProtocol.SIGNATUREFULLMESSAGE.toString()},
+         new String[]{GNSProtocol.ACTIVES_SET.toString()}),
+  /**
    *
    */
   RemoveAccount(440, CommandCategory.CREATE_DELETE, "edu.umass.cs.gnsserver.gnsapp.clientCommandProcessor.commands.account.RemoveAccount",
@@ -1924,6 +1940,7 @@ public enum CommandType {
     LookupGuidRecord.setChain();
     RegisterAccount.setChain(ReadUnsigned);
     RegisterAccountSecured.setChain(ReadUnsigned);
+    BatchRegisterAccount.setChain(ReadUnsigned);
     ResendAuthenticationEmail.setChain();
     RemoveAlias.setChain(ReadUnsigned, ReplaceUserJSONUnsigned);
     RemoveGuidNoAccount.setChain(ReadUnsigned, ReplaceUserJSONUnsigned);
