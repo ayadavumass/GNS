@@ -26,6 +26,9 @@ public class InitCallBack implements Callback<CommandPacket, CommandPacket>
 	public CommandPacket processResponse(CommandPacket request) 
 	{
 		CommandPacket cmd = (CommandPacket) request;
+		
+		System.out.println("Summary " + cmd.getResponse().getSummary());
+		
 		sendingObj.incrementUpdateNumRecvd(reqProbeNum, cmd.getServiceName(), 
 				(System.currentTimeMillis()-startTime));
 		return cmd;
