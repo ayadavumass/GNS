@@ -158,7 +158,8 @@ public class AccountGUIDRequestSender extends AbstractRequestSender
 							}
 							else if(accountCreationMode == AccountCreationMode.MULTIPLE_BATCH_ACCOUNT_GUID_SINGLE_KEYPAIR)
 							{
-								int batchSize=10;
+								int batchSize = Config.getGlobalInt(CapacityTestEnum.BATCH_SIZE);
+								System.out.println("batchSize "+batchSize);
 								Set<String> aliasSet = new HashSet<String>();
 								for(int i=0; i<batchSize; i++)
 								{

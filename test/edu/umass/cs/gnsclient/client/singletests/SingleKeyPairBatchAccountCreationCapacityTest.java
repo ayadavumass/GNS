@@ -77,6 +77,7 @@ public class SingleKeyPairBatchAccountCreationCapacityTest extends DefaultGNSTes
 	
 	private final long MAXIMUM_TEST_DURATION 					= Config.getGlobalLong(CapacityTestEnum.MAX_TEST_DURATION);
 	
+	
 	/**
 	 * Overriding the timeout rule for this test. 30 minutes.
 	 */

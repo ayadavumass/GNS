@@ -148,6 +148,11 @@ public class CapacityConfig
 		 * Indicates the maximum test duration for a capacity test.
 		 */
 		MAX_TEST_DURATION(30*60),
+		
+		/**
+		 * Batch size of the number of GUIDs to create. 
+		 */
+		BATCH_SIZE(10),
 		;
 		
 		
