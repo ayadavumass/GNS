@@ -1046,10 +1046,17 @@ public class AccountAccess {
     	  nameStates.put(key, hrnMap.get(key).toString());
       }
       
+      System.out.println("nameStates="+nameStates.toString());
+      
+      long s0 = System.nanoTime();
+      
       if (!(hrnReturnCode = handler.getInternalClient().createOrExists(
       		  new CreateServiceName(nameStates, activesChangePolicy)))
                 .isExceptionOrError()) 
       {
+    	  long e0 = System.nanoTime();
+    	  System.out.println("Batch HRN creating time = "+(e0-s0)+" ns");
+    	  
           Map<String, String> guidsMap = new HashMap<String, String>();
           for(int i=0; i<names.size(); i++)
           {
@@ -1079,10 +1086,15 @@ public class AccountAccess {
           }
           ResponseCode guidsReturnCode;
           
+          long s1 = System.nanoTime();
+          
           if (!(guidsReturnCode = handler.getInternalClient().createOrExists(
           		  new CreateServiceName(guidsMap, activesChangePolicy)))
                     .isExceptionOrError()) 
           {
+        	  long e1 = System.nanoTime();
+        	  System.out.println("Batch GUIDs creating time = "+(e1-s1)+" ns");
+        	  
         	  return CommandResponse.noError();
           }
           else
