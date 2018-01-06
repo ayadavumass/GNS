@@ -20,6 +20,7 @@ import edu.umass.cs.gnsclient.client.GNSClient;
 import edu.umass.cs.gnsclient.client.GNSCommand;
 import edu.umass.cs.gnscommon.GNSProtocol;
 import edu.umass.cs.gnscommon.exceptions.client.ClientException;
+import edu.umass.cs.gnscommon.packets.CommandPacket;
 import edu.umass.cs.utils.Config;
 
 
@@ -168,8 +169,17 @@ public class AccountGUIDRequestSender extends AbstractRequestSender
 									aliasSet.add(alias);
 								}
 								
-								gnsClient.execute(GNSCommand.batchCreateAccountGUIDsUsingKeyPair(aliasSet, null, null, keyPair, false), 
-										new InitCallBack(probeNum, reqSender));
+								// gnsClient.execute(GNSCommand.batchCreateAccountGUIDsUsingKeyPair(aliasSet, null, null, keyPair, false), 
+								//		new InitCallBack(probeNum, reqSender));
+								
+								long startTime = System.currentTimeMillis();
+								CommandPacket cmd = gnsClient.execute(GNSCommand.batchCreateAccountGUIDsUsingKeyPair(aliasSet, null, null, keyPair, false));
+								
+								System.out.println("Summary " + cmd.toString());
+								
+								reqSender.incrementUpdateNumRecvd(0, cmd.getServiceName(), 
+										(System.currentTimeMillis()-startTime));
+								
 							}
 							else
 							{

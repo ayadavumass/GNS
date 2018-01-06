@@ -1048,14 +1048,14 @@ public class AccountAccess {
       
       System.out.println("nameStates="+nameStates.toString());
       
-      long s0 = System.nanoTime();
+      long s0 = System.currentTimeMillis();
       
       if (!(hrnReturnCode = handler.getInternalClient().createOrExists(
       		  new CreateServiceName(nameStates, activesChangePolicy)))
                 .isExceptionOrError()) 
       {
-    	  long e0 = System.nanoTime();
-    	  System.out.println("Batch HRN creating time = "+(e0-s0)+" ns");
+    	  long e0 = System.currentTimeMillis();
+    	  System.out.println("Batch HRN creating time = "+(e0-s0)+" ms");
     	  
           Map<String, String> guidsMap = new HashMap<String, String>();
           for(int i=0; i<names.size(); i++)
@@ -1086,14 +1086,14 @@ public class AccountAccess {
           }
           ResponseCode guidsReturnCode;
           
-          long s1 = System.nanoTime();
+          long s1 = System.currentTimeMillis();
           
           if (!(guidsReturnCode = handler.getInternalClient().createOrExists(
           		  new CreateServiceName(guidsMap, activesChangePolicy)))
                     .isExceptionOrError()) 
           {
-        	  long e1 = System.nanoTime();
-        	  System.out.println("Batch GUIDs creating time = "+(e1-s1)+" ns");
+        	  long e1 = System.currentTimeMillis();
+        	  System.out.println("Batch GUIDs creating time = "+(e1-s1)+" ms");
         	  
         	  return CommandResponse.noError();
           }
