@@ -160,7 +160,6 @@ public class AccountGUIDRequestSender extends AbstractRequestSender
 							else if(accountCreationMode == AccountCreationMode.MULTIPLE_BATCH_ACCOUNT_GUID_SINGLE_KEYPAIR)
 							{
 								int batchSize = Config.getGlobalInt(CapacityTestEnum.BATCH_SIZE);
-								System.out.println("batchSize "+batchSize);
 								Set<String> aliasSet = new HashSet<String>();
 								for(int i=0; i<batchSize; i++)
 								{
@@ -169,17 +168,15 @@ public class AccountGUIDRequestSender extends AbstractRequestSender
 									aliasSet.add(alias);
 								}
 								
-								// gnsClient.execute(GNSCommand.batchCreateAccountGUIDsUsingKeyPair(aliasSet, null, null, keyPair, false), 
-								//		new InitCallBack(probeNum, reqSender));
+								gnsClient.execute(GNSCommand.batchCreateAccountGUIDsUsingKeyPair(aliasSet, null, null, keyPair, false), 
+										new InitCallBack(probeNum, reqSender));
 								
-								long startTime = System.currentTimeMillis();
-								CommandPacket cmd = gnsClient.execute(GNSCommand.batchCreateAccountGUIDsUsingKeyPair(aliasSet, null, null, keyPair, false));
+								// long startTime = System.currentTimeMillis();
+								// CommandPacket cmd = gnsClient.execute(GNSCommand.batchCreateAccountGUIDsUsingKeyPair(aliasSet, null, null, keyPair, false));
 								
-								System.out.println("Summary " + cmd.toString());
 								
-								reqSender.incrementUpdateNumRecvd(0, cmd.getServiceName(), 
-										(System.currentTimeMillis()-startTime));
-								
+								// reqSender.incrementUpdateNumRecvd(0, cmd.getServiceName(), 
+								//		(System.currentTimeMillis()-startTime));
 							}
 							else
 							{

@@ -1046,8 +1046,6 @@ public class AccountAccess {
     	  nameStates.put(key, hrnMap.get(key).toString());
       }
       
-      System.out.println("nameStates="+nameStates.toString());
-      
       long s0 = System.currentTimeMillis();
       
       if (!(hrnReturnCode = handler.getInternalClient().createOrExists(
