@@ -663,6 +663,8 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
       // or update the existing one
        if (!NameRecord.containsRecord(nameRecordDB, name)) {
           // create a new record
+    	   System.out.println("restore Thread name="+Thread.currentThread().getName() +" Thread Id="+Thread.currentThread().getId());
+    	   long s0 = System.currentTimeMillis();
           try {
             ValuesMap valuesMap = new ValuesMap(new JSONObject(state));
             NameRecord nameRecord = new NameRecord(nameRecordDB, name,
@@ -674,6 +676,8 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
         			  "Problem creating name {0} with state {1}: {2}",
         			  new Object[] { name, state, e });
           }
+          long e0 = System.currentTimeMillis();
+          System.out.println("Time to insert record="+(e0-s0)+" ms");
         } else { // update the existing record
           try {
             NameRecord nameRecord = NameRecord.getNameRecord(
