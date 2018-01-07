@@ -653,6 +653,8 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
             "{0} updating {1} with state [{2}]",
             new Object[]{this, name, Util.truncate(state, 32, 32)});
     try {
+ 	   System.out.println("restore Thread name="+Thread.currentThread().getName() +" Thread Id="+Thread.currentThread().getId());
+ 	   long s0 = System.currentTimeMillis();
       if (state == null) {
         // If state is null the only thing it means is that we need to
         // delete
@@ -663,8 +665,7 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
       // or update the existing one
        if (!NameRecord.containsRecord(nameRecordDB, name)) {
           // create a new record
-    	   System.out.println("restore Thread name="+Thread.currentThread().getName() +" Thread Id="+Thread.currentThread().getId());
-    	   long s0 = System.currentTimeMillis();
+
           try {
             ValuesMap valuesMap = new ValuesMap(new JSONObject(state));
             NameRecord nameRecord = new NameRecord(nameRecordDB, name,
@@ -676,8 +677,6 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
         			  "Problem creating name {0} with state {1}: {2}",
         			  new Object[] { name, state, e });
           }
-          long e0 = System.currentTimeMillis();
-          System.out.println("Time to insert record="+(e0-s0)+" ms");
         } else { // update the existing record
           try {
             NameRecord nameRecord = NameRecord.getNameRecord(
@@ -689,6 +688,8 @@ public class GNSApp extends AbstractReconfigurablePaxosApp<String> implements
                     "Problem updating name {0} with state {1}: {2}", new Object[]{name, state, e});
           }
         }
+      long e0 = System.currentTimeMillis();
+      System.out.println("Time to insert record="+(e0-s0)+" ms");
       return true;
     } catch (FailedDBOperationException e) {
       GNSConfig.getLogger().log(Level.SEVERE,
